@@ -1,11 +1,93 @@
+import os
+import re
+import argparse
 import requests
 from bs4 import BeautifulSoup
-import re
-import os
-import argparse
+from googletrans import Translator
 
 RSS = "https://nhkeasier.com/feed/"
-OUTPUT = "docs/index.html"
+DEFAULT_OUTPUT = "docs/index.html"
+
+translator = Translator()
+
+
+def translate_text(text: str, dest: str = "bg") -> str:
+    text = (text or "").strip()
+    if not text:
+        return ""
+    try:
+        return translator.translate(text, dest=dest).text
+    except Exception:
+        return ""
+
+
+def get_article_blocks(content):
+    blocks = []
+
+    for el in content.find_all(["p", "h2", "h3", "li"], recursive=True):
+        txt = el.get_text(" ", strip=True)
+        if not txt:
+            continue
+
+        # махаме прекалено кратки / шумни редове
+        if len(txt) < 3:
+            continue
+
+        blocks.append({
+            "text": txt,
+            "html": "".join(str(x) for x in el.contents).strip()
+        })
+
+    return blocks
+
+
+def extract_vocab_from_blocks(blocks):
+    vocab_map = {}
+
+    for block in blocks:
+        soup = BeautifulSoup(block["html"], "html.parser")
+        rubies = soup.find_all("ruby")
+
+        for ruby in rubies:
+            rb_text = ""
+            rt_text = ""
+
+            # взимаме kanji/base text
+            for child in ruby.contents:
+                name = getattr(child, "name", None)
+                if name == "rt":
+                    rt_text += child.get_text("", strip=True)
+                elif name == "rp":
+                    continue
+                else:
+                    if hasattr(child, "get_text"):
+                        rb_text += child.get_text("", strip=True)
+                    else:
+                        rb_text += str(child).strip()
+
+            rb_text = rb_text.strip()
+            rt_text = rt_text.strip()
+
+            if not rb_text:
+                continue
+
+            # пропускаме чиста хирагана/катакана
+            if not re.search(r"[一-龯]", rb_text):
+                continue
+
+            if rb_text not in vocab_map:
+                vocab_map[rb_text] = rt_text
+
+    vocab = []
+    for word, reading in vocab_map.items():
+        meaning = translate_text(word, dest="bg")
+        vocab.append({
+            "word": word,
+            "reading": reading,
+            "meaning": meaning
+        })
+
+    return vocab[:20]
 
 
 def get_articles(n=3):
@@ -17,10 +99,10 @@ def get_articles(n=3):
 
     articles = []
 
-    for i in items:
+    for item in items:
         try:
-            link = i.link.text.strip()
-            title = i.title.text.strip()
+            link = item.link.text.strip()
+            title = item.title.text.strip()
 
             page = requests.get(link, timeout=20)
             page.raise_for_status()
@@ -37,25 +119,45 @@ def get_articles(n=3):
                 print(f"Skipping article, no content found: {link}")
                 continue
 
-            for bad in content.select("script, style, nav, footer, header, aside"):
+            for bad in content.select("script, style, nav, footer, header, aside, form"):
                 bad.decompose()
 
-            paragraphs = []
-            for p in content.find_all(["p", "h2", "h3", "li"]):
-                txt = p.get_text(" ", strip=True)
-                if txt:
-                    paragraphs.append(txt)
+            blocks = get_article_blocks(content)
 
-            text = "\n".join(paragraphs) if paragraphs else content.get_text("\n", strip=True)
+            # пазим само сравнително смислени блокове
+            filtered_blocks = []
+            for b in blocks:
+                t = b["text"]
 
-            if not text.strip():
-                print(f"Skipping article, empty text: {link}")
+                # пропускаме навигационни и UI редове
+                if "share" in t.lower():
+                    continue
+                if "follow us" in t.lower():
+                    continue
+
+                filtered_blocks.append(b)
+
+            if not filtered_blocks:
+                print(f"Skipping article, empty blocks: {link}")
                 continue
+
+            vocab = extract_vocab_from_blocks(filtered_blocks)
+
+            translated_blocks = []
+            for b in filtered_blocks:
+                tr = translate_text(b["text"], dest="bg")
+                translated_blocks.append({
+                    "html": b["html"],
+                    "text": b["text"],
+                    "translation": tr
+                })
 
             articles.append({
                 "title": title,
-                "text": text,
+                "title_translation": translate_text(title, dest="bg"),
                 "link": link,
+                "blocks": translated_blocks,
+                "vocab": vocab
             })
 
         except Exception as e:
@@ -63,20 +165,6 @@ def get_articles(n=3):
             continue
 
     return articles
-
-
-def extract_words(text):
-    words = sorted(set(re.findall(r"[一-龯ぁ-んァ-ンー]{2,}", text)))
-
-    vocab = []
-    for w in words[:20]:
-        vocab.append((w, "", ""))
-
-    return vocab
-
-
-def ruby(word, reading):
-    return f"<ruby>{word}<rt>{reading}</rt></ruby>"
 
 
 def build_html(articles):
@@ -88,90 +176,163 @@ def build_html(articles):
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NHK Easy Reader</title>
 <style>
+:root{
+  --bg:#0f1115;
+  --card:#171a21;
+  --card2:#1d212b;
+  --text:#e8ecf1;
+  --muted:#aeb7c2;
+  --accent:#8ab4ff;
+  --border:#2a3040;
+}
+*{box-sizing:border-box}
 body{
-    background:#111;
-    color:#eee;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    line-height:1.8;
-    padding:40px 20px;
-    max-width:900px;
-    margin:auto;
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  line-height:1.8;
 }
-h1{color:#8ab4ff}
-h2{margin-top:0}
+.wrap{
+  max-width:980px;
+  margin:0 auto;
+  padding:32px 16px 56px;
+}
+h1{
+  margin:0 0 24px;
+  color:var(--accent);
+  font-size:2rem;
+}
 article{
-    margin-bottom:60px;
-    background:#181818;
-    padding:24px;
-    border-radius:14px;
-    box-shadow:0 2px 12px rgba(0,0,0,.25);
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:24px;
+  margin-bottom:28px;
+  box-shadow:0 8px 24px rgba(0,0,0,.22);
 }
-ruby rt{
-    color:#aaa;
-    font-size:0.7em;
-}
-.vocab{
-    background:#1f1f1f;
-    padding:16px 20px;
-    border-radius:10px;
-    margin-bottom:20px;
-}
-.vocab ul{
-    margin:10px 0 0 0;
-    padding-left:20px;
-}
-p{
-    white-space:pre-line;
-}
-a{
-    color:#8ab4ff;
+h2{
+  margin:0 0 6px;
+  font-size:1.5rem;
 }
 .meta{
-    color:#aaa;
-    font-size:.95rem;
-    margin-bottom:14px;
+  margin-bottom:18px;
+  color:var(--muted);
+  font-size:.95rem;
+}
+.meta a{
+  color:var(--accent);
+  text-decoration:none;
+}
+.section-title{
+  margin:20px 0 10px;
+  font-size:1.05rem;
+  color:var(--accent);
+  font-weight:700;
+}
+.vocab{
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px 18px;
+  margin-bottom:20px;
+}
+.vocab ul{
+  margin:10px 0 0;
+  padding-left:20px;
+}
+.vocab li{
+  margin:8px 0;
+}
+.word{
+  font-weight:700;
+}
+.meaning{
+  color:var(--muted);
+}
+.jp-block{
+  background:#12151c;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:14px 16px;
+  margin:12px 0 6px;
+  font-size:1.08rem;
+}
+.bg-block{
+  color:#d2dae3;
+  padding:0 2px 8px 2px;
+  margin-bottom:8px;
+  border-bottom:1px dashed var(--border);
+}
+ruby{
+  ruby-position:over;
+}
+rt{
+  font-size:.68em;
+  color:#9fb3c8;
 }
 </style>
 </head>
 <body>
+<div class="wrap">
 <h1>NHK Easy Reader</h1>
 """
 
-    for a in articles:
-        vocab = extract_words(a["text"])
-
+    for article in articles:
         html += "<article>"
-        html += f"<h2>{a['title']}</h2>"
-        html += f"<div class='meta'><a href='{a['link']}' target='_blank' rel='noopener noreferrer'>Source article</a></div>"
+        html += f"<h2>{article['title']}</h2>"
 
-        html += "<div class='vocab'><b>Vocabulary</b><ul>"
-        for w, r, m in vocab[:20]:
-            if r:
-                word_html = ruby(w, r)
-            else:
-                word_html = w
+        if article["title_translation"]:
+            html += f"<div class='meta'>{article['title_translation']}</div>"
+        else:
+            html += "<div class='meta'></div>"
 
-            if m:
-                html += f"<li>{word_html} — {m}</li>"
+        html += f"<div class='meta'><a href='{article['link']}' target='_blank' rel='noopener noreferrer'>Source article</a></div>"
+
+        html += "<div class='section-title'>Vocabulary</div>"
+        html += "<div class='vocab'><ul>"
+
+        for item in article["vocab"]:
+            word = item["word"]
+            reading = item["reading"]
+            meaning = item["meaning"]
+
+            if reading:
+                word_html = f"<ruby>{word}<rt>{reading}</rt></ruby>"
             else:
-                html += f"<li>{word_html}</li>"
+                word_html = word
+
+            if meaning:
+                html += f"<li><span class='word'>{word_html}</span> — <span class='meaning'>{meaning}</span></li>"
+            else:
+                html += f"<li><span class='word'>{word_html}</span></li>"
+
         html += "</ul></div>"
 
-        html += f"<p>{a['text']}</p>"
+        html += "<div class='section-title'>Text</div>"
+
+        for block in article["blocks"]:
+            html += f"<div class='jp-block'>{block['html']}</div>"
+            if block["translation"]:
+                html += f"<div class='bg-block'>{block['translation']}</div>"
+
         html += "</article>"
 
-    html += "</body></html>"
+    html += """
+</div>
+</body>
+</html>
+"""
     return html
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", default=OUTPUT)
+    parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=3)
     args = parser.parse_args()
 
     articles = get_articles(args.count)
-
     if not articles:
         raise RuntimeError("No articles were extracted.")
 
@@ -181,7 +342,7 @@ def main():
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
-    with open(args.output, "w", encoding="utf8") as f:
+    with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
 
