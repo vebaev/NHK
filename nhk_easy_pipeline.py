@@ -258,11 +258,27 @@ h2{
   margin:12px 0 6px;
   font-size:1.08rem;
 }
+.jp-block.is-clickable{
+  cursor:pointer;
+}
+.jp-block.is-clickable:focus{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+.jp-block.is-clickable::after{
+  content:"  (клик за превод)";
+  color:var(--muted);
+  font-size:.8em;
+}
 .bg-block{
   color:#d2dae3;
   padding:0 2px 8px 2px;
   margin-bottom:8px;
   border-bottom:1px dashed var(--border);
+  display:none;
+}
+.bg-block.is-visible{
+  display:block;
 }
 ruby{
   ruby-position:over;
@@ -320,6 +336,31 @@ rt{
 
     html += """
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.jp-block + .bg-block').forEach(function(bgBlock) {
+    var jpBlock = bgBlock.previousElementSibling;
+    if (!jpBlock) return;
+    jpBlock.classList.add('is-clickable');
+    jpBlock.setAttribute('role', 'button');
+    jpBlock.setAttribute('tabindex', '0');
+    jpBlock.setAttribute('aria-expanded', 'false');
+
+    var toggleTranslation = function() {
+      var isVisible = bgBlock.classList.toggle('is-visible');
+      jpBlock.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
+    };
+
+    jpBlock.addEventListener('click', toggleTranslation);
+    jpBlock.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleTranslation();
+      }
+    });
+  });
+});
+</script>
 </body>
 </html>
 """
