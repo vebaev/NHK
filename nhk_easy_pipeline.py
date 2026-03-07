@@ -9,27 +9,58 @@ OUTPUT = "docs/index.html"
 jam = Jamdict()
 
 def get_articles(n=3):
-    r = requests.get(RSS)
-    soup = BeautifulSoup(r.text, "xml")
+    r = requests.get(RSS, timeout=20)
+    r.raise_for_status()
 
+    soup = BeautifulSoup(r.text, "xml")
     items = soup.find_all("item")[:n]
 
     articles = []
 
     for i in items:
-        link = i.link.text
-        title = i.title.text
+        try:
+            link = i.link.text.strip()
+            title = i.title.text.strip()
 
-        page = requests.get(link)
-        psoup = BeautifulSoup(page.text, "html.parser")
+            page = requests.get(link, timeout=20)
+            page.raise_for_status()
+            psoup = BeautifulSoup(page.text, "html.parser")
 
-        content = psoup.select_one(".entry-content")
-        text = content.get_text()
+            content = (
+                psoup.select_one(".entry-content")
+                or psoup.select_one("article")
+                or psoup.select_one("main")
+                or psoup.body
+            )
 
-        articles.append({
-            "title": title,
-            "text": text
-        })
+            if content is None:
+                print(f"Skipping article, no content found: {link}")
+                continue
+
+            for bad in content.select("script, style, nav, footer, header, aside"):
+                bad.decompose()
+
+            paragraphs = []
+            for p in content.find_all(["p", "h2", "h3", "li"]):
+                txt = p.get_text(" ", strip=True)
+                if txt:
+                    paragraphs.append(txt)
+
+            text = "\n".join(paragraphs) if paragraphs else content.get_text("\n", strip=True)
+
+            if not text.strip():
+                print(f"Skipping article, empty text: {link}")
+                continue
+
+            articles.append({
+                "title": title,
+                "text": text,
+                "link": link,
+            })
+
+        except Exception as e:
+            print(f"Skipping article because of error: {e}")
+            continue
 
     return articles
 
