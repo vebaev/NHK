@@ -143,12 +143,14 @@ margin-bottom:20px;
 
 
 def main():
-
     articles = get_articles()
+
+    if not articles:
+        raise RuntimeError("No articles were extracted.")
 
     html = build_html(articles)
 
-    with open(OUTPUT,"w",encoding="utf8") as f:
+    with open(OUTPUT, "w", encoding="utf8") as f:
         f.write(html)
 
 
