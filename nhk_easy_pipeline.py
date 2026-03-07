@@ -152,8 +152,15 @@ def get_articles(n=3):
                     "translation": tr
                 })
 
+            title_html = title
+            for b in filtered_blocks:
+                if "<ruby" in b["html"]:
+                    title_html = b["html"]
+                    break
+
             articles.append({
                 "title": title,
+                "title_html": title_html,
                 "title_translation": translate_text(title, dest="bg"),
                 "link": link,
                 "blocks": translated_blocks,
@@ -174,7 +181,7 @@ def build_html(articles):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NHK Easy Reader</title>
+<title>Новини от NHK</title>
 <style>
 :root{
   --bg:#0f1115;
@@ -202,6 +209,7 @@ h1{
   margin:0 0 24px;
   color:var(--accent);
   font-size:2rem;
+  text-align:center;
 }
 article{
   background:var(--card);
@@ -240,9 +248,17 @@ h2{
 .vocab ul{
   margin:10px 0 0;
   padding-left:20px;
+  columns:2;
+  column-gap:24px;
 }
 .vocab li{
   margin:8px 0;
+  break-inside:avoid;
+}
+@media (max-width:700px){
+  .vocab ul{
+    columns:1;
+  }
 }
 .word{
   font-weight:700;
@@ -291,21 +307,19 @@ rt{
 </head>
 <body>
 <div class="wrap">
-<h1>NHK Easy Reader</h1>
+<h1>Новини от NHK</h1>
 """
 
     for article in articles:
         html += "<article>"
-        html += f"<h2>{article['title']}</h2>"
+        html += f"<h2>{article.get('title_html', article['title'])}</h2>"
 
         if article["title_translation"]:
             html += f"<div class='meta'>{article['title_translation']}</div>"
         else:
             html += "<div class='meta'></div>"
 
-        html += f"<div class='meta'><a href='{article['link']}' target='_blank' rel='noopener noreferrer'>Source article</a></div>"
-
-        html += "<div class='section-title'>Vocabulary</div>"
+        html += "<div class='section-title'>Речник</div>"
         html += "<div class='vocab'><ul>"
 
         for item in article["vocab"]:
@@ -325,7 +339,7 @@ rt{
 
         html += "</ul></div>"
 
-        html += "<div class='section-title'>Text</div>"
+        html += "<div class='section-title'>Текст</div>"
 
         for block in article["blocks"]:
             html += f"<div class='jp-block'>{block['html']}</div>"
@@ -338,6 +352,15 @@ rt{
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('article').forEach(function(article) {
+    var h2 = article.querySelector('h2');
+    var firstJpBlock = article.querySelector('.jp-block');
+    if (!h2 || !firstJpBlock) return;
+    if (h2.querySelector('ruby')) return;
+    if (!firstJpBlock.querySelector('ruby')) return;
+    h2.innerHTML = firstJpBlock.innerHTML;
+  });
+
   document.querySelectorAll('.jp-block + .bg-block').forEach(function(bgBlock) {
     var jpBlock = bgBlock.previousElementSibling;
     if (!jpBlock) return;
