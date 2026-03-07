@@ -1,12 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
-from jamdict import Jamdict
 import re
+import os
+import argparse
 
 RSS = "https://nhkeasier.com/feed/"
 OUTPUT = "docs/index.html"
 
-jam = Jamdict()
 
 def get_articles(n=3):
     r = requests.get(RSS, timeout=20)
@@ -66,18 +66,11 @@ def get_articles(n=3):
 
 
 def extract_words(text):
-
-    words = set(re.findall(r"[一-龯]+", text))
+    words = sorted(set(re.findall(r"[一-龯ぁ-んァ-ンー]{2,}", text)))
 
     vocab = []
-
-    for w in words:
-        result = jam.lookup(w)
-
-        if result.entries:
-            meaning = result.entries[0].senses[0].gloss[0]
-            reading = result.entries[0].kana_forms[0].text
-            vocab.append((w, reading, meaning))
+    for w in words[:20]:
+        vocab.append((w, "", ""))
 
     return vocab
 
@@ -87,70 +80,108 @@ def ruby(word, reading):
 
 
 def build_html(articles):
-
     html = """
-<html>
+<!doctype html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NHK Easy Reader</title>
 <style>
 body{
-background:#111;
-color:#eee;
-font-family:sans-serif;
-line-height:1.7;
-padding:40px;
-max-width:900px;
-margin:auto;
+    background:#111;
+    color:#eee;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height:1.8;
+    padding:40px 20px;
+    max-width:900px;
+    margin:auto;
 }
 h1{color:#8ab4ff}
-article{margin-bottom:60px}
-ruby rt{color:#aaa;font-size:0.7em}
+h2{margin-top:0}
+article{
+    margin-bottom:60px;
+    background:#181818;
+    padding:24px;
+    border-radius:14px;
+    box-shadow:0 2px 12px rgba(0,0,0,.25);
+}
+ruby rt{
+    color:#aaa;
+    font-size:0.7em;
+}
 .vocab{
-background:#1b1b1b;
-padding:20px;
-border-radius:8px;
-margin-bottom:20px;
+    background:#1f1f1f;
+    padding:16px 20px;
+    border-radius:10px;
+    margin-bottom:20px;
+}
+.vocab ul{
+    margin:10px 0 0 0;
+    padding-left:20px;
+}
+p{
+    white-space:pre-line;
+}
+a{
+    color:#8ab4ff;
+}
+.meta{
+    color:#aaa;
+    font-size:.95rem;
+    margin-bottom:14px;
 }
 </style>
 </head>
 <body>
-
 <h1>NHK Easy Reader</h1>
 """
 
     for a in articles:
-
         vocab = extract_words(a["text"])
 
         html += "<article>"
-
         html += f"<h2>{a['title']}</h2>"
+        html += f"<div class='meta'><a href='{a['link']}' target='_blank' rel='noopener noreferrer'>Source article</a></div>"
 
         html += "<div class='vocab'><b>Vocabulary</b><ul>"
+        for w, r, m in vocab[:20]:
+            if r:
+                word_html = ruby(w, r)
+            else:
+                word_html = w
 
-        for w,r,m in vocab[:20]:
-            html += f"<li>{ruby(w,r)} — {m}</li>"
-
+            if m:
+                html += f"<li>{word_html} — {m}</li>"
+            else:
+                html += f"<li>{word_html}</li>"
         html += "</ul></div>"
 
         html += f"<p>{a['text']}</p>"
-
         html += "</article>"
 
     html += "</body></html>"
-
     return html
 
 
 def main():
-    articles = get_articles()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", default=OUTPUT)
+    parser.add_argument("--count", type=int, default=3)
+    args = parser.parse_args()
+
+    articles = get_articles(args.count)
 
     if not articles:
         raise RuntimeError("No articles were extracted.")
 
     html = build_html(articles)
 
-    with open(OUTPUT, "w", encoding="utf8") as f:
+    output_dir = os.path.dirname(args.output)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    with open(args.output, "w", encoding="utf8") as f:
         f.write(html)
 
 
