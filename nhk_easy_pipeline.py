@@ -1,6 +1,7 @@
 import os
 import re
 import argparse
+import html
 from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
@@ -8,6 +9,7 @@ from googletrans import Translator
 
 EASY_INDEX_URL = "https://news.web.nhk/news/easy/"
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
+NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
 
 translator = Translator()
@@ -90,6 +92,78 @@ def extract_vocab_from_blocks(blocks):
         })
 
     return vocab[:20]
+
+
+def extract_ne_id(text: str) -> str:
+    m = re.search(r"(ne\d{10,})", text or "")
+    return m.group(1) if m else ""
+
+
+def get_nhkeasier_items():
+    r = requests.get(NHKEASIER_FEED_URL, timeout=20)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "xml")
+    items = {}
+
+    for item in soup.find_all("item"):
+        title = (item.title.get_text() if item.title else "").strip()
+        desc_raw = (item.description.get_text() if item.description else "").strip()
+        desc_html = html.unescape(desc_raw)
+        desc_soup = BeautifulSoup(desc_html, "html.parser")
+
+        audio_url = ""
+        enclosure = item.find("enclosure")
+        if enclosure and enclosure.get("url"):
+            audio_url = enclosure.get("url").strip()
+        if not audio_url:
+            audio_tag = desc_soup.select_one("audio[src], audio source[src]")
+            if audio_tag:
+                audio_url = (audio_tag.get("src") or "").strip()
+
+        image_url = ""
+        itunes_img = item.find("itunes:image")
+        if itunes_img and itunes_img.get("href"):
+            image_url = itunes_img.get("href").strip()
+        if not image_url:
+            img_tag = desc_soup.select_one("img[src]")
+            if img_tag:
+                image_url = (img_tag.get("src") or "").strip()
+
+        blocks = get_article_blocks(desc_soup)
+        cleaned_blocks = []
+        for b in blocks:
+            t = b["text"].strip()
+            if not t:
+                continue
+            if t.lower() in {"original", "permalink"}:
+                continue
+            if "Original" in t or "Permalink" in t:
+                continue
+            cleaned_blocks.append(b)
+
+        ne_id = ""
+        original_link = ""
+        for a in desc_soup.select("a[href]"):
+            href = (a.get("href") or "").strip()
+            if "/news/easy/ne" in href:
+                original_link = href
+                ne_id = extract_ne_id(href)
+                break
+        if not ne_id:
+            ne_id = extract_ne_id(audio_url) or extract_ne_id(image_url) or extract_ne_id(desc_html)
+
+        if not ne_id:
+            continue
+
+        items[ne_id] = {
+            "title": title,
+            "blocks": cleaned_blocks,
+            "audio_url": audio_url,
+            "image_url": image_url,
+            "original_link": original_link,
+        }
+
+    return items
 
 
 def extract_easy_article_links_from_sitemap(n=4):
@@ -252,10 +326,38 @@ def parse_article_from_nhk_easy(link: str):
 
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(n)
+    nhkeasier_items = {}
+    try:
+        nhkeasier_items = get_nhkeasier_items()
+    except Exception as e:
+        print(f"Could not load nhkeasier fallback feed: {e}")
+
     articles = []
     for link in links:
         try:
             article = parse_article_from_nhk_easy(link)
+            ne_id = extract_ne_id(link)
+            fallback = nhkeasier_items.get(ne_id)
+            if article and fallback and fallback.get("blocks"):
+                article["blocks"] = []
+                for b in fallback["blocks"]:
+                    tr = translate_text(b["text"], dest="bg")
+                    article["blocks"].append({
+                        "html": b["html"],
+                        "text": b["text"],
+                        "translation": tr
+                    })
+                article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
+                if fallback.get("audio_url"):
+                    article["audio_url"] = fallback["audio_url"]
+                if not article.get("image_url") and fallback.get("image_url"):
+                    article["image_url"] = fallback["image_url"]
+                # Фуригана в заглавието - взимаме първия ruby блок ако е наличен
+                for b in fallback["blocks"]:
+                    if "<ruby" in b["html"]:
+                        article["title_html"] = b["html"]
+                        break
+
             if article:
                 articles.append(article)
         except Exception as e:
