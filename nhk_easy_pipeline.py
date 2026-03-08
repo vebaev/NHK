@@ -1,7 +1,7 @@
 import os
 import re
 import argparse
-import html
+import html as html_lib
 import hashlib
 import json
 import uuid
@@ -1061,7 +1061,7 @@ rt{
         known_percent = int(article.get("known_percent", 0))
         known_count = int(article.get("known_count", 0))
         known_total = int(article.get("known_total", 0))
-        progress_title = html.escape(f"Познати думи: {known_count}/{known_total}")
+        progress_title = html_lib.escape(f"Познати думи: {known_count}/{known_total}")
         html += "<div class='article-head'>"
         html += f"<h2>{article.get('title_html', article['title'])}</h2>"
         html += (
