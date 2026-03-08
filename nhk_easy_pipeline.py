@@ -51,6 +51,56 @@ GODAN_A_TO_U = {
     "ら": "る",
 }
 _MECAB_TAGGER = None
+GRAMMAR_RULES = [
+    {
+        "id": "te_iru",
+        "label": "〜ている / 〜ています",
+        "regex": re.compile(r"てい(?:る|ます|て|た|ました)"),
+        "explanation": "Продължително действие или състояние.",
+    },
+    {
+        "id": "te_ita",
+        "label": "〜ていた / 〜ていました",
+        "regex": re.compile(r"てい(?:た|ました)"),
+        "explanation": "Продължително действие/състояние в миналото.",
+    },
+    {
+        "id": "nai",
+        "label": "〜ない",
+        "regex": re.compile(r"[ぁ-んァ-ン一-龯]ない"),
+        "explanation": "Отрицателна форма (не правя/няма).",
+    },
+    {
+        "id": "kamoshirenai",
+        "label": "〜かもしれない",
+        "regex": re.compile(r"かもしれない"),
+        "explanation": "Вероятност: „може би...“.",
+    },
+    {
+        "id": "koto_ga_dekiru",
+        "label": "〜ことができる",
+        "regex": re.compile(r"ことができ(?:る|ます|た|ました)"),
+        "explanation": "Възможност/умение: „мога да...“.",
+    },
+    {
+        "id": "kara_reason",
+        "label": "〜から",
+        "regex": re.compile(r"から"),
+        "explanation": "Причина или отправна точка („защото/от“ според контекста).",
+    },
+    {
+        "id": "made",
+        "label": "〜まで",
+        "regex": re.compile(r"まで"),
+        "explanation": "Граница във време/място: „до“.",
+    },
+    {
+        "id": "ni",
+        "label": "〜に",
+        "regex": re.compile(r"に"),
+        "explanation": "Частица за посока, време, цел или непряк обект.",
+    },
+]
 
 
 def translate_text(text: str, dest: str = "bg") -> str:
@@ -226,6 +276,39 @@ def save_anki_tsv(cards, path):
             f.write(f"{front}\t{back}\n")
 
 
+def split_japanese_sentences(text: str):
+    t = (text or "").strip()
+    if not t:
+        return []
+    parts = re.split(r"(?<=[。！？])\s*", t)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def extract_grammar_points(articles):
+    found = {}
+
+    for article in articles:
+        for block in article.get("blocks", []):
+            sentences = split_japanese_sentences(block.get("text", ""))
+            for sentence in sentences:
+                for rule in GRAMMAR_RULES:
+                    if rule["id"] in found:
+                        continue
+                    if rule["regex"].search(sentence):
+                        found[rule["id"]] = {
+                            "label": rule["label"],
+                            "explanation": rule["explanation"],
+                            "example": sentence,
+                        }
+
+    ordered = []
+    for rule in GRAMMAR_RULES:
+        item = found.get(rule["id"])
+        if item:
+            ordered.append(item)
+    return ordered
+
+
 def stable_int_id(seed: str, digits: int = 10) -> int:
     # genanki изисква integer ids; правим стабилен id от текстов seed
     digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()
@@ -256,6 +339,18 @@ def build_anki_apkg(cards, apkg_path, deck_name="NHK Easy Vocabulary"):
                 "afmt": "{{Front}}<hr id='answer'>{{Back}}",
             }
         ],
+        css="""
+.card {
+  font-family: Arial, sans-serif;
+  font-size: 25px;
+  text-align: center;
+  color: black;
+  background-color: white;
+}
+ruby rt {
+  font-size: 0.55em;
+}
+""",
     )
 
     deck = genanki.Deck(deck_id, deck_name)
@@ -678,7 +773,9 @@ def build_html(
     articles,
     anki_filename=DEFAULT_ANKI_FILENAME,
     anki_apkg_filename=DEFAULT_ANKI_APKG_FILENAME,
+    grammar_points=None,
 ):
+    grammar_points = grammar_points or []
     html = """
 <!doctype html>
 <html lang="ja">
@@ -831,6 +928,26 @@ rt{
   font-weight:700;
   text-decoration:none;
 }
+.grammar{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:20px;
+  margin-top:20px;
+}
+.grammar ul{
+  margin:8px 0 0;
+  padding-left:20px;
+}
+.grammar li{
+  margin:10px 0;
+}
+.grammar-rule{
+  font-weight:700;
+}
+.grammar-ex{
+  color:var(--muted);
+}
 </style>
 </head>
 <body>
@@ -885,10 +1002,22 @@ rt{
         html += "</article>"
 
     html += "<div class='downloads'>"
-    html += f"<a href='{anki_apkg_filename}' download>Свали Anki дек (.apkg)</a>"
+    html += f"<a href='{anki_apkg_filename}' download>Свали Anki Карти</a>"
     html += " | "
     html += f"<a href='{anki_filename}' download>TSV (backup)</a>"
     html += "</div>"
+
+    if grammar_points:
+        html += "<section class='grammar'>"
+        html += "<div class='section-title'>Граматика в текстовете</div>"
+        html += "<ul>"
+        for g in grammar_points:
+            html += "<li>"
+            html += f"<span class='grammar-rule'>{g['label']}</span> — {g['explanation']}"
+            html += f"<div class='grammar-ex'>Пример: {g['example']}</div>"
+            html += "</li>"
+        html += "</ul>"
+        html += "</section>"
 
     html += """
 </div>
@@ -956,6 +1085,7 @@ def main():
         os.makedirs(output_dir, exist_ok=True)
 
     anki_cards = build_anki_cards(articles)
+    grammar_points = extract_grammar_points(articles)
     anki_filename = DEFAULT_ANKI_FILENAME
     anki_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
     if output_dir:
@@ -971,6 +1101,7 @@ def main():
         articles,
         anki_filename=anki_filename,
         anki_apkg_filename=anki_apkg_filename,
+        grammar_points=grammar_points,
     )
 
     with open(args.output, "w", encoding="utf-8") as f:
