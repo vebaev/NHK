@@ -305,11 +305,15 @@ def is_single_kanji_word(word: str) -> bool:
     return bool(re.fullmatch(r"[一-龯]", w))
 
 
-def build_anki_cards(articles, seen_words=None):
+def is_known_vocab_item(word: str, known_items):
+    return word in known_items or f"v:{word}" in known_items
+
+
+def build_anki_cards(articles, grammar_points=None, seen_items=None):
     cards = []
     seen = set()
-    known_words = set(seen_words or [])
-    newly_added_words = set()
+    known = set(seen_items or [])
+    newly_added_items = set()
 
     for article in articles:
         for item in article.get("vocab", []):
@@ -322,10 +326,10 @@ def build_anki_cards(articles, seen_words=None):
                 continue
             if word in seen:
                 continue
-            if word in known_words:
+            if is_known_vocab_item(word, known):
                 continue
             seen.add(word)
-            newly_added_words.add(word)
+            newly_added_items.add(f"v:{word}")
 
             if reading and reading != word:
                 front = f"<ruby>{word}<rt>{reading}</rt></ruby>"
@@ -334,7 +338,18 @@ def build_anki_cards(articles, seen_words=None):
             back = meaning
             cards.append((front, back))
 
-    return cards, newly_added_words
+    for g in grammar_points or []:
+        label = (g.get("label") or "").strip()
+        explanation = (g.get("explanation") or "").strip()
+        if not label or not explanation:
+            continue
+        grammar_key = f"g:{label}"
+        if grammar_key in known:
+            continue
+        newly_added_items.add(grammar_key)
+        cards.append((f"Граматика: {label}", explanation))
+
+    return cards, newly_added_items
 
 
 def load_seen_words(path):
@@ -373,7 +388,7 @@ def add_known_progress_to_articles(articles, known_words):
             vocab_words.append(word)
 
         total = len(vocab_words)
-        known_count = sum(1 for w in vocab_words if w in known)
+        known_count = sum(1 for w in vocab_words if is_known_vocab_item(w, known))
         percent = int(round((known_count / total) * 100)) if total else 0
         article["known_total"] = total
         article["known_count"] = known_count
@@ -1273,7 +1288,11 @@ def main():
 
     seen_words = load_seen_words(anki_seen_words_path)
     add_known_progress_to_articles(articles, seen_words)
-    anki_cards, newly_added_words = build_anki_cards(articles, seen_words=seen_words)
+    anki_cards, newly_added_words = build_anki_cards(
+        articles,
+        grammar_points=grammar_points,
+        seen_items=seen_words,
+    )
     save_anki_tsv(anki_cards, anki_path)
     build_anki_apkg(anki_cards, anki_apkg_path)
     save_seen_words(anki_seen_words_path, seen_words | newly_added_words)
