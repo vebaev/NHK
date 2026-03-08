@@ -929,7 +929,11 @@ def build_html(
   --muted:#aeb7c2;
   --accent:#8ab4ff;
   --border:#2a3040;
-  --jp-font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+  --jp-panel:#12151c;
+  --trans-text:#d2dae3;
+  --ring-track:#1e222c;
+  --ring-inner:#ffffff;
+  --jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;
 }
 *{box-sizing:border-box}
 body{
@@ -938,6 +942,32 @@ body{
   color:var(--text);
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   line-height:1.8;
+}
+body.theme-light{
+  --bg:#f3f4f6;
+  --card:#ffffff;
+  --card2:#f8fafc;
+  --text:#111111;
+  --muted:#4b5563;
+  --accent:#1d4ed8;
+  --border:#d1d5db;
+  --jp-panel:#eef2f7;
+  --trans-text:#111111;
+  --ring-track:#d1d5db;
+  --ring-inner:#ffffff;
+}
+body.theme-sepia{
+  --bg:#f1e5cf;
+  --card:#f7ebd8;
+  --card2:#efe0c8;
+  --text:#111111;
+  --muted:#3f3a2f;
+  --accent:#8a5a1f;
+  --border:#c8b79a;
+  --jp-panel:#ead9bf;
+  --trans-text:#111111;
+  --ring-track:#c8b79a;
+  --ring-inner:#f7ebd8;
 }
 .wrap{
   max-width:980px;
@@ -955,13 +985,31 @@ h1{
   align-items:center;
   justify-content:center;
   gap:10px;
-  margin:-8px 0 22px;
+  margin:-8px 0 10px;
 }
 .font-picker label{
   color:var(--muted);
   font-size:.92rem;
 }
 .font-picker select{
+  background:var(--card2);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:6px 10px;
+}
+.theme-picker{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin:0 0 22px;
+}
+.theme-picker label{
+  color:var(--muted);
+  font-size:.92rem;
+}
+.theme-picker select{
   background:var(--card2);
   color:var(--text);
   border:1px solid var(--border);
@@ -1004,8 +1052,8 @@ h2{
       from -90deg,
       #5f00ff 0%,
       #ff005a calc(var(--p) * 1%),
-      #1e222c calc(var(--p) * 1%),
-      #1e222c 100%
+      var(--ring-track) calc(var(--p) * 1%),
+      var(--ring-track) 100%
     );
 }
 .known-progress::before{
@@ -1013,7 +1061,7 @@ h2{
   position:absolute;
   inset:6px;
   border-radius:50%;
-  background:#ffffff;
+  background:var(--ring-inner);
 }
 .known-progress span{
   position:absolute;
@@ -1093,7 +1141,7 @@ h2{
   color:var(--muted);
 }
 .jp-block{
-  background:#12151c;
+  background:var(--jp-panel);
   border:1px solid var(--border);
   border-radius:12px;
   padding:14px 16px;
@@ -1113,7 +1161,7 @@ h2{
   font-size:.8em;
 }
 .bg-block{
-  color:#d2dae3;
+  color:var(--trans-text);
   padding:0 2px 8px 2px;
   margin-bottom:8px;
   border-bottom:1px dashed var(--border);
@@ -1172,8 +1220,16 @@ rt{
 <div class="font-picker">
   <label for="jp-font-select">Японски шрифт</label>
   <select id="jp-font-select">
-    <option value="sans">Hiragino Sans</option>
     <option value="mincho">Hiragino Mincho</option>
+    <option value="sans">Hiragino Sans</option>
+  </select>
+</div>
+<div class="theme-picker">
+  <label for="theme-select">Тема</label>
+  <select id="theme-select">
+    <option value="dark">Dark</option>
+    <option value="light">Light</option>
+    <option value="sepia">Sepia</option>
   </select>
 </div>
 """
@@ -1257,6 +1313,7 @@ rt{
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   var jpFontSelect = document.getElementById('jp-font-select');
+  var themeSelect = document.getElementById('theme-select');
   var rootStyle = document.documentElement.style;
   var jpFonts = {
     sans: '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif',
@@ -1264,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   var applyJpFont = function(mode) {
-    var selected = jpFonts[mode] ? mode : 'sans';
+    var selected = jpFonts[mode] ? mode : 'mincho';
     rootStyle.setProperty('--jp-font', jpFonts[selected]);
     if (jpFontSelect) {
       jpFontSelect.value = selected;
@@ -1275,13 +1332,37 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   if (jpFontSelect) {
-    var savedFont = 'sans';
+    var savedFont = 'mincho';
     try {
-      savedFont = localStorage.getItem('jpFontMode') || 'sans';
+      savedFont = localStorage.getItem('jpFontMode') || 'mincho';
     } catch (e) {}
     applyJpFont(savedFont);
     jpFontSelect.addEventListener('change', function() {
       applyJpFont(jpFontSelect.value);
+    });
+  }
+
+  var applyTheme = function(mode) {
+    var selected = (mode === 'light' || mode === 'sepia') ? mode : 'dark';
+    document.body.classList.remove('theme-dark', 'theme-light', 'theme-sepia');
+    document.body.classList.add('theme-' + selected);
+    if (themeSelect) {
+      themeSelect.value = selected;
+    }
+    try {
+      localStorage.setItem('themeMode', selected);
+    } catch (e) {}
+  };
+
+  var savedTheme = 'dark';
+  try {
+    savedTheme = localStorage.getItem('themeMode') || 'dark';
+  } catch (e) {}
+  applyTheme(savedTheme);
+
+  if (themeSelect) {
+    themeSelect.addEventListener('change', function() {
+      applyTheme(themeSelect.value);
     });
   }
 
