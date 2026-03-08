@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from googletrans import Translator
 
 EASY_INDEX_URL = "https://news.web.nhk/news/easy/"
+EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 DEFAULT_OUTPUT = "docs/index.html"
 
 translator = Translator()
@@ -91,62 +92,28 @@ def extract_vocab_from_blocks(blocks):
     return vocab[:20]
 
 
-def is_easy_article_url(url: str) -> bool:
-    try:
-        parsed = urlparse(url)
-    except Exception:
-        return False
+def extract_easy_article_links_from_sitemap(n=4):
+    r = requests.get(EASY_SITEMAP_URL, timeout=20)
+    r.raise_for_status()
 
-    if parsed.scheme not in {"http", "https"}:
-        return False
-    if "/news/easy/" not in parsed.path:
-        return False
-    if parsed.path.rstrip("/") == "/news/easy":
-        return False
-
-    # Най-честите формати на NHK Easy URL-и
-    return (
-        parsed.path.endswith(".html")
-        or bool(re.search(r"/k\\d{8,}", parsed.path))
-        or bool(re.search(r"/\\d{8,}", parsed.path))
-    )
-
-
-def extract_easy_article_links(index_html: str, base_url: str):
-    soup = BeautifulSoup(index_html, "html.parser")
+    soup = BeautifulSoup(r.text, "xml")
     links = []
     seen = set()
-
-    for a in soup.select("a[href]"):
-        href = (a.get("href") or "").strip()
-        if not href:
+    for loc in soup.find_all("loc"):
+        url = (loc.get_text() or "").strip()
+        if not url:
             continue
-        full_url = urljoin(base_url, href)
-        full_url = full_url.split("#", 1)[0]
-        if "?" in full_url:
-            full_url = full_url.split("?", 1)[0]
-        if not is_easy_article_url(full_url):
+        parsed = urlparse(url)
+        if "/news/easy/ne" not in parsed.path:
             continue
-        if full_url in seen:
+        if not parsed.path.endswith(".html"):
             continue
-        seen.add(full_url)
-        links.append(full_url)
-
-    if links:
-        return links
-
-    # fallback: търсене директно в HTML
-    for raw in re.findall(r'["\\\'](/news/easy/[^"\\\']+)["\\\']', index_html):
-        full_url = urljoin(base_url, raw)
-        full_url = full_url.split("#", 1)[0]
-        if "?" in full_url:
-            full_url = full_url.split("?", 1)[0]
-        if not is_easy_article_url(full_url):
+        if url in seen:
             continue
-        if full_url in seen:
-            continue
-        seen.add(full_url)
-        links.append(full_url)
+        seen.add(url)
+        links.append(url)
+        if len(links) >= n:
+            break
 
     return links
 
@@ -198,6 +165,14 @@ def parse_article_from_nhk_easy(link: str):
         if mp3_match:
             audio_url = mp3_match.group(0)
 
+    if not audio_url:
+        # Някои страници пазят линка като поле в JS payload
+        audio_field_match = re.search(r'"(?:audio|voice|sound|movie)Url"\s*:\s*"([^"]+)"', page.text, re.IGNORECASE)
+        if audio_field_match:
+            audio_url = urljoin(link, audio_field_match.group(1))
+
+    # Структурата е Next.js shell. Ако няма реален body в DOM,
+    # взимаме смислени японски текстови фрагменти от payload-а.
     content = (
         psoup.select_one(".article-main__body")
         or psoup.select_one(".module--content")
@@ -205,21 +180,51 @@ def parse_article_from_nhk_easy(link: str):
         or psoup.select_one(".content--detail-body")
         or psoup.select_one("article")
         or psoup.select_one("main")
-        or psoup.body
     )
-    if content is None:
-        return None
 
-    for bad in content.select("script, style, nav, footer, header, aside, form"):
-        bad.decompose()
-
-    blocks = get_article_blocks(content)
     filtered_blocks = []
-    for b in blocks:
-        t = b["text"]
-        if "share" in t.lower() or "follow us" in t.lower():
-            continue
-        filtered_blocks.append(b)
+    if content is not None:
+        for bad in content.select("script, style, nav, footer, header, aside, form"):
+            bad.decompose()
+        blocks = get_article_blocks(content)
+        for b in blocks:
+            t = b["text"]
+            if "share" in t.lower() or "follow us" in t.lower():
+                continue
+            filtered_blocks.append(b)
+
+    if not filtered_blocks:
+        payload_texts = []
+        for txt in re.findall(r'"children":"([^"]{10,}?)"', page.text):
+            # филтрираме системни UI текстове
+            if "NHK" in txt or "トップ" in txt or "ニュース・防災" in txt:
+                continue
+            # държим само текстове с японски букви
+            if not re.search(r"[ぁ-んァ-ン一-龯]", txt):
+                continue
+            cleaned = txt.replace("\\n", " ").strip()
+            if len(cleaned) < 10:
+                continue
+            payload_texts.append(cleaned)
+
+        dedup = []
+        seen_text = set()
+        for t in payload_texts:
+            if t in seen_text:
+                continue
+            seen_text.add(t)
+            dedup.append(t)
+
+        for t in dedup[:8]:
+            filtered_blocks.append({"html": t, "text": t})
+
+    if not filtered_blocks:
+        desc = ""
+        desc_meta = psoup.select_one('meta[name="description"]')
+        if desc_meta:
+            desc = (desc_meta.get("content") or "").strip()
+        if desc:
+            filtered_blocks.append({"html": desc, "text": desc})
 
     if not filtered_blocks:
         return None
@@ -246,10 +251,7 @@ def parse_article_from_nhk_easy(link: str):
 
 
 def get_articles(n=4):
-    r = requests.get(EASY_INDEX_URL, timeout=20)
-    r.raise_for_status()
-
-    links = extract_easy_article_links(r.text, EASY_INDEX_URL)[:n]
+    links = extract_easy_article_links_from_sitemap(n)
     articles = []
     for link in links:
         try:
