@@ -86,6 +86,66 @@ GRAMMAR_RULES = [
         "explanation": "Възможност/умение: „мога да...“.",
     },
     {
+        "id": "koto_ni_naru",
+        "label": "〜ことになる",
+        "regex": re.compile(r"ことにな(?:る|り|った|ります|りました)"),
+        "explanation": "Решение/резултат: „оказва се, че... / решено е да...“.",
+    },
+    {
+        "id": "you_ni",
+        "label": "〜ように",
+        "regex": re.compile(r"ように"),
+        "explanation": "Цел или начин: „за да... / така че...“.",
+    },
+    {
+        "id": "tame_ni",
+        "label": "〜ため(に)",
+        "regex": re.compile(r"ため(?:に)?"),
+        "explanation": "Причина или цел: „поради... / за да...“.",
+    },
+    {
+        "id": "nagara",
+        "label": "〜ながら",
+        "regex": re.compile(r"ながら"),
+        "explanation": "Едновременно действие: „докато...“.",
+    },
+    {
+        "id": "tari_tari",
+        "label": "〜たり〜たりする",
+        "regex": re.compile(r"たり.*たり"),
+        "explanation": "Непълен списък от действия: „... и ... и т.н.“.",
+    },
+    {
+        "id": "te_shimau",
+        "label": "〜てしまう",
+        "regex": re.compile(r"てしま(?:う|います|った|いました)"),
+        "explanation": "Завършеност или нежелан резултат.",
+    },
+    {
+        "id": "to_omou",
+        "label": "〜と思う",
+        "regex": re.compile(r"と思(?:う|います|った|いました)"),
+        "explanation": "Мнение/мисъл: „мисля, че...“.",
+    },
+    {
+        "id": "to_iu",
+        "label": "〜という",
+        "regex": re.compile(r"という"),
+        "explanation": "Назоваване/цитиране: „наречен... / че...“.",
+    },
+    {
+        "id": "passive_rareru",
+        "label": "受け身 (〜られる)",
+        "regex": re.compile(r"[ぁ-んァ-ン一-龯]られ(?:る|ます|た|ました)"),
+        "explanation": "Страдателен залог: „бива направено...“.",
+    },
+    {
+        "id": "causative_saseru",
+        "label": "使役 (〜させる)",
+        "regex": re.compile(r"[ぁ-んァ-ン一-龯]させ(?:る|ます|た|ました)"),
+        "explanation": "Каузатив: „карам/оставям някого да...“.",
+    },
+    {
         "id": "kara_reason",
         "label": "〜から",
         "regex": re.compile(r"から"),
@@ -349,7 +409,6 @@ def extract_grammar_points(articles):
                         found[rule["id"]] = {
                             "label": rule["label"],
                             "explanation": rule["explanation"],
-                            "example": sentence,
                         }
 
     ordered = []
@@ -1053,9 +1112,6 @@ rt{
 .grammar-rule{
   font-weight:700;
 }
-.grammar-ex{
-  color:var(--muted);
-}
 </style>
 </head>
 <body>
@@ -1133,7 +1189,6 @@ rt{
         for g in grammar_points:
             html += "<li>"
             html += f"<span class='grammar-rule'>{g['label']}</span> — {g['explanation']}"
-            html += f"<div class='grammar-ex'>Пример: {g['example']}</div>"
             html += "</li>"
         html += "</ul>"
         html += "</section>"
