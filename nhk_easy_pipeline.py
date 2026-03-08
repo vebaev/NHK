@@ -920,7 +920,11 @@ def build_html(
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>最新ニュース</title>
-<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0f1115">
 <style>
 :root{
   --bg:#0f1115;
@@ -1207,6 +1211,12 @@ rt{
 .grammar-rule{
   font-weight:700;
 }
+.contacts{
+  margin-top:18px;
+  text-align:center;
+  color:var(--muted);
+  font-size:.78rem;
+}
 h1,
 .article-head h2,
 .jp-block,
@@ -1312,10 +1322,18 @@ rt{
         html += "</ul>"
         html += "</section>"
 
+    html += "<div class='contacts'>Contacts: vebaev (at) gmail.com</div>"
+
     html += """
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('./sw.js').catch(function() {});
+    });
+  }
+
   var jpFontSelect = document.getElementById('jp-font-select');
   var themeSelect = document.getElementById('theme-select');
   var rootStyle = document.documentElement.style;
