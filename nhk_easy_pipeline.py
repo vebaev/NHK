@@ -929,6 +929,7 @@ def build_html(
   --muted:#aeb7c2;
   --accent:#8ab4ff;
   --border:#2a3040;
+  --jp-font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
 }
 *{box-sizing:border-box}
 body{
@@ -948,6 +949,24 @@ h1{
   color:var(--accent);
   font-size:2rem;
   text-align:center;
+}
+.font-picker{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin:-8px 0 22px;
+}
+.font-picker label{
+  color:var(--muted);
+  font-size:.92rem;
+}
+.font-picker select{
+  background:var(--card2);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:6px 10px;
 }
 article{
   background:var(--card);
@@ -1136,11 +1155,27 @@ rt{
 .grammar-rule{
   font-weight:700;
 }
+h1,
+.article-head h2,
+.jp-block,
+.word,
+.grammar-rule,
+ruby,
+rt{
+  font-family:var(--jp-font);
+}
 </style>
 </head>
 <body>
 <div class="wrap">
 <h1>最新ニュース</h1>
+<div class="font-picker">
+  <label for="jp-font-select">Японски шрифт</label>
+  <select id="jp-font-select">
+    <option value="sans">Hiragino Sans</option>
+    <option value="mincho">Hiragino Mincho</option>
+  </select>
+</div>
 """
 
     for article in articles:
@@ -1221,6 +1256,35 @@ rt{
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  var jpFontSelect = document.getElementById('jp-font-select');
+  var rootStyle = document.documentElement.style;
+  var jpFonts = {
+    sans: '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif',
+    mincho: '"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif'
+  };
+
+  var applyJpFont = function(mode) {
+    var selected = jpFonts[mode] ? mode : 'sans';
+    rootStyle.setProperty('--jp-font', jpFonts[selected]);
+    if (jpFontSelect) {
+      jpFontSelect.value = selected;
+    }
+    try {
+      localStorage.setItem('jpFontMode', selected);
+    } catch (e) {}
+  };
+
+  if (jpFontSelect) {
+    var savedFont = 'sans';
+    try {
+      savedFont = localStorage.getItem('jpFontMode') || 'sans';
+    } catch (e) {}
+    applyJpFont(savedFont);
+    jpFontSelect.addEventListener('change', function() {
+      applyJpFont(jpFontSelect.value);
+    });
+  }
+
   document.querySelectorAll('article').forEach(function(article) {
     var h2 = article.querySelector('h2');
     var firstJpBlock = article.querySelector('.jp-block');
