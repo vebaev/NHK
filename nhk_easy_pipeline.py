@@ -3,6 +3,8 @@ import re
 import argparse
 import html
 import hashlib
+import json
+import uuid
 from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
@@ -22,6 +24,7 @@ NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
 DEFAULT_ANKI_FILENAME = "anki_cards.tsv"
 DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_vocab.apkg"
+DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
 
 translator = Translator()
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
@@ -242,9 +245,11 @@ def is_single_kanji_word(word: str) -> bool:
     return bool(re.fullmatch(r"[一-龯]", w))
 
 
-def build_anki_cards(articles):
+def build_anki_cards(articles, seen_words=None):
     cards = []
     seen = set()
+    known_words = set(seen_words or [])
+    newly_added_words = set()
 
     for article in articles:
         for item in article.get("vocab", []):
@@ -257,7 +262,10 @@ def build_anki_cards(articles):
                 continue
             if word in seen:
                 continue
+            if word in known_words:
+                continue
             seen.add(word)
+            newly_added_words.add(word)
 
             if reading and reading != word:
                 front = f"<ruby>{word}<rt>{reading}</rt></ruby>"
@@ -266,7 +274,50 @@ def build_anki_cards(articles):
             back = meaning
             cards.append((front, back))
 
-    return cards
+    return cards, newly_added_words
+
+
+def load_seen_words(path):
+    if not os.path.exists(path):
+        return set()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            return set()
+        return {str(x).strip() for x in data if str(x).strip()}
+    except Exception:
+        return set()
+
+
+def save_seen_words(path, words):
+    unique_sorted_words = sorted({w.strip() for w in words if w and w.strip()})
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(unique_sorted_words, f, ensure_ascii=False, indent=2)
+
+
+def add_known_progress_to_articles(articles, known_words):
+    known = set(known_words or [])
+    for article in articles:
+        vocab_words = []
+        seen_in_article = set()
+        for item in article.get("vocab", []):
+            word = (item.get("word") or "").strip()
+            if not word:
+                continue
+            if is_single_kanji_word(word):
+                continue
+            if word in seen_in_article:
+                continue
+            seen_in_article.add(word)
+            vocab_words.append(word)
+
+        total = len(vocab_words)
+        known_count = sum(1 for w in vocab_words if w in known)
+        percent = int(round((known_count / total) * 100)) if total else 0
+        article["known_total"] = total
+        article["known_count"] = known_count
+        article["known_percent"] = percent
 
 
 def save_anki_tsv(cards, path):
@@ -355,11 +406,10 @@ ruby rt {
 
     deck = genanki.Deck(deck_id, deck_name)
     for front, back in cards:
-        guid_seed = f"{front}::{back}"
         note = genanki.Note(
             model=model,
             fields=[front, back],
-            guid=str(stable_int_id(guid_seed, digits=12)),
+            guid=uuid.uuid4().hex,
         )
         deck.add_note(note)
 
@@ -824,6 +874,57 @@ h2{
   margin:0 0 6px;
   font-size:1.5rem;
 }
+.article-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:6px;
+}
+.article-head h2{
+  margin:0;
+  flex:1;
+}
+.known-progress{
+  --p:0;
+  --size:84px;
+  width:var(--size);
+  height:var(--size);
+  border-radius:50%;
+  position:relative;
+  flex:0 0 var(--size);
+  background:
+    conic-gradient(
+      from -90deg,
+      #5f00ff 0%,
+      #ff005a calc(var(--p) * 1%),
+      #1e222c calc(var(--p) * 1%),
+      #1e222c 100%
+    );
+}
+.known-progress::before{
+  content:"";
+  position:absolute;
+  inset:8px;
+  border-radius:50%;
+  background:#ffffff;
+}
+.known-progress span{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#12151c;
+  font-weight:700;
+  font-size:1.05rem;
+  z-index:1;
+}
+@media (max-width:700px){
+  .known-progress{
+    --size:74px;
+  }
+}
 .article-media{
   margin:12px 0 14px;
 }
@@ -957,7 +1058,18 @@ rt{
 
     for article in articles:
         html += "<article>"
+        known_percent = int(article.get("known_percent", 0))
+        known_count = int(article.get("known_count", 0))
+        known_total = int(article.get("known_total", 0))
+        progress_title = html.escape(f"Познати думи: {known_count}/{known_total}")
+        html += "<div class='article-head'>"
         html += f"<h2>{article.get('title_html', article['title'])}</h2>"
+        html += (
+            f"<div class='known-progress' style='--p:{known_percent};' "
+            f"title='{progress_title}' aria-label='{progress_title}'>"
+            f"<span>{known_percent}%</span></div>"
+        )
+        html += "</div>"
 
         if article["title_translation"]:
             html += f"<div class='meta'>{article['title_translation']}</div>"
@@ -1084,18 +1196,25 @@ def main():
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
-    anki_cards = build_anki_cards(articles)
     grammar_points = extract_grammar_points(articles)
     anki_filename = DEFAULT_ANKI_FILENAME
     anki_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
+    anki_seen_words_filename = DEFAULT_ANKI_SEEN_WORDS_FILENAME
     if output_dir:
         anki_path = os.path.join(output_dir, anki_filename)
         anki_apkg_path = os.path.join(output_dir, anki_apkg_filename)
+        anki_seen_words_path = os.path.join(output_dir, anki_seen_words_filename)
     else:
         anki_path = anki_filename
         anki_apkg_path = anki_apkg_filename
+        anki_seen_words_path = anki_seen_words_filename
+
+    seen_words = load_seen_words(anki_seen_words_path)
+    add_known_progress_to_articles(articles, seen_words)
+    anki_cards, newly_added_words = build_anki_cards(articles, seen_words=seen_words)
     save_anki_tsv(anki_cards, anki_path)
     build_anki_apkg(anki_cards, anki_apkg_path)
+    save_seen_words(anki_seen_words_path, seen_words | newly_added_words)
 
     html = build_html(
         articles,
