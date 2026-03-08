@@ -919,7 +919,7 @@ def build_html(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Новини от NHK</title>
+<title>最新ニュース</title>
 <style>
 :root{
   --bg:#0f1115;
@@ -1140,7 +1140,7 @@ rt{
 </head>
 <body>
 <div class="wrap">
-<h1>Новини от NHK</h1>
+<h1>最新ニュース</h1>
 """
 
     for article in articles:
