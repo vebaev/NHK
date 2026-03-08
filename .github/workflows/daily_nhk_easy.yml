@@ -3,7 +3,7 @@ name: NHK Easy Daily
 on:
   push:
   schedule:
-    - cron: "0 8 * * *"
+    - cron: "0 5 * * *"
   workflow_dispatch:
 
 jobs:
