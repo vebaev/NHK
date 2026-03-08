@@ -974,7 +974,7 @@ h2{
 }
 .known-progress{
   --p:0;
-  --size:50px;
+  --size:59px;
   width:var(--size);
   height:var(--size);
   border-radius:50%;
@@ -1004,13 +1004,16 @@ h2{
   justify-content:center;
   color:#12151c;
   font-weight:700;
-  font-size:.78rem;
+  font-size:.9rem;
   z-index:1;
 }
 @media (max-width:700px){
   .known-progress{
-    --size:44px;
+    --size:52px;
   }
+}
+.article-head h2 rt{
+  font-size:.56em;
 }
 .article-media{
   margin:12px 0 14px;
