@@ -1,11 +1,12 @@
 import os
 import re
 import argparse
+from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 from googletrans import Translator
 
-RSS = "https://nhkeasier.com/feed/"
+EASY_INDEX_URL = "https://news.web.nhk/news/easy/"
 DEFAULT_OUTPUT = "docs/index.html"
 
 translator = Translator()
@@ -90,83 +91,171 @@ def extract_vocab_from_blocks(blocks):
     return vocab[:20]
 
 
-def get_articles(n=3):
-    r = requests.get(RSS, timeout=20)
+def is_easy_article_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    if "/news/easy/" not in parsed.path:
+        return False
+    if parsed.path.rstrip("/") == "/news/easy":
+        return False
+
+    # Най-честите формати на NHK Easy URL-и
+    return (
+        parsed.path.endswith(".html")
+        or bool(re.search(r"/k\\d{8,}", parsed.path))
+        or bool(re.search(r"/\\d{8,}", parsed.path))
+    )
+
+
+def extract_easy_article_links(index_html: str, base_url: str):
+    soup = BeautifulSoup(index_html, "html.parser")
+    links = []
+    seen = set()
+
+    for a in soup.select("a[href]"):
+        href = (a.get("href") or "").strip()
+        if not href:
+            continue
+        full_url = urljoin(base_url, href)
+        full_url = full_url.split("#", 1)[0]
+        if "?" in full_url:
+            full_url = full_url.split("?", 1)[0]
+        if not is_easy_article_url(full_url):
+            continue
+        if full_url in seen:
+            continue
+        seen.add(full_url)
+        links.append(full_url)
+
+    if links:
+        return links
+
+    # fallback: търсене директно в HTML
+    for raw in re.findall(r'["\\\'](/news/easy/[^"\\\']+)["\\\']', index_html):
+        full_url = urljoin(base_url, raw)
+        full_url = full_url.split("#", 1)[0]
+        if "?" in full_url:
+            full_url = full_url.split("?", 1)[0]
+        if not is_easy_article_url(full_url):
+            continue
+        if full_url in seen:
+            continue
+        seen.add(full_url)
+        links.append(full_url)
+
+    return links
+
+
+def parse_article_from_nhk_easy(link: str):
+    page = requests.get(link, timeout=20)
+    page.raise_for_status()
+    psoup = BeautifulSoup(page.text, "html.parser")
+
+    title_tag = psoup.select_one("h1")
+    title = ""
+    title_html = ""
+    if title_tag:
+        title = title_tag.get_text(" ", strip=True)
+        title_html = "".join(str(x) for x in title_tag.contents).strip() or title
+    if not title:
+        og_title = psoup.select_one('meta[property="og:title"]')
+        if og_title:
+            title = (og_title.get("content") or "").strip()
+    if not title:
+        title = "NHK Easy Article"
+    if not title_html:
+        title_html = title
+
+    image_url = ""
+    for sel in ['meta[property="og:image"]', 'meta[name="og:image"]', "article img[src]", "main img[src]", "img[src]"]:
+        el = psoup.select_one(sel)
+        if not el:
+            continue
+        candidate = (el.get("content") or el.get("src") or "").strip()
+        if not candidate:
+            continue
+        image_url = urljoin(link, candidate)
+        break
+
+    audio_url = ""
+    for sel in ["audio source[src]", "audio[src]", 'a[href$=".mp3"]', 'a[href*=".mp3"]']:
+        el = psoup.select_one(sel)
+        if not el:
+            continue
+        candidate = (el.get("src") or el.get("href") or "").strip()
+        if not candidate:
+            continue
+        audio_url = urljoin(link, candidate)
+        break
+
+    if not audio_url:
+        mp3_match = re.search(r"https?://[^\"'\\s]+\\.mp3(?:\\?[^\"'\\s]*)?", page.text)
+        if mp3_match:
+            audio_url = mp3_match.group(0)
+
+    content = (
+        psoup.select_one(".article-main__body")
+        or psoup.select_one(".module--content")
+        or psoup.select_one("#js-article-body")
+        or psoup.select_one(".content--detail-body")
+        or psoup.select_one("article")
+        or psoup.select_one("main")
+        or psoup.body
+    )
+    if content is None:
+        return None
+
+    for bad in content.select("script, style, nav, footer, header, aside, form"):
+        bad.decompose()
+
+    blocks = get_article_blocks(content)
+    filtered_blocks = []
+    for b in blocks:
+        t = b["text"]
+        if "share" in t.lower() or "follow us" in t.lower():
+            continue
+        filtered_blocks.append(b)
+
+    if not filtered_blocks:
+        return None
+
+    vocab = extract_vocab_from_blocks(filtered_blocks)
+    translated_blocks = []
+    for b in filtered_blocks:
+        translated_blocks.append({
+            "html": b["html"],
+            "text": b["text"],
+            "translation": translate_text(b["text"], dest="bg")
+        })
+
+    return {
+        "title": title,
+        "title_html": title_html,
+        "title_translation": translate_text(title, dest="bg"),
+        "link": link,
+        "image_url": image_url,
+        "audio_url": audio_url,
+        "blocks": translated_blocks,
+        "vocab": vocab,
+    }
+
+
+def get_articles(n=4):
+    r = requests.get(EASY_INDEX_URL, timeout=20)
     r.raise_for_status()
 
-    soup = BeautifulSoup(r.text, "xml")
-    items = soup.find_all("item")[:n]
-
+    links = extract_easy_article_links(r.text, EASY_INDEX_URL)[:n]
     articles = []
-
-    for item in items:
+    for link in links:
         try:
-            link = item.link.text.strip()
-            title = item.title.text.strip()
-
-            page = requests.get(link, timeout=20)
-            page.raise_for_status()
-            psoup = BeautifulSoup(page.text, "html.parser")
-
-            content = (
-                psoup.select_one(".entry-content")
-                or psoup.select_one("article")
-                or psoup.select_one("main")
-                or psoup.body
-            )
-
-            if content is None:
-                print(f"Skipping article, no content found: {link}")
-                continue
-
-            for bad in content.select("script, style, nav, footer, header, aside, form"):
-                bad.decompose()
-
-            blocks = get_article_blocks(content)
-
-            # пазим само сравнително смислени блокове
-            filtered_blocks = []
-            for b in blocks:
-                t = b["text"]
-
-                # пропускаме навигационни и UI редове
-                if "share" in t.lower():
-                    continue
-                if "follow us" in t.lower():
-                    continue
-
-                filtered_blocks.append(b)
-
-            if not filtered_blocks:
-                print(f"Skipping article, empty blocks: {link}")
-                continue
-
-            vocab = extract_vocab_from_blocks(filtered_blocks)
-
-            translated_blocks = []
-            for b in filtered_blocks:
-                tr = translate_text(b["text"], dest="bg")
-                translated_blocks.append({
-                    "html": b["html"],
-                    "text": b["text"],
-                    "translation": tr
-                })
-
-            title_html = title
-            for b in filtered_blocks:
-                if "<ruby" in b["html"]:
-                    title_html = b["html"]
-                    break
-
-            articles.append({
-                "title": title,
-                "title_html": title_html,
-                "title_translation": translate_text(title, dest="bg"),
-                "link": link,
-                "blocks": translated_blocks,
-                "vocab": vocab
-            })
-
+            article = parse_article_from_nhk_easy(link)
+            if article:
+                articles.append(article)
         except Exception as e:
             print(f"Skipping article because of error: {e}")
             continue
@@ -222,6 +311,21 @@ article{
 h2{
   margin:0 0 6px;
   font-size:1.5rem;
+}
+.article-media{
+  margin:12px 0 14px;
+}
+.article-image{
+  width:100%;
+  max-height:420px;
+  object-fit:cover;
+  border-radius:12px;
+  border:1px solid var(--border);
+  display:block;
+  margin-bottom:10px;
+}
+.article-audio{
+  width:100%;
 }
 .meta{
   margin-bottom:18px;
@@ -319,6 +423,14 @@ rt{
         else:
             html += "<div class='meta'></div>"
 
+        if article.get("image_url") or article.get("audio_url"):
+            html += "<div class='article-media'>"
+            if article.get("image_url"):
+                html += f"<img class='article-image' src='{article['image_url']}' alt='{article['title']}' loading='lazy'/>"
+            if article.get("audio_url"):
+                html += f"<audio class='article-audio' controls preload='none' src='{article['audio_url']}'></audio>"
+            html += "</div>"
+
         html += "<div class='section-title'>Речник</div>"
         html += "<div class='vocab'><ul>"
 
@@ -393,7 +505,7 @@ document.addEventListener('DOMContentLoaded', function() {
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
-    parser.add_argument("--count", type=int, default=3)
+    parser.add_argument("--count", type=int, default=4)
     args = parser.parse_args()
 
     articles = get_articles(args.count)

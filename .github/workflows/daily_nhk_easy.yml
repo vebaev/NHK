@@ -32,7 +32,7 @@ jobs:
 
       - name: Run generator
         run: |
-          python nhk_easy_pipeline.py --output docs/index.html --count 3
+          python nhk_easy_pipeline.py --output docs/index.html --count 4
 
       - name: Commit updated page
         run: |
