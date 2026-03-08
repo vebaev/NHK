@@ -460,8 +460,8 @@ def build_anki_apkg(cards, apkg_path, deck_name="NHK Easy Vocabulary"):
         templates=[
             {
                 "name": "Card 1",
-                "qfmt": "{{Front}}",
-                "afmt": "{{Front}}<hr id='answer'>{{Back}}",
+                "qfmt": "<div class='jp-word'>{{Front}}</div>",
+                "afmt": "<div class='jp-word'>{{Front}}</div><hr id='answer'><div class='bg-meaning'>{{Back}}</div>",
             }
         ],
         css="""
@@ -472,8 +472,14 @@ def build_anki_apkg(cards, apkg_path, deck_name="NHK Easy Vocabulary"):
   color: black;
   background-color: white;
 }
-ruby rt {
-  font-size: 0.55em;
+.jp-word {
+  font-size: 31px;
+}
+.bg-meaning {
+  font-size: 25px;
+}
+.jp-word ruby rt {
+  font-size: 14px;
 }
 """,
     )
