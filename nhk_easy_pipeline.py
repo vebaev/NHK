@@ -6,6 +6,10 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 from googletrans import Translator
+try:
+    import fugashi
+except Exception:
+    fugashi = None
 
 EASY_INDEX_URL = "https://news.web.nhk/news/easy/"
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
@@ -39,6 +43,7 @@ GODAN_A_TO_U = {
     "ま": "む",
     "ら": "る",
 }
+_MECAB_TAGGER = None
 
 
 def translate_text(text: str, dest: str = "bg") -> str:
@@ -157,7 +162,7 @@ def extract_vocab_from_blocks(blocks):
             if okurigana:
                 surface_word = rb_text + okurigana
                 surface_reading = (rt_text + okurigana).strip()
-                word = to_dictionary_form(surface_word)
+                word = lemmatize_japanese(surface_word)
                 reading = to_dictionary_form(surface_reading)
 
             if word not in vocab_map:
@@ -173,6 +178,64 @@ def extract_vocab_from_blocks(blocks):
         })
 
     return vocab[:20]
+
+
+def get_mecab_tagger():
+    global _MECAB_TAGGER
+    if _MECAB_TAGGER is not None:
+        return _MECAB_TAGGER
+    if fugashi is None:
+        return None
+    try:
+        _MECAB_TAGGER = fugashi.Tagger()
+    except Exception:
+        _MECAB_TAGGER = None
+    return _MECAB_TAGGER
+
+
+def is_target_pos(token) -> bool:
+    # UniDic/BCCWJ полетата не са напълно стабилни между версии, затова
+    # проверяваме както feature.pos1, така и fallback към string representation.
+    feature = getattr(token, "feature", None)
+    pos1 = getattr(feature, "pos1", "") if feature is not None else ""
+    if pos1 in {"動詞", "形容詞"}:
+        return True
+    return "動詞" in str(feature) or "形容詞" in str(feature)
+
+
+def token_lemma(token) -> str:
+    feature = getattr(token, "feature", None)
+    if feature is None:
+        return ""
+
+    lemma = getattr(feature, "lemma", "") or ""
+    if not lemma:
+        # някои версии използват други полета
+        lemma = getattr(feature, "dictionary_form", "") or ""
+    if not lemma:
+        lemma = getattr(feature, "lemma_form", "") or ""
+    return lemma.strip()
+
+
+def lemmatize_japanese(word: str) -> str:
+    w = (word or "").strip()
+    if not w:
+        return w
+
+    tagger = get_mecab_tagger()
+    if tagger is None:
+        return to_dictionary_form(w)
+
+    try:
+        tokens = list(tagger(w))
+        if len(tokens) == 1 and is_target_pos(tokens[0]):
+            lemma = token_lemma(tokens[0])
+            if lemma and lemma not in {"*", w}:
+                return lemma
+    except Exception:
+        pass
+
+    return to_dictionary_form(w)
 
 
 def extract_following_okurigana(ruby_tag):
