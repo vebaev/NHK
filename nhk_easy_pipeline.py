@@ -560,7 +560,7 @@ def get_nhkeasier_items():
     for item in soup.find_all("item"):
         title = (item.title.get_text() if item.title else "").strip()
         desc_raw = (item.description.get_text() if item.description else "").strip()
-        desc_html = html.unescape(desc_raw)
+        desc_html = html_lib.unescape(desc_raw)
         desc_soup = BeautifulSoup(desc_html, "html.parser")
 
         audio_url = ""
@@ -777,7 +777,7 @@ def parse_article_from_nhk_easy(link: str):
 
 
 def get_articles(n=4):
-    links = extract_easy_article_links_from_sitemap(n)
+    links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
     try:
         nhkeasier_items = get_nhkeasier_items()
@@ -810,13 +810,20 @@ def get_articles(n=4):
                         article["title_html"] = b["html"]
                         break
 
-            if article:
+            has_blocks = bool(article and article.get("blocks"))
+            has_vocab = bool(article and article.get("vocab"))
+            has_image = bool(article and article.get("image_url"))
+            has_audio = bool(article and article.get("audio_url"))
+
+            if article and has_blocks and has_vocab and has_image and has_audio:
                 articles.append(article)
+                if len(articles) >= n:
+                    break
         except Exception as e:
             print(f"Skipping article because of error: {e}")
             continue
 
-    return articles
+    return articles[:n]
 
 
 def build_html(
