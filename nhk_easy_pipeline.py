@@ -350,7 +350,7 @@ def get_articles(n=4):
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
                     article["audio_url"] = fallback["audio_url"]
-                if not article.get("image_url") and fallback.get("image_url"):
+                if fallback.get("image_url"):
                     article["image_url"] = fallback["image_url"]
                 # Фуригана в заглавието - взимаме първия ruby блок ако е наличен
                 for b in fallback["blocks"]:
