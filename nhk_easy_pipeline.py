@@ -16,6 +16,29 @@ translator = Translator()
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
 _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
+PARTICLE_PREFIXES = ("が", "を", "に", "で", "は", "と", "へ", "や", "も", "の")
+GODAN_I_TO_U = {
+    "い": "う",
+    "き": "く",
+    "ぎ": "ぐ",
+    "し": "す",
+    "ち": "つ",
+    "に": "ぬ",
+    "び": "ぶ",
+    "み": "む",
+    "り": "る",
+}
+GODAN_A_TO_U = {
+    "わ": "う",
+    "か": "く",
+    "が": "ぐ",
+    "さ": "す",
+    "た": "つ",
+    "な": "ぬ",
+    "ば": "ぶ",
+    "ま": "む",
+    "ら": "る",
+}
 
 
 def translate_text(text: str, dest: str = "bg") -> str:
@@ -123,8 +146,22 @@ def extract_vocab_from_blocks(blocks):
             if not re.search(r"[一-龯]", rb_text):
                 continue
 
-            if rb_text not in vocab_map:
-                vocab_map[rb_text] = rt_text
+            okurigana = extract_following_okurigana(ruby)
+            word = rb_text
+            reading = rt_text
+
+            # Ако след канджи има частица, не я включваме в речниковата форма
+            if okurigana and okurigana.startswith(PARTICLE_PREFIXES):
+                okurigana = ""
+
+            if okurigana:
+                surface_word = rb_text + okurigana
+                surface_reading = (rt_text + okurigana).strip()
+                word = to_dictionary_form(surface_word)
+                reading = to_dictionary_form(surface_reading)
+
+            if word not in vocab_map:
+                vocab_map[word] = reading
 
     vocab = []
     for word, reading in vocab_map.items():
@@ -136,6 +173,77 @@ def extract_vocab_from_blocks(blocks):
         })
 
     return vocab[:20]
+
+
+def extract_following_okurigana(ruby_tag):
+    sibling = ruby_tag.next_sibling
+    while sibling is not None:
+        txt = ""
+        if isinstance(sibling, str):
+            txt = sibling
+        elif hasattr(sibling, "get_text"):
+            # ако има следващ таг, не взимаме текст от него за окуригана
+            break
+
+        txt = (txt or "").lstrip(" 　\n\t")
+        if not txt:
+            sibling = sibling.next_sibling
+            continue
+
+        m = re.match(r"^([ぁ-んー]{1,8})", txt)
+        if m:
+            return m.group(1)
+        return ""
+    return ""
+
+
+def to_dictionary_form(word: str) -> str:
+    w = (word or "").strip()
+    if not w:
+        return w
+
+    # する
+    for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
+        if w.endswith(suffix):
+            stem = w[: -len(suffix)]
+            return stem + "する"
+
+    # くる
+    for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
+        if w.endswith(suffix):
+            stem = w[: -len(suffix)]
+            return stem + "くる"
+
+    # ます形 -> 辞書形
+    for suffix in ["ました", "ます"]:
+        if w.endswith(suffix):
+            stem = w[: -len(suffix)]
+            if not stem:
+                return w
+            mapped = GODAN_I_TO_U.get(stem[-1])
+            if mapped:
+                return stem[:-1] + mapped
+            return stem + "る"
+
+    # ない形
+    if w.endswith("ない") and len(w) > 2:
+        stem = w[:-2]
+        mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
+        if mapped:
+            return stem[:-1] + mapped
+        return stem + "る"
+
+    # て形 / た形 (нееднозначните って/んで ги пропускаме)
+    for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
+        if w.endswith(src) and len(w) > len(src):
+            return w[: -len(src)] + dst
+
+    # прилагателни
+    for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
+        if w.endswith(src) and len(w) > len(src):
+            return w[: -len(src)] + dst
+
+    return w
 
 
 def extract_ne_id(text: str) -> str:
