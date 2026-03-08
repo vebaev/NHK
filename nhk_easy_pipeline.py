@@ -933,6 +933,7 @@ def build_html(
   --trans-text:#d2dae3;
   --ring-track:#1e222c;
   --ring-inner:#ffffff;
+  --rt-color:#9fb3c8;
   --jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;
 }
 *{box-sizing:border-box}
@@ -955,6 +956,7 @@ body.theme-light{
   --trans-text:#111111;
   --ring-track:#d1d5db;
   --ring-inner:#ffffff;
+  --rt-color:#5f6f84;
 }
 body.theme-sepia{
   --bg:#f1e5cf;
@@ -968,6 +970,7 @@ body.theme-sepia{
   --trans-text:#111111;
   --ring-track:#c8b79a;
   --ring-inner:#f7ebd8;
+  --rt-color:#645640;
 }
 .wrap{
   max-width:980px;
@@ -1175,7 +1178,7 @@ ruby{
 }
 rt{
   font-size:.68em;
-  color:#9fb3c8;
+  color:var(--rt-color);
 }
 .downloads{
   margin-top:20px;
