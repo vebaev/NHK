@@ -13,14 +13,58 @@ NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
 
 translator = Translator()
+DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
+_TRANSLATION_CACHE = {}
+_TRANSLATION_STATS = {"deepl": 0, "google": 0}
 
 
 def translate_text(text: str, dest: str = "bg") -> str:
     text = (text or "").strip()
     if not text:
         return ""
+    cache_key = (text, dest, bool(DEEPL_API_KEY))
+    if cache_key in _TRANSLATION_CACHE:
+        return _TRANSLATION_CACHE[cache_key]
+
+    if DEEPL_API_KEY:
+        try:
+            # Free plan ключовете обикновено завършват с :fx
+            deepl_url = "https://api-free.deepl.com/v2/translate"
+            if not DEEPL_API_KEY.endswith(":fx"):
+                deepl_url = "https://api.deepl.com/v2/translate"
+
+            target_lang = dest.upper()
+            if target_lang == "BG":
+                target_lang = "BG"
+
+            resp = requests.post(
+                deepl_url,
+                headers={
+                    "Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}",
+                },
+                data={
+                    "text": text,
+                    "target_lang": target_lang,
+                },
+                timeout=20,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            translations = data.get("translations") or []
+            if translations and translations[0].get("text"):
+                result = translations[0]["text"].strip()
+                _TRANSLATION_STATS["deepl"] += 1
+                _TRANSLATION_CACHE[cache_key] = result
+                return result
+        except Exception:
+            # fallback към googletrans
+            pass
+
     try:
-        return translator.translate(text, dest=dest).text
+        result = translator.translate(text, dest=dest).text
+        _TRANSLATION_STATS["google"] += 1
+        _TRANSLATION_CACHE[cache_key] = result
+        return result
     except Exception:
         return ""
 
@@ -607,14 +651,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 def main():
+    global DEEPL_API_KEY
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=4)
+    parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
     args = parser.parse_args()
+    DEEPL_API_KEY = (args.deepl_key or "").strip()
 
     articles = get_articles(args.count)
     if not articles:
         raise RuntimeError("No articles were extracted.")
+
+    print(
+        f"Translation provider usage: DeepL={_TRANSLATION_STATS['deepl']} "
+        f"Google={_TRANSLATION_STATS['google']}"
+    )
 
     html = build_html(articles)
 

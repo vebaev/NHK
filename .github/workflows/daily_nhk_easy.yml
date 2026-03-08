@@ -31,6 +31,8 @@ jobs:
           mkdir -p docs
 
       - name: Run generator
+        env:
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
         run: |
           python nhk_easy_pipeline.py --output docs/index.html --count 4
 
