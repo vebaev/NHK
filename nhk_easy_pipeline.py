@@ -963,7 +963,7 @@ h2{
 }
 .article-head{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:space-between;
   gap:16px;
   margin-bottom:6px;
@@ -971,6 +971,10 @@ h2{
 .article-head h2{
   margin:0;
   flex:1;
+  min-width:0;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  line-height:1.4;
 }
 .known-progress{
   --p:0;
