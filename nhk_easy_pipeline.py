@@ -15,6 +15,7 @@ EASY_INDEX_URL = "https://news.web.nhk/news/easy/"
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
+DEFAULT_ANKI_FILENAME = "anki_cards.tsv"
 
 translator = Translator()
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
@@ -178,6 +179,45 @@ def extract_vocab_from_blocks(blocks):
         })
 
     return vocab[:20]
+
+
+def is_single_kanji_word(word: str) -> bool:
+    w = (word or "").strip()
+    return bool(re.fullmatch(r"[一-龯]", w))
+
+
+def build_anki_cards(articles):
+    cards = []
+    seen = set()
+
+    for article in articles:
+        for item in article.get("vocab", []):
+            word = (item.get("word") or "").strip()
+            reading = (item.get("reading") or "").strip()
+            meaning = (item.get("meaning") or "").strip()
+            if not word or not meaning:
+                continue
+            if is_single_kanji_word(word):
+                continue
+            if word in seen:
+                continue
+            seen.add(word)
+
+            if reading and reading != word:
+                front = f"<ruby>{word}<rt>{reading}</rt></ruby>"
+            else:
+                front = word
+            back = meaning
+            cards.append((front, back))
+
+    return cards
+
+
+def save_anki_tsv(cards, path):
+    with open(path, "w", encoding="utf-8") as f:
+        for front, back in cards:
+            # TAB-separated, съвместимо с Anki import
+            f.write(f"{front}\t{back}\n")
 
 
 def get_mecab_tagger():
@@ -582,7 +622,7 @@ def get_articles(n=4):
     return articles
 
 
-def build_html(articles):
+def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME):
     html = """
 <!doctype html>
 <html lang="ja">
@@ -726,6 +766,15 @@ rt{
   font-size:.68em;
   color:#9fb3c8;
 }
+.downloads{
+  margin-top:20px;
+  text-align:center;
+}
+.downloads a{
+  color:var(--accent);
+  font-weight:700;
+  text-decoration:none;
+}
 </style>
 </head>
 <body>
@@ -778,6 +827,10 @@ rt{
                 html += f"<div class='bg-block'>{block['translation']}</div>"
 
         html += "</article>"
+
+    html += "<div class='downloads'>"
+    html += f"<a href='{anki_filename}' download>Свали Anki карти (TSV)</a>"
+    html += "</div>"
 
     html += """
 </div>
@@ -840,11 +893,19 @@ def main():
         f"Google={_TRANSLATION_STATS['google']}"
     )
 
-    html = build_html(articles)
-
     output_dir = os.path.dirname(args.output)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
+
+    anki_cards = build_anki_cards(articles)
+    anki_filename = DEFAULT_ANKI_FILENAME
+    if output_dir:
+        anki_path = os.path.join(output_dir, anki_filename)
+    else:
+        anki_path = anki_filename
+    save_anki_tsv(anki_cards, anki_path)
+
+    html = build_html(articles, anki_filename=anki_filename)
 
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
