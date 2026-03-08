@@ -40,6 +40,6 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-          git add docs/index.html docs/anki_cards.tsv
+          git add docs/index.html docs/anki_cards.tsv docs/nhk_easy_vocab.apkg
           git commit -m "update NHK easy page" || echo "no changes"
           git push

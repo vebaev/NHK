@@ -2,6 +2,7 @@ import os
 import re
 import argparse
 import html
+import hashlib
 from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
@@ -10,12 +11,17 @@ try:
     import fugashi
 except Exception:
     fugashi = None
+try:
+    import genanki
+except Exception:
+    genanki = None
 
 EASY_INDEX_URL = "https://news.web.nhk/news/easy/"
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
 DEFAULT_ANKI_FILENAME = "anki_cards.tsv"
+DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_vocab.apkg"
 
 translator = Translator()
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
@@ -218,6 +224,52 @@ def save_anki_tsv(cards, path):
         for front, back in cards:
             # TAB-separated, съвместимо с Anki import
             f.write(f"{front}\t{back}\n")
+
+
+def stable_int_id(seed: str, digits: int = 10) -> int:
+    # genanki изисква integer ids; правим стабилен id от текстов seed
+    digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()
+    h = int(digest[:12], 16)
+    mod = 10 ** digits
+    return (h % mod) + (10 ** (digits - 1))
+
+
+def build_anki_apkg(cards, apkg_path, deck_name="NHK Easy Vocabulary"):
+    if genanki is None:
+        print("genanki is not installed; skipping .apkg generation")
+        return False
+
+    model_id = stable_int_id("nhk_easy_vocab_model")
+    deck_id = stable_int_id("nhk_easy_vocab_deck")
+
+    model = genanki.Model(
+        model_id,
+        "NHK Easy Vocab Model",
+        fields=[
+            {"name": "Front"},
+            {"name": "Back"},
+        ],
+        templates=[
+            {
+                "name": "Card 1",
+                "qfmt": "{{Front}}",
+                "afmt": "{{Front}}<hr id='answer'>{{Back}}",
+            }
+        ],
+    )
+
+    deck = genanki.Deck(deck_id, deck_name)
+    for front, back in cards:
+        guid_seed = f"{front}::{back}"
+        note = genanki.Note(
+            model=model,
+            fields=[front, back],
+            guid=str(stable_int_id(guid_seed, digits=12)),
+        )
+        deck.add_note(note)
+
+    genanki.Package(deck).write_to_file(apkg_path)
+    return True
 
 
 def get_mecab_tagger():
@@ -622,7 +674,11 @@ def get_articles(n=4):
     return articles
 
 
-def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME):
+def build_html(
+    articles,
+    anki_filename=DEFAULT_ANKI_FILENAME,
+    anki_apkg_filename=DEFAULT_ANKI_APKG_FILENAME,
+):
     html = """
 <!doctype html>
 <html lang="ja">
@@ -829,7 +885,9 @@ rt{
         html += "</article>"
 
     html += "<div class='downloads'>"
-    html += f"<a href='{anki_filename}' download>Свали Anki карти (TSV)</a>"
+    html += f"<a href='{anki_apkg_filename}' download>Свали Anki дек (.apkg)</a>"
+    html += " | "
+    html += f"<a href='{anki_filename}' download>TSV (backup)</a>"
     html += "</div>"
 
     html += """
@@ -899,13 +957,21 @@ def main():
 
     anki_cards = build_anki_cards(articles)
     anki_filename = DEFAULT_ANKI_FILENAME
+    anki_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
     if output_dir:
         anki_path = os.path.join(output_dir, anki_filename)
+        anki_apkg_path = os.path.join(output_dir, anki_apkg_filename)
     else:
         anki_path = anki_filename
+        anki_apkg_path = anki_apkg_filename
     save_anki_tsv(anki_cards, anki_path)
+    build_anki_apkg(anki_cards, anki_apkg_path)
 
-    html = build_html(articles, anki_filename=anki_filename)
+    html = build_html(
+        articles,
+        anki_filename=anki_filename,
+        anki_apkg_filename=anki_apkg_filename,
+    )
 
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
