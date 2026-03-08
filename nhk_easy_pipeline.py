@@ -959,18 +959,14 @@ article{
 }
 h2{
   margin:0 0 6px;
-  font-size:1.5rem;
+  font-size:1.375rem;
 }
 .article-head{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:16px;
+  display:block;
   margin-bottom:6px;
 }
 .article-head h2{
   margin:0;
-  flex:1;
   min-width:0;
   overflow-wrap:anywhere;
   word-break:break-word;
@@ -978,12 +974,12 @@ h2{
 }
 .known-progress{
   --p:0;
-  --size:84px;
+  --size:50px;
   width:var(--size);
   height:var(--size);
   border-radius:50%;
   position:relative;
-  flex:0 0 var(--size);
+  margin-top:8px;
   background:
     conic-gradient(
       from -90deg,
@@ -996,7 +992,7 @@ h2{
 .known-progress::before{
   content:"";
   position:absolute;
-  inset:8px;
+  inset:6px;
   border-radius:50%;
   background:#ffffff;
 }
@@ -1008,12 +1004,12 @@ h2{
   justify-content:center;
   color:#12151c;
   font-weight:700;
-  font-size:1.05rem;
+  font-size:.78rem;
   z-index:1;
 }
 @media (max-width:700px){
   .known-progress{
-    --size:74px;
+    --size:44px;
   }
 }
 .article-media{
