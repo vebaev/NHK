@@ -1033,10 +1033,21 @@ h1,.article-head h2,.jp-block,.word,.grammar-rule,ruby,rt{font-family:var(--jp-f
 
         html += "<div class='section-title'>Речник</div><div class='vocab'><ul>"
         for item in article["vocab"]:
-            word, reading, meaning = item["word"], item["reading"], item["meaning"]
-            word_html = f"<ruby>{word}<rt>{reading}</rt></ruby>" if reading else word
-            html += f"<li><span class='word'>{word_html}</span>{(' — <span class=\"meaning\">' + meaning + '</span>') if meaning else ''}</li>"
+            word = item["word"]
+            reading = item["reading"]
+            meaning = item["meaning"]
+
+            if reading:
+                word_html = f"<ruby>{word}<rt>{reading}</rt></ruby>"
+            else:
+                word_html = word
+
+            if meaning:
+                html += f"<li><span class='word'>{word_html}</span> — <span class='meaning'>{meaning}</span></li>"
+            else:
+                html += f"<li><span class='word'>{word_html}</span></li>"
         html += "</ul></div><div class='section-title'>Текст</div>"
+
 
         for block in article["blocks"]:
             html += f"<div class='jp-block'>{block['html']}</div>"
