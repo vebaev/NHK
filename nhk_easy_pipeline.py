@@ -444,6 +444,10 @@ def has_lemma(tokens, idx, *values):
     return 0 <= idx < len(tokens) and lemma_equals(tokens[idx], *values)
 
 
+def has_pos(tokens, idx, *values):
+    return 0 <= idx < len(tokens) and token_pos1(tokens[idx]) in values
+
+
 def contains_suffix_form(token, *parts):
     joined = "|".join(parts)
     s = token_surface(token)
@@ -601,7 +605,6 @@ def detect_grammar_in_sentence(sentence: str):
     for i in range(n):
         s = surfaces[i]
         l = lemmas[i]
-        pos = token_pos1(tokens[i])
 
         if s in {"けど", "けれど", "けれども"}:
             found.add("kedo")
@@ -1108,7 +1111,9 @@ h1,.article-head h2,.jp-block,.word,.grammar-rule,ruby,rt{font-family:var(--jp-f
         html += f"<li><span class='word'>{word_html}</span> — <span class='meaning'>{meaning}</span></li>"
     else:
         html += f"<li><span class='word'>{word_html}</span></li>"
-html += "</ul></div><div class='section-title'>Текст</div>" 
+
+html += "</ul></div><div class='section-title'>Текст</div>"
+
 
         for block in article["blocks"]:
             html += f"<div class='jp-block'>{block['html']}</div>"
