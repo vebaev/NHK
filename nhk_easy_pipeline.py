@@ -6,17 +6,21 @@ import hashlib
 import json
 import uuid
 from urllib.parse import urljoin, urlparse
+
 import requests
 from bs4 import BeautifulSoup
 from googletrans import Translator
+
 try:
     import fugashi
 except Exception:
     fugashi = None
+
 try:
     import genanki
 except Exception:
     genanki = None
+
 
 EASY_INDEX_URL = "https://news.web.nhk/news/easy/"
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
@@ -55,102 +59,46 @@ GODAN_A_TO_U = {
 }
 _MECAB_TAGGER = None
 
-# Граматиката вече не се търси с regex върху raw текста.
-# Използва се MeCab + UniDic token stream, както и при речника.
+# По-силен MeCab/UniDic grammar detector.
+# Това не е пълен parser, но е по-силен от plain regex и покрива повече learner grammar.
 GRAMMAR_RULES = [
-    {
-        "id": "te_iru",
-        "label": "〜ている / 〜ています",
-        "explanation": "Продължително действие или състояние.",
-    },
-    {
-        "id": "te_ita",
-        "label": "〜ていた / 〜ていました",
-        "explanation": "Продължително действие/състояние в миналото.",
-    },
-    {
-        "id": "nai",
-        "label": "〜ない",
-        "explanation": "Отрицателна форма (не правя/няма).",
-    },
-    {
-        "id": "kamoshirenai",
-        "label": "〜かもしれない",
-        "explanation": "Вероятност: „може би...“.",
-    },
-    {
-        "id": "koto_ga_dekiru",
-        "label": "〜ことができる",
-        "explanation": "Възможност/умение: „мога да...“.",
-    },
-    {
-        "id": "koto_ni_naru",
-        "label": "〜ことになる",
-        "explanation": "Решение/резултат: „оказва се, че... / решено е да...“.",
-    },
-    {
-        "id": "you_ni",
-        "label": "〜ように",
-        "explanation": "Цел или начин: „за да... / така че...“.",
-    },
-    {
-        "id": "tame_ni",
-        "label": "〜ため(に)",
-        "explanation": "Причина или цел: „поради... / за да...“.",
-    },
-    {
-        "id": "nagara",
-        "label": "〜ながら",
-        "explanation": "Едновременно действие: „докато...“.",
-    },
-    {
-        "id": "tari_tari",
-        "label": "〜たり〜たりする",
-        "explanation": "Непълен списък от действия: „... и ... и т.н.“.",
-    },
-    {
-        "id": "te_shimau",
-        "label": "〜てしまう",
-        "explanation": "Завършеност или нежелан резултат.",
-    },
-    {
-        "id": "to_omou",
-        "label": "〜と思う",
-        "explanation": "Мнение/мисъл: „мисля, че...“.",
-    },
-    {
-        "id": "to_iu",
-        "label": "〜という",
-        "explanation": "Назоваване/цитиране: „наречен... / че...“.",
-    },
-    {
-        "id": "passive_rareru",
-        "label": "受け身 (〜られる)",
-        "explanation": "Страдателен залог: „бива направено...“.",
-    },
-    {
-        "id": "causative_saseru",
-        "label": "使役 (〜させる)",
-        "explanation": "Каузатив: „карам/оставям някого да...“.",
-    },
-    {
-        "id": "kara_reason",
-        "label": "〜から",
-        "explanation": "Причина или отправна точка („защото/от“ според контекста).",
-    },
-    {
-        "id": "made",
-        "label": "〜まで",
-        "explanation": "Граница във време/място: „до“.",
-    },
-    {
-        "id": "ni",
-        "label": "〜に",
-        "explanation": "Частица за посока, време, цел или непряк обект.",
-    },
+    {"id": "te_iru", "label": "〜ている / 〜ています", "explanation": "Продължително действие или състояние."},
+    {"id": "te_ita", "label": "〜ていた / 〜ていました", "explanation": "Продължително действие/състояние в миналото."},
+    {"id": "te_oku", "label": "〜ておく", "explanation": "Правя нещо предварително."},
+    {"id": "te_shimau", "label": "〜てしまう", "explanation": "Завършеност или нежелан резултат."},
+    {"id": "te_miru", "label": "〜てみる", "explanation": "Опитвам да направя нещо."},
+    {"id": "te_ageru", "label": "〜てあげる", "explanation": "Правя нещо за някого."},
+    {"id": "te_kureru", "label": "〜てくれる", "explanation": "Някой прави нещо за мен/нас."},
+    {"id": "te_morau", "label": "〜てもらう", "explanation": "Получавам услуга от някого."},
+    {"id": "nai", "label": "〜ない", "explanation": "Отрицателна форма."},
+    {"id": "nakereba_naranai", "label": "〜なければならない", "explanation": "Задължение: трябва да..."},
+    {"id": "nakereba_ikenai", "label": "〜なければいけない", "explanation": "Задължение: трябва да..."},
+    {"id": "nakutewa_naranai", "label": "〜なくてはならない", "explanation": "Задължение: трябва да..."},
+    {"id": "beki", "label": "〜べき", "explanation": "Трябва/редно е да..."},
+    {"id": "hazu_da", "label": "〜はずだ", "explanation": "Трябва да е така / очаква се."},
+    {"id": "kamoshirenai", "label": "〜かもしれない", "explanation": "Вероятност: може би..."},
+    {"id": "souda", "label": "〜そうだ", "explanation": "Изглежда че... / казват че..."},
+    {"id": "rashii", "label": "〜らしい", "explanation": "Изглежда / по слухове / типично за."},
+    {"id": "youda", "label": "〜ようだ / 〜ように", "explanation": "Прилика, сравнение, начин или цел."},
+    {"id": "koto_ga_dekiru", "label": "〜ことができる", "explanation": "Възможност или умение: мога да..."},
+    {"id": "koto_ni_naru", "label": "〜ことになる", "explanation": "Решение/резултат: решено е да..."},
+    {"id": "you_ni_naru", "label": "〜ようになる", "explanation": "Промяна на състояние: започвам да мога / става така, че..."},
+    {"id": "tsumori_da", "label": "〜つもりだ", "explanation": "Намерение."},
+    {"id": "to_omou", "label": "〜と思う", "explanation": "Мнение: мисля, че..."},
+    {"id": "to_iu", "label": "〜という", "explanation": "Назоваване или цитиране."},
+    {"id": "tame_ni", "label": "〜ため(に)", "explanation": "Причина или цел."},
+    {"id": "nagara", "label": "〜ながら", "explanation": "Едновременно действие: докато..."},
+    {"id": "tari_tari", "label": "〜たり〜たりする", "explanation": "Непълен списък от действия."},
+    {"id": "passive_rareru", "label": "受け身 (〜られる / 〜れる)", "explanation": "Страдателен залог."},
+    {"id": "causative_saseru", "label": "使役 (〜させる / 〜せる)", "explanation": "Каузатив: карам/оставям някого да..."},
+    {"id": "potential_rareru", "label": "可能形", "explanation": "Възможностна форма: мога да..."},
+    {"id": "volitional", "label": "意向形 (〜よう / 〜おう)", "explanation": "Волево намерение: нека..., ще..."},
+    {"id": "tai", "label": "〜たい", "explanation": "Желание: искам да..."},
+    {"id": "kara_reason", "label": "〜から", "explanation": "Причина или отправна точка."},
+    {"id": "made", "label": "〜まで", "explanation": "Граница във време/място: до."},
+    {"id": "ni", "label": "〜に", "explanation": "Частица за посока, време, цел или непряк обект."},
 ]
-
-GRAMMAR_RULES_BY_ID = {rule["id"]: rule for rule in GRAMMAR_RULES}
+GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
 
 
 def translate_text(text: str, dest: str = "bg") -> str:
@@ -167,19 +115,10 @@ def translate_text(text: str, dest: str = "bg") -> str:
             if not DEEPL_API_KEY.endswith(":fx"):
                 deepl_url = "https://api.deepl.com/v2/translate"
 
-            target_lang = dest.upper()
-            if target_lang == "BG":
-                target_lang = "BG"
-
             resp = requests.post(
                 deepl_url,
-                headers={
-                    "Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}",
-                },
-                data={
-                    "text": text,
-                    "target_lang": target_lang,
-                },
+                headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"},
+                data={"text": text, "target_lang": dest.upper()},
                 timeout=20,
             )
             resp.raise_for_status()
@@ -204,20 +143,11 @@ def translate_text(text: str, dest: str = "bg") -> str:
 
 def get_article_blocks(content):
     blocks = []
-
     for el in content.find_all(["p", "h2", "h3", "li"], recursive=True):
         txt = el.get_text(" ", strip=True)
-        if not txt:
+        if not txt or len(txt) < 3:
             continue
-
-        if len(txt) < 3:
-            continue
-
-        blocks.append({
-            "text": txt,
-            "html": "".join(str(x) for x in el.contents).strip()
-        })
-
+        blocks.append({"text": txt, "html": "".join(str(x) for x in el.contents).strip()})
     return blocks
 
 
@@ -247,10 +177,7 @@ def extract_vocab_from_blocks(blocks):
             rb_text = rb_text.strip()
             rt_text = rt_text.strip()
 
-            if not rb_text:
-                continue
-
-            if not re.search(r"[一-龯]", rb_text):
+            if not rb_text or not re.search(r"[一-龯]", rb_text):
                 continue
 
             okurigana = extract_following_okurigana(ruby)
@@ -271,19 +198,17 @@ def extract_vocab_from_blocks(blocks):
 
     vocab = []
     for word, reading in vocab_map.items():
-        meaning = translate_text(word, dest="bg")
         vocab.append({
             "word": word,
             "reading": reading,
-            "meaning": meaning
+            "meaning": translate_text(word, dest="bg"),
         })
 
     return vocab[:20]
 
 
 def is_single_kanji_word(word: str) -> bool:
-    w = (word or "").strip()
-    return bool(re.fullmatch(r"[一-龯]", w))
+    return bool(re.fullmatch(r"[一-龯]", (word or "").strip()))
 
 
 def is_known_vocab_item(word: str, known_items):
@@ -301,23 +226,13 @@ def build_anki_cards(articles, grammar_points=None, seen_items=None):
             word = (item.get("word") or "").strip()
             reading = (item.get("reading") or "").strip()
             meaning = (item.get("meaning") or "").strip()
-            if not word or not meaning:
-                continue
-            if is_single_kanji_word(word):
-                continue
-            if word in seen:
-                continue
-            if is_known_vocab_item(word, known):
+            if not word or not meaning or is_single_kanji_word(word) or word in seen or is_known_vocab_item(word, known):
                 continue
             seen.add(word)
             newly_added_items.add(f"v:{word}")
 
-            if reading and reading != word:
-                front = f"<ruby>{word}<rt>{reading}</rt></ruby>"
-            else:
-                front = word
-            back = meaning
-            cards.append((front, back))
+            front = f"<ruby>{word}<rt>{reading}</rt></ruby>" if reading and reading != word else word
+            cards.append((front, meaning))
 
     for g in grammar_points or []:
         label = (g.get("label") or "").strip()
@@ -339,17 +254,14 @@ def load_seen_words(path):
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        if not isinstance(data, list):
-            return set()
-        return {str(x).strip() for x in data if str(x).strip()}
+        return {str(x).strip() for x in data if str(x).strip()} if isinstance(data, list) else set()
     except Exception:
         return set()
 
 
 def save_seen_words(path, words):
-    unique_sorted_words = sorted({w.strip() for w in words if w and w.strip()})
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(unique_sorted_words, f, ensure_ascii=False, indent=2)
+        json.dump(sorted({w.strip() for w in words if w and w.strip()}), f, ensure_ascii=False, indent=2)
 
 
 def add_known_progress_to_articles(articles, known_words):
@@ -359,21 +271,16 @@ def add_known_progress_to_articles(articles, known_words):
         seen_in_article = set()
         for item in article.get("vocab", []):
             word = (item.get("word") or "").strip()
-            if not word:
-                continue
-            if is_single_kanji_word(word):
-                continue
-            if word in seen_in_article:
+            if not word or is_single_kanji_word(word) or word in seen_in_article:
                 continue
             seen_in_article.add(word)
             vocab_words.append(word)
 
         total = len(vocab_words)
         known_count = sum(1 for w in vocab_words if is_known_vocab_item(w, known))
-        percent = int(round((known_count / total) * 100)) if total else 0
         article["known_total"] = total
         article["known_count"] = known_count
-        article["known_percent"] = percent
+        article["known_percent"] = int(round((known_count / total) * 100)) if total else 0
 
 
 def save_anki_tsv(cards, path):
@@ -386,8 +293,7 @@ def split_japanese_sentences(text: str):
     t = (text or "").strip()
     if not t:
         return []
-    parts = re.split(r"(?<=[。！？])\s*", t)
-    return [p.strip() for p in parts if p.strip()]
+    return [p.strip() for p in re.split(r"(?<=[。！？])\s*", t) if p.strip()]
 
 
 def stable_int_id(seed: str, digits: int = 10) -> int:
@@ -402,51 +308,26 @@ def build_anki_apkg(cards, apkg_path, deck_name="NHK Easy Vocabulary"):
         print("genanki is not installed; skipping .apkg generation")
         return False
 
-    model_id = stable_int_id("nhk_easy_vocab_model")
-    deck_id = stable_int_id("nhk_easy_vocab_deck")
-
     model = genanki.Model(
-        model_id,
+        stable_int_id("nhk_easy_vocab_model"),
         "NHK Easy Vocab Model",
-        fields=[
-            {"name": "Front"},
-            {"name": "Back"},
-        ],
-        templates=[
-            {
-                "name": "Card 1",
-                "qfmt": "<div class='jp-word'>{{Front}}</div>",
-                "afmt": "<div class='jp-word'>{{Front}}</div><hr id='answer'><div class='bg-meaning'>{{Back}}</div>",
-            }
-        ],
+        fields=[{"name": "Front"}, {"name": "Back"}],
+        templates=[{
+            "name": "Card 1",
+            "qfmt": "<div class='jp-word'>{{Front}}</div>",
+            "afmt": "<div class='jp-word'>{{Front}}</div><hr id='answer'><div class='bg-meaning'>{{Back}}</div>",
+        }],
         css="""
-.card {
-  font-family: Arial, sans-serif;
-  font-size: 25px;
-  text-align: center;
-  color: black;
-  background-color: white;
-}
-.jp-word {
-  font-size: 31px;
-}
-.bg-meaning {
-  font-size: 25px;
-}
-.jp-word ruby rt {
-  font-size: 14px;
-}
+.card {font-family: Arial, sans-serif; font-size: 25px; text-align: center; color: black; background-color: white;}
+.jp-word {font-size: 31px;}
+.bg-meaning {font-size: 25px;}
+.jp-word ruby rt {font-size: 14px;}
 """,
     )
 
-    deck = genanki.Deck(deck_id, deck_name)
+    deck = genanki.Deck(stable_int_id("nhk_easy_vocab_deck"), deck_name)
     for front, back in cards:
-        note = genanki.Note(
-            model=model,
-            fields=[front, back],
-            guid=uuid.uuid4().hex,
-        )
-        deck.add_note(note)
+        deck.add_note(genanki.Note(model=model, fields=[front, back], guid=uuid.uuid4().hex))
 
     genanki.Package(deck).write_to_file(apkg_path)
     return True
@@ -465,46 +346,79 @@ def get_mecab_tagger():
     return _MECAB_TAGGER
 
 
-def is_target_pos(token) -> bool:
-    feature = getattr(token, "feature", None)
-    pos1 = getattr(feature, "pos1", "") if feature is not None else ""
-    if pos1 in {"動詞", "形容詞"}:
-        return True
-    return "動詞" in str(feature) or "形容詞" in str(feature)
+def token_feature(token):
+    return getattr(token, "feature", None)
 
 
 def token_surface(token) -> str:
     return getattr(token, "surface", "") or ""
 
 
-def token_feature(token):
-    return getattr(token, "feature", None)
-
-
 def token_pos1(token) -> str:
-    feature = token_feature(token)
-    return getattr(feature, "pos1", "") or ""
+    feat = token_feature(token)
+    return getattr(feat, "pos1", "") or ""
 
 
 def token_lemma(token) -> str:
-    feature = token_feature(token)
-    if feature is None:
+    feat = token_feature(token)
+    if feat is None:
         return ""
-
-    lemma = getattr(feature, "lemma", "") or ""
-    if not lemma:
-        lemma = getattr(feature, "dictionary_form", "") or ""
-    if not lemma:
-        lemma = getattr(feature, "lemma_form", "") or ""
-    if not lemma:
-        lemma = getattr(feature, "orthBase", "") or ""
-    return lemma.strip()
+    for name in ("lemma", "dictionary_form", "lemma_form", "orthBase"):
+        val = getattr(feat, name, "") or ""
+        if val:
+            return val.strip()
+    return ""
 
 
-def lemma_equals(token, *values) -> bool:
-    lemma = token_lemma(token)
-    surface = token_surface(token)
-    return lemma in values or surface in values
+def token_cform(token) -> str:
+    feat = token_feature(token)
+    for name in ("cForm", "conjugationForm"):
+        val = getattr(feat, name, "") or ""
+        if val:
+            return val
+    return ""
+
+
+def token_ctype(token) -> str:
+    feat = token_feature(token)
+    for name in ("cType", "conjugationType"):
+        val = getattr(feat, name, "") or ""
+        if val:
+            return val
+    return ""
+
+
+def is_target_pos(token) -> bool:
+    pos1 = token_pos1(token)
+    if pos1 in {"動詞", "形容詞"}:
+        return True
+    feat = str(token_feature(token))
+    return "動詞" in feat or "形容詞" in feat
+
+
+def lemma_equals(token, *values):
+    s = token_surface(token)
+    l = token_lemma(token)
+    return s in values or l in values
+
+
+def surface_in(token, *values):
+    return token_surface(token) in values
+
+
+def has_surface(tokens, idx, *values):
+    return 0 <= idx < len(tokens) and token_surface(tokens[idx]) in values
+
+
+def has_lemma(tokens, idx, *values):
+    return 0 <= idx < len(tokens) and lemma_equals(tokens[idx], *values)
+
+
+def contains_suffix_form(token, *parts):
+    joined = "|".join(parts)
+    s = token_surface(token)
+    l = token_lemma(token)
+    return any(p in s or p in l for p in parts)
 
 
 def lemmatize_japanese(word: str) -> str:
@@ -556,13 +470,11 @@ def to_dictionary_form(word: str) -> str:
 
     for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
         if w.endswith(suffix):
-            stem = w[: -len(suffix)]
-            return stem + "する"
+            return w[: -len(suffix)] + "する"
 
     for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
         if w.endswith(suffix):
-            stem = w[: -len(suffix)]
-            return stem + "くる"
+            return w[: -len(suffix)] + "くる"
 
     for suffix in ["ました", "ます"]:
         if w.endswith(suffix):
@@ -570,16 +482,12 @@ def to_dictionary_form(word: str) -> str:
             if not stem:
                 return w
             mapped = GODAN_I_TO_U.get(stem[-1])
-            if mapped:
-                return stem[:-1] + mapped
-            return stem + "る"
+            return stem[:-1] + mapped if mapped else stem + "る"
 
     if w.endswith("ない") and len(w) > 2:
         stem = w[:-2]
         mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
-        if mapped:
-            return stem[:-1] + mapped
-        return stem + "る"
+        return stem[:-1] + mapped if mapped else stem + "る"
 
     for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
         if w.endswith(src) and len(w) > len(src):
@@ -594,129 +502,186 @@ def to_dictionary_form(word: str) -> str:
 
 def grammar_hit(rule_id: str):
     rule = GRAMMAR_RULES_BY_ID.get(rule_id)
-    if not rule:
-        return None
-    return {
-        "label": rule["label"],
-        "explanation": rule["explanation"],
-    }
+    return {"label": rule["label"], "explanation": rule["explanation"]} if rule else None
 
 
 def detect_grammar_in_sentence(sentence: str):
     tagger = get_mecab_tagger()
+    found = set()
+
     if tagger is None:
-        # fallback, ако fugashi/Mecab не са налични
-        found = set()
+        # безопасен fallback
         raw_checks = [
             ("te_iru", r"てい(?:る|ます|た|ました)"),
-            ("te_ita", r"てい(?:た|ました)"),
-            ("nai", r"[ぁ-んァ-ン一-龯]ない"),
+            ("te_oku", r"てお(?:く|き|いた|きます|いた)"),
+            ("te_shimau", r"てしま(?:う|います|った|いました)"),
+            ("te_miru", r"てみ(?:る|ます|た|ました)"),
+            ("nakereba_naranai", r"なければならない"),
+            ("nakereba_ikenai", r"なければいけない"),
+            ("nakutewa_naranai", r"なくてはならない"),
+            ("beki", r"べき"),
+            ("hazu_da", r"はず(?:だ|です)"),
             ("kamoshirenai", r"かもしれない"),
+            ("souda", r"そう(?:だ|です)"),
+            ("rashii", r"らしい"),
+            ("youda", r"よう(?:だ|です|に)"),
             ("koto_ga_dekiru", r"ことができ(?:る|ます|た|ました)"),
             ("koto_ni_naru", r"ことにな(?:る|り|った|ります|りました)"),
-            ("you_ni", r"ように"),
+            ("you_ni_naru", r"ようにな(?:る|り|った|ります|りました)"),
+            ("tsumori_da", r"つもり(?:だ|です)"),
+            ("to_omou", r"と思(?:う|います|った|いました)"),
+            ("to_iu", r"という"),
             ("tame_ni", r"ため(?:に)?"),
             ("nagara", r"ながら"),
             ("tari_tari", r"たり.*たり"),
-            ("te_shimau", r"てしま(?:う|います|った|いました)"),
-            ("to_omou", r"と思(?:う|います|った|いました)"),
-            ("to_iu", r"という"),
-            ("passive_rareru", r"[ぁ-んァ-ン一-龯]られ(?:る|ます|た|ました)"),
-            ("causative_saseru", r"[ぁ-んァ-ン一-龯]させ(?:る|ます|た|ました)"),
-            ("kara_reason", r"から"),
-            ("made", r"まで"),
-            ("ni", r"に"),
+            ("tai", r"たい"),
         ]
-        for rule_id, pattern in raw_checks:
-            if re.search(pattern, sentence):
-                found.add(rule_id)
+        for rid, pat in raw_checks:
+            if re.search(pat, sentence):
+                found.add(rid)
         return found
 
     try:
         tokens = list(tagger(sentence))
     except Exception:
-        return set()
+        return found
 
-    found = set()
     n = len(tokens)
+    surfaces = [token_surface(t) for t in tokens]
+    lemmas = [token_lemma(t) for t in tokens]
+
+    if "たり" in surfaces and surfaces.count("たり") >= 2:
+        found.add("tari_tari")
 
     for i in range(n):
-        s0 = token_surface(tokens[i])
-        l0 = token_lemma(tokens[i])
+        s = surfaces[i]
+        l = lemmas[i]
+        cform = token_cform(tokens[i])
+        ctype = token_ctype(tokens[i])
 
-        if s0 == "ない":
+        if s == "ない":
             found.add("nai")
 
-        if s0 == "かも" and i + 2 < n and token_surface(tokens[i + 1]) == "しれ" and token_surface(tokens[i + 2]) == "ない":
-            found.add("kamoshirenai")
+        if s == "たい" or l == "たい":
+            found.add("tai")
 
-        if s0 == "よう" and i + 1 < n and token_surface(tokens[i + 1]) == "に":
-            found.add("you_ni")
-
-        if s0 == "ため":
-            found.add("tame_ni")
-
-        if s0 == "ながら":
+        if s == "ながら":
             found.add("nagara")
 
-        if s0 == "から":
+        if s == "から":
             found.add("kara_reason")
 
-        if s0 == "まで":
+        if s == "まで":
             found.add("made")
 
-        if s0 == "に":
+        if s == "に":
             found.add("ni")
 
-        if s0 in {"て", "で"} and i + 1 < n and lemma_equals(tokens[i + 1], "居る", "いる"):
-            found.add("te_iru")
-            if i + 1 < n and token_surface(tokens[i + 1]) in {"いた", "いました"}:
-                found.add("te_ita")
+        if s == "べき":
+            found.add("beki")
 
-        if s0 in {"て", "で"} and i + 1 < n and lemma_equals(tokens[i + 1], "仕舞う", "しまう"):
-            found.add("te_shimau")
+        if s == "らしい":
+            found.add("rashii")
 
-        if s0 == "こと" and i + 2 < n:
-            if token_surface(tokens[i + 1]) == "が" and lemma_equals(tokens[i + 2], "出来る", "できる"):
+        if s == "つもり" and i + 1 < n and has_lemma(tokens, i + 1, "だ", "です"):
+            found.add("tsumori_da")
+
+        if s in {"て", "で"} and i + 1 < n:
+            if has_lemma(tokens, i + 1, "居る", "いる"):
+                found.add("te_iru")
+                if token_surface(tokens[i + 1]) in {"いた", "いました"} or "連用" in token_cform(tokens[i + 1]):
+                    if token_surface(tokens[i + 1]).startswith("い"):
+                        found.add("te_ita")
+            if has_lemma(tokens, i + 1, "置く", "おく"):
+                found.add("te_oku")
+            if has_lemma(tokens, i + 1, "仕舞う", "しまう"):
+                found.add("te_shimau")
+            if has_lemma(tokens, i + 1, "見る", "みる"):
+                found.add("te_miru")
+            if has_lemma(tokens, i + 1, "上げる", "あげる"):
+                found.add("te_ageru")
+            if has_lemma(tokens, i + 1, "呉れる", "くれる"):
+                found.add("te_kureru")
+            if has_lemma(tokens, i + 1, "貰う", "もらう"):
+                found.add("te_morau")
+
+        if s == "こと" and i + 2 < n:
+            if has_surface(tokens, i + 1, "が") and has_lemma(tokens, i + 2, "出来る", "できる"):
                 found.add("koto_ga_dekiru")
-            if token_surface(tokens[i + 1]) == "に" and lemma_equals(tokens[i + 2], "成る", "なる"):
+            if has_surface(tokens, i + 1, "に") and has_lemma(tokens, i + 2, "成る", "なる"):
                 found.add("koto_ni_naru")
 
-        if s0 == "と" and i + 1 < n and lemma_equals(tokens[i + 1], "思う", "おもう"):
+        if s == "よう":
+            if i + 1 < n and has_surface(tokens, i + 1, "に"):
+                found.add("youda")
+                if i + 2 < n and has_lemma(tokens, i + 2, "成る", "なる"):
+                    found.add("you_ni_naru")
+            if i + 1 < n and has_lemma(tokens, i + 1, "だ", "です"):
+                found.add("youda")
+
+        if s == "はず" and i + 1 < n and has_lemma(tokens, i + 1, "だ", "です"):
+            found.add("hazu_da")
+
+        if s == "そう":
+            if i + 1 < n and (has_lemma(tokens, i + 1, "だ", "です") or token_pos1(tokens[i + 1]) == "助動詞"):
+                found.add("souda")
+
+        if s == "かも" and i + 2 < n and has_surface(tokens, i + 1, "しれ") and has_surface(tokens, i + 2, "ない"):
+            found.add("kamoshirenai")
+
+        if s == "と" and i + 1 < n and has_lemma(tokens, i + 1, "思う", "おもう"):
             found.add("to_omou")
 
-        if s0 == "という" or (s0 == "と" and i + 1 < n and lemma_equals(tokens[i + 1], "言う", "いう")):
+        if s == "という" or (s == "と" and i + 1 < n and has_lemma(tokens, i + 1, "言う", "いう")):
             found.add("to_iu")
 
-        if s0 == "たり":
-            # искаме поне две たり в рамките на изречението
-            if sum(1 for tk in tokens if token_surface(tk) == "たり") >= 2:
-                found.add("tari_tari")
+        if s == "ため":
+            found.add("tame_ni")
 
-        # грубо хващане на 受け身 / 使役 по лема/повърхност
-        if "られる" in s0 or "られ" in s0 or "れる" in s0:
-            found.add("passive_rareru")
-        if "させる" in s0 or "させ" in s0:
-            found.add("causative_saseru")
+        if s == "なけれ" and i + 3 < n and has_surface(tokens, i + 1, "ば"):
+            if has_surface(tokens, i + 2, "なら") and has_surface(tokens, i + 3, "ない"):
+                found.add("nakereba_naranai")
+            if has_surface(tokens, i + 2, "いけ") and has_surface(tokens, i + 3, "ない"):
+                found.add("nakereba_ikenai")
 
-        # допълнителна лема проверка за спрегнати форми
-        if l0 in {"られる", "れる"}:
-            found.add("passive_rareru")
-        if l0 == "させる":
+        if s == "なく" and i + 3 < n and has_surface(tokens, i + 1, "て") and has_surface(tokens, i + 2, "は"):
+            if has_surface(tokens, i + 3, "なら") and i + 4 < n and has_surface(tokens, i + 4, "ない"):
+                found.add("nakutewa_naranai")
+
+        # Грубо разпознаване на potential/passive/causative по спрегната форма и лема.
+        if "させ" in s or l == "させる":
             found.add("causative_saseru")
+        if "られ" in s or l in {"られる", "れる"}:
+            found.add("passive_rareru")
+
+        # potential form rough guesses
+        if l in {"出来る", "できる"}:
+            found.add("potential_rareru")
+        if token_pos1(tokens[i]) == "動詞":
+            if s.endswith("れる") or s.endswith("られる") or s.endswith("える"):
+                found.add("potential_rareru")
+
+        # volitional rough guesses
+        if token_pos1(tokens[i]) == "動詞" and (s.endswith("よう") or s.endswith("おう") or "意志推量形" in cform):
+            found.add("volitional")
+
+        # extra fallback from conjugation type/form
+        if "可能" in ctype or "可能" in cform:
+            found.add("potential_rareru")
+        if "使役" in ctype or "使役" in cform:
+            found.add("causative_saseru")
+        if "受身" in ctype or "受身" in cform:
+            found.add("passive_rareru")
 
     return found
 
 
 def extract_grammar_points(articles):
     found = {}
-
     for article in articles:
         for block in article.get("blocks", []):
-            sentences = split_japanese_sentences(block.get("text", ""))
-            for sentence in sentences:
-                rule_ids = detect_grammar_in_sentence(sentence)
-                for rule_id in rule_ids:
+            for sentence in split_japanese_sentences(block.get("text", "")):
+                for rule_id in detect_grammar_in_sentence(sentence):
                     if rule_id not in found:
                         hit = grammar_hit(rule_id)
                         if hit:
@@ -771,9 +736,7 @@ def get_nhkeasier_items():
             t = b["text"].strip()
             if not t:
                 continue
-            if t.lower() in {"original", "permalink"}:
-                continue
-            if "Original" in t or "Permalink" in t:
+            if t.lower() in {"original", "permalink"} or "Original" in t or "Permalink" in t:
                 continue
             cleaned_blocks.append(b)
 
@@ -805,7 +768,6 @@ def get_nhkeasier_items():
 def extract_easy_article_links_from_sitemap(n=4):
     r = requests.get(EASY_SITEMAP_URL, timeout=20)
     r.raise_for_status()
-
     soup = BeautifulSoup(r.text, "xml")
     links = []
     seen = set()
@@ -814,17 +776,12 @@ def extract_easy_article_links_from_sitemap(n=4):
         if not url:
             continue
         parsed = urlparse(url)
-        if "/news/easy/ne" not in parsed.path:
-            continue
-        if not parsed.path.endswith(".html"):
-            continue
-        if url in seen:
+        if "/news/easy/ne" not in parsed.path or not parsed.path.endswith(".html") or url in seen:
             continue
         seen.add(url)
         links.append(url)
         if len(links) >= n:
             break
-
     return links
 
 
@@ -854,10 +811,9 @@ def parse_article_from_nhk_easy(link: str):
         if not el:
             continue
         candidate = (el.get("content") or el.get("src") or "").strip()
-        if not candidate:
-            continue
-        image_url = urljoin(link, candidate)
-        break
+        if candidate:
+            image_url = urljoin(link, candidate)
+            break
 
     audio_url = ""
     for sel in ["audio source[src]", "audio[src]", 'a[href$=".mp3"]', 'a[href*=".mp3"]']:
@@ -865,10 +821,9 @@ def parse_article_from_nhk_easy(link: str):
         if not el:
             continue
         candidate = (el.get("src") or el.get("href") or "").strip()
-        if not candidate:
-            continue
-        audio_url = urljoin(link, candidate)
-        break
+        if candidate:
+            audio_url = urljoin(link, candidate)
+            break
 
     if not audio_url:
         mp3_match = re.search(r"https?://[^\"'\s]+\.mp3(?:\?[^\"'\s]*)?", page.text)
@@ -893,8 +848,7 @@ def parse_article_from_nhk_easy(link: str):
     if content is not None:
         for bad in content.select("script, style, nav, footer, header, aside, form"):
             bad.decompose()
-        blocks = get_article_blocks(content)
-        for b in blocks:
+        for b in get_article_blocks(content):
             t = b["text"]
             if "share" in t.lower() or "follow us" in t.lower():
                 continue
@@ -908,26 +862,21 @@ def parse_article_from_nhk_easy(link: str):
             if not re.search(r"[ぁ-んァ-ン一-龯]", txt):
                 continue
             cleaned = txt.replace("\\n", " ").strip()
-            if len(cleaned) < 10:
-                continue
-            payload_texts.append(cleaned)
+            if len(cleaned) >= 10:
+                payload_texts.append(cleaned)
 
-        dedup = []
         seen_text = set()
         for t in payload_texts:
             if t in seen_text:
                 continue
             seen_text.add(t)
-            dedup.append(t)
-
-        for t in dedup[:8]:
             filtered_blocks.append({"html": t, "text": t})
+            if len(filtered_blocks) >= 8:
+                break
 
     if not filtered_blocks:
-        desc = ""
         desc_meta = psoup.select_one('meta[name="description"]')
-        if desc_meta:
-            desc = (desc_meta.get("content") or "").strip()
+        desc = (desc_meta.get("content") or "").strip() if desc_meta else ""
         if desc:
             filtered_blocks.append({"html": desc, "text": desc})
 
@@ -935,13 +884,11 @@ def parse_article_from_nhk_easy(link: str):
         return None
 
     vocab = extract_vocab_from_blocks(filtered_blocks)
-    translated_blocks = []
-    for b in filtered_blocks:
-        translated_blocks.append({
-            "html": b["html"],
-            "text": b["text"],
-            "translation": translate_text(b["text"], dest="bg")
-        })
+    translated_blocks = [{
+        "html": b["html"],
+        "text": b["text"],
+        "translation": translate_text(b["text"], dest="bg")
+    } for b in filtered_blocks]
 
     return {
         "title": title,
@@ -969,14 +916,14 @@ def get_articles(n=4):
             article = parse_article_from_nhk_easy(link)
             ne_id = extract_ne_id(link)
             fallback = nhkeasier_items.get(ne_id)
+
             if article and fallback and fallback.get("blocks"):
                 article["blocks"] = []
                 for b in fallback["blocks"]:
-                    tr = translate_text(b["text"], dest="bg")
                     article["blocks"].append({
                         "html": b["html"],
                         "text": b["text"],
-                        "translation": tr
+                        "translation": translate_text(b["text"], dest="bg"),
                     })
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
@@ -1004,12 +951,7 @@ def get_articles(n=4):
     return articles[:n]
 
 
-def build_html(
-    articles,
-    anki_filename=DEFAULT_ANKI_FILENAME,
-    anki_apkg_filename=DEFAULT_ANKI_APKG_FILENAME,
-    grammar_points=None,
-):
+def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME, anki_apkg_filename=DEFAULT_ANKI_APKG_FILENAME, grammar_points=None):
     grammar_points = grammar_points or []
     html = """
 <!doctype html>
@@ -1024,354 +966,62 @@ def build_html(
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <meta name="theme-color" content="#0f1115">
 <style>
-:root{
-  --bg:#0f1115;
-  --card:#171a21;
-  --card2:#1d212b;
-  --text:#e8ecf1;
-  --muted:#aeb7c2;
-  --accent:#8ab4ff;
-  --border:#2a3040;
-  --jp-panel:#12151c;
-  --trans-text:#d2dae3;
-  --ring-track:#1e222c;
-  --ring-inner:#ffffff;
-  --rt-color:#9fb3c8;
-  --jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  line-height:1.8;
-}
-body.theme-light{
-  --bg:#f3f4f6;
-  --card:#ffffff;
-  --card2:#f8fafc;
-  --text:#111111;
-  --muted:#4b5563;
-  --accent:#1d4ed8;
-  --border:#d1d5db;
-  --jp-panel:#eef2f7;
-  --trans-text:#111111;
-  --ring-track:#d1d5db;
-  --ring-inner:#ffffff;
-  --rt-color:#5f6f84;
-}
-body.theme-sepia{
-  --bg:#f1e5cf;
-  --card:#f7ebd8;
-  --card2:#efe0c8;
-  --text:#111111;
-  --muted:#3f3a2f;
-  --accent:#8a5a1f;
-  --border:#c8b79a;
-  --jp-panel:#ead9bf;
-  --trans-text:#111111;
-  --ring-track:#c8b79a;
-  --ring-inner:#f7ebd8;
-  --rt-color:#645640;
-}
-.wrap{
-  max-width:980px;
-  margin:0 auto;
-  padding:32px 16px 56px;
-}
-.top-logo{
-  display:block;
-  width:100px;
-  height:100px;
-  margin:0 auto 10px;
-}
-h1{
-  margin:0 0 24px;
-  color:var(--accent);
-  font-size:2rem;
-  text-align:center;
-}
-.font-picker{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  margin:-8px 0 10px;
-}
-.font-picker label{
-  color:var(--muted);
-  font-size:.92rem;
-}
-.font-picker select{
-  background:var(--card2);
-  color:var(--text);
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:6px 10px;
-}
-.theme-picker{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  margin:0 0 22px;
-}
-.theme-picker label{
-  color:var(--muted);
-  font-size:.92rem;
-}
-.theme-picker select{
-  background:var(--card2);
-  color:var(--text);
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:6px 10px;
-}
-article{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:24px;
-  margin-bottom:28px;
-  box-shadow:0 8px 24px rgba(0,0,0,.22);
-}
-h2{
-  margin:0 0 6px;
-  font-size:1.375rem;
-}
-.article-head{
-  display:block;
-  margin-bottom:6px;
-}
-.article-head h2{
-  margin:0;
-  min-width:0;
-  overflow-wrap:anywhere;
-  word-break:break-word;
-  line-height:1.4;
-}
-.known-progress{
-  --p:0;
-  --size:59px;
-  width:var(--size);
-  height:var(--size);
-  border-radius:50%;
-  position:relative;
-  margin-top:8px;
-  background:
-    conic-gradient(
-      from -90deg,
-      #5f00ff 0%,
-      #ff005a calc(var(--p) * 1%),
-      var(--ring-track) calc(var(--p) * 1%),
-      var(--ring-track) 100%
-    );
-}
-.known-progress::before{
-  content:"";
-  position:absolute;
-  inset:6px;
-  border-radius:50%;
-  background:var(--ring-inner);
-}
-.known-progress span{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#12151c;
-  font-weight:700;
-  font-size:.9rem;
-  z-index:1;
-}
-@media (max-width:700px){
-  .known-progress{
-    --size:52px;
-  }
-}
-.article-head h2 rt{
-  font-size:.56em;
-}
-.article-media{
-  margin:12px 0 14px;
-}
-.article-image{
-  width:100%;
-  max-height:420px;
-  object-fit:cover;
-  border-radius:12px;
-  border:1px solid var(--border);
-  display:block;
-  margin-bottom:10px;
-}
-.article-audio{
-  width:100%;
-}
-.meta{
-  margin-bottom:18px;
-  color:var(--muted);
-  font-size:.95rem;
-}
-.meta a{
-  color:var(--accent);
-  text-decoration:none;
-}
-.section-title{
-  margin:20px 0 10px;
-  font-size:1.05rem;
-  color:var(--accent);
-  font-weight:700;
-}
-.vocab{
-  background:var(--card2);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:16px 18px;
-  margin-bottom:20px;
-}
-.vocab ul{
-  margin:10px 0 0;
-  padding-left:20px;
-  columns:2;
-  column-gap:24px;
-}
-.vocab li{
-  margin:8px 0;
-  break-inside:avoid;
-}
-@media (max-width:700px){
-  .vocab ul{
-    columns:1;
-  }
-}
-.word{
-  font-weight:700;
-}
-.meaning{
-  color:var(--muted);
-}
-.jp-block{
-  background:var(--jp-panel);
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:14px 16px;
-  margin:12px 0 6px;
-  font-size:1.08rem;
-}
-.jp-block.is-clickable{
-  cursor:pointer;
-}
-.jp-block.is-clickable:focus{
-  outline:2px solid var(--accent);
-  outline-offset:2px;
-}
-.jp-block.is-clickable::after{
-  content:"  (клик за превод)";
-  color:var(--muted);
-  font-size:.8em;
-}
-.bg-block{
-  color:var(--trans-text);
-  padding:0 2px 8px 2px;
-  margin-bottom:8px;
-  border-bottom:1px dashed var(--border);
-  display:none;
-}
-.bg-block.is-visible{
-  display:block;
-}
-ruby{
-  ruby-position:over;
-}
-rt{
-  font-size:.68em;
-  color:var(--rt-color);
-}
-.downloads{
-  margin-top:20px;
-  text-align:center;
-}
-.downloads a{
-  color:var(--accent);
-  font-weight:700;
-  text-decoration:none;
-}
-.grammar{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:20px;
-  margin-top:20px;
-}
-.grammar ul{
-  margin:8px 0 0;
-  padding-left:20px;
-}
-.grammar li{
-  margin:10px 0;
-}
-.grammar-rule{
-  font-weight:700;
-}
-.contacts{
-  margin-top:18px;
-  text-align:center;
-  color:var(--muted);
-  font-size:.78rem;
-}
-h1,
-.article-head h2,
-.jp-block,
-.word,
-.grammar-rule,
-ruby,
-rt{
-  font-family:var(--jp-font);
-}
+:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--ring-track:#1e222c;--ring-inner:#ffffff;--rt-color:#9fb3c8;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.8;}
+body.theme-light{--bg:#f3f4f6;--card:#ffffff;--card2:#f8fafc;--text:#111111;--muted:#4b5563;--accent:#1d4ed8;--border:#d1d5db;--jp-panel:#eef2f7;--trans-text:#111111;--ring-track:#d1d5db;--ring-inner:#ffffff;--rt-color:#5f6f84;}
+body.theme-sepia{--bg:#f1e5cf;--card:#f7ebd8;--card2:#efe0c8;--text:#111111;--muted:#3f3a2f;--accent:#8a5a1f;--border:#c8b79a;--jp-panel:#ead9bf;--trans-text:#111111;--ring-track:#c8b79a;--ring-inner:#f7ebd8;--rt-color:#645640;}
+.wrap{max-width:980px;margin:0 auto;padding:32px 16px 56px;}
+.top-logo{display:block;width:100px;height:100px;margin:0 auto 10px;}
+h1{margin:0 0 24px;color:var(--accent);font-size:2rem;text-align:center;}
+.font-picker,.theme-picker{display:flex;align-items:center;justify-content:center;gap:10px}
+.font-picker{margin:-8px 0 10px}.theme-picker{margin:0 0 22px}
+.font-picker label,.theme-picker label{color:var(--muted);font-size:.92rem}
+.font-picker select,.theme-picker select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px;margin-bottom:28px;box-shadow:0 8px 24px rgba(0,0,0,.22);}
+h2{margin:0 0 6px;font-size:1.375rem}
+.article-head{display:block;margin-bottom:6px}.article-head h2{margin:0;min-width:0;overflow-wrap:anywhere;word-break:break-word;line-height:1.4}
+.known-progress{--p:0;--size:59px;width:var(--size);height:var(--size);border-radius:50%;position:relative;margin-top:8px;background:conic-gradient(from -90deg,#5f00ff 0%,#ff005a calc(var(--p) * 1%),var(--ring-track) calc(var(--p) * 1%),var(--ring-track) 100%)}
+.known-progress::before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--ring-inner)}
+.known-progress span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#12151c;font-weight:700;font-size:.9rem;z-index:1}
+@media (max-width:700px){.known-progress{--size:52px}}
+.article-head h2 rt{font-size:.56em}
+.article-media{margin:12px 0 14px}.article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin-bottom:10px}.article-audio{width:100%}
+.meta{margin-bottom:18px;color:var(--muted);font-size:.95rem}.meta a{color:var(--accent);text-decoration:none}
+.section-title{margin:20px 0 10px;font-size:1.05rem;color:var(--accent);font-weight:700}
+.vocab{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:20px}
+.vocab ul{margin:10px 0 0;padding-left:20px;columns:2;column-gap:24px}.vocab li{margin:8px 0;break-inside:avoid}
+@media (max-width:700px){.vocab ul{columns:1}}
+.word{font-weight:700}.meaning{color:var(--muted)}
+.jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem}
+.jp-block.is-clickable{cursor:pointer}.jp-block.is-clickable:focus{outline:2px solid var(--accent);outline-offset:2px}
+.jp-block.is-clickable::after{content:"  (клик за превод)";color:var(--muted);font-size:.8em}
+.bg-block{color:var(--trans-text);padding:0 2px 8px 2px;margin-bottom:8px;border-bottom:1px dashed var(--border);display:none}.bg-block.is-visible{display:block}
+ruby{ruby-position:over} rt{font-size:.68em;color:var(--rt-color)}
+.downloads{margin-top:20px;text-align:center}.downloads a{color:var(--accent);font-weight:700;text-decoration:none}
+.grammar{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;margin-top:20px}
+.grammar ul{margin:8px 0 0;padding-left:20px}.grammar li{margin:10px 0}.grammar-rule{font-weight:700}
+.contacts{margin-top:18px;text-align:center;color:var(--muted);font-size:.78rem}
+h1,.article-head h2,.jp-block,.word,.grammar-rule,ruby,rt{font-family:var(--jp-font)}
 </style>
 </head>
 <body>
 <div class="wrap">
 <img class="top-logo" src="android-chrome-192x192.png" alt="Logo" width="100" height="100">
 <h1>最新ニュース</h1>
-<div class="font-picker">
-  <label for="jp-font-select">Японски шрифт</label>
-  <select id="jp-font-select">
-    <option value="mincho">Hiragino Mincho</option>
-    <option value="sans">Hiragino Sans</option>
-  </select>
-</div>
-<div class="theme-picker">
-  <label for="theme-select">Тема</label>
-  <select id="theme-select">
-    <option value="dark">Dark</option>
-    <option value="light">Light</option>
-    <option value="sepia">Sepia</option>
-  </select>
-</div>
+<div class="font-picker"><label for="jp-font-select">Японски шрифт</label><select id="jp-font-select"><option value="mincho">Hiragino Mincho</option><option value="sans">Hiragino Sans</option></select></div>
+<div class="theme-picker"><label for="theme-select">Тема</label><select id="theme-select"><option value="dark">Dark</option><option value="light">Light</option><option value="sepia">Sepia</option></select></div>
 """
-
     for article in articles:
-        html += "<article>"
         known_percent = int(article.get("known_percent", 0))
         known_count = int(article.get("known_count", 0))
         known_total = int(article.get("known_total", 0))
         progress_title = html_lib.escape(f"Познати думи: {known_count}/{known_total}")
+        html += "<article>"
         html += "<div class='article-head'>"
         html += f"<h2>{article.get('title_html', article['title'])}</h2>"
-        html += (
-            f"<div class='known-progress' style='--p:{known_percent};' "
-            f"title='{progress_title}' aria-label='{progress_title}'>"
-            f"<span>{known_percent}%</span></div>"
-        )
+        html += f"<div class='known-progress' style='--p:{known_percent};' title='{progress_title}' aria-label='{progress_title}'><span>{known_percent}%</span></div>"
         html += "</div>"
-
-        if article["title_translation"]:
-            html += f"<div class='meta'>{article['title_translation']}</div>"
-        else:
-            html += "<div class='meta'></div>"
+        html += f"<div class='meta'>{article['title_translation'] or ''}</div>"
 
         if article.get("image_url") or article.get("audio_url"):
             html += "<div class='article-media'>"
@@ -1381,55 +1031,29 @@ rt{
                 html += f"<audio class='article-audio' controls preload='none' src='{article['audio_url']}'></audio>"
             html += "</div>"
 
-        html += "<div class='section-title'>Речник</div>"
-        html += "<div class='vocab'><ul>"
-
+        html += "<div class='section-title'>Речник</div><div class='vocab'><ul>"
         for item in article["vocab"]:
-            word = item["word"]
-            reading = item["reading"]
-            meaning = item["meaning"]
-
-            if reading:
-                word_html = f"<ruby>{word}<rt>{reading}</rt></ruby>"
-            else:
-                word_html = word
-
-            if meaning:
-                html += f"<li><span class='word'>{word_html}</span> — <span class='meaning'>{meaning}</span></li>"
-            else:
-                html += f"<li><span class='word'>{word_html}</span></li>"
-
-        html += "</ul></div>"
-
-        html += "<div class='section-title'>Текст</div>"
+            word, reading, meaning = item["word"], item["reading"], item["meaning"]
+            word_html = f"<ruby>{word}<rt>{reading}</rt></ruby>" if reading else word
+            html += f"<li><span class='word'>{word_html}</span>{(' — <span class=\"meaning\">' + meaning + '</span>') if meaning else ''}</li>"
+        html += "</ul></div><div class='section-title'>Текст</div>"
 
         for block in article["blocks"]:
             html += f"<div class='jp-block'>{block['html']}</div>"
             if block["translation"]:
                 html += f"<div class='bg-block'>{block['translation']}</div>"
-
         html += "</article>"
 
-    html += "<div class='downloads'>"
-    html += f"<a href='{anki_apkg_filename}' download>Свали Anki Карти</a>"
-    html += " | "
-    html += f"<a href='{anki_filename}' download>TSV (backup)</a>"
-    html += "</div>"
+    html += f"<div class='downloads'><a href='{anki_apkg_filename}' download>Свали Anki Карти</a> | <a href='{anki_filename}' download>TSV (backup)</a></div>"
 
     if grammar_points:
-        html += "<section class='grammar'>"
-        html += "<div class='section-title'>Граматика в текстовете</div>"
-        html += "<ul>"
+        html += "<section class='grammar'><div class='section-title'>Граматика в текстовете</div><ul>"
         for g in grammar_points:
-            html += "<li>"
-            html += f"<span class='grammar-rule'>{g['label']}</span> — {g['explanation']}"
-            html += "</li>"
-        html += "</ul>"
-        html += "</section>"
-
-    html += "<div class='contacts'>Contacts: vebaev (at) gmail.com</div>"
+            html += f"<li><span class='grammar-rule'>{g['label']}</span> — {g['explanation']}</li>"
+        html += "</ul></section>"
 
     html += """
+<div class='contacts'>Contacts: vebaev (at) gmail.com</div>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1438,7 +1062,6 @@ document.addEventListener('DOMContentLoaded', function() {
       navigator.serviceWorker.register('./sw.js').catch(function() {});
     });
   }
-
   var jpFontSelect = document.getElementById('jp-font-select');
   var themeSelect = document.getElementById('theme-select');
   var rootStyle = document.documentElement.style;
@@ -1446,52 +1069,29 @@ document.addEventListener('DOMContentLoaded', function() {
     sans: '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif',
     mincho: '"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif'
   };
-
-  var applyJpFont = function(mode) {
+  function applyJpFont(mode){
     var selected = jpFonts[mode] ? mode : 'mincho';
     rootStyle.setProperty('--jp-font', jpFonts[selected]);
-    if (jpFontSelect) {
-      jpFontSelect.value = selected;
-    }
-    try {
-      localStorage.setItem('jpFontMode', selected);
-    } catch (e) {}
-  };
-
+    if (jpFontSelect) jpFontSelect.value = selected;
+    try { localStorage.setItem('jpFontMode', selected); } catch (e) {}
+  }
   if (jpFontSelect) {
     var savedFont = 'mincho';
-    try {
-      savedFont = localStorage.getItem('jpFontMode') || 'mincho';
-    } catch (e) {}
+    try { savedFont = localStorage.getItem('jpFontMode') || 'mincho'; } catch (e) {}
     applyJpFont(savedFont);
-    jpFontSelect.addEventListener('change', function() {
-      applyJpFont(jpFontSelect.value);
-    });
+    jpFontSelect.addEventListener('change', function(){ applyJpFont(jpFontSelect.value); });
   }
-
-  var applyTheme = function(mode) {
+  function applyTheme(mode){
     var selected = (mode === 'light' || mode === 'sepia') ? mode : 'dark';
     document.body.classList.remove('theme-dark', 'theme-light', 'theme-sepia');
     document.body.classList.add('theme-' + selected);
-    if (themeSelect) {
-      themeSelect.value = selected;
-    }
-    try {
-      localStorage.setItem('themeMode', selected);
-    } catch (e) {}
-  };
-
-  var savedTheme = 'dark';
-  try {
-    savedTheme = localStorage.getItem('themeMode') || 'dark';
-  } catch (e) {}
-  applyTheme(savedTheme);
-
-  if (themeSelect) {
-    themeSelect.addEventListener('change', function() {
-      applyTheme(themeSelect.value);
-    });
+    if (themeSelect) themeSelect.value = selected;
+    try { localStorage.setItem('themeMode', selected); } catch (e) {}
   }
+  var savedTheme = 'dark';
+  try { savedTheme = localStorage.getItem('themeMode') || 'dark'; } catch (e) {}
+  applyTheme(savedTheme);
+  if (themeSelect) themeSelect.addEventListener('change', function(){ applyTheme(themeSelect.value); });
 
   document.querySelectorAll('article').forEach(function(article) {
     var h2 = article.querySelector('h2');
@@ -1509,12 +1109,10 @@ document.addEventListener('DOMContentLoaded', function() {
     jpBlock.setAttribute('role', 'button');
     jpBlock.setAttribute('tabindex', '0');
     jpBlock.setAttribute('aria-expanded', 'false');
-
-    var toggleTranslation = function() {
+    function toggleTranslation() {
       var isVisible = bgBlock.classList.toggle('is-visible');
       jpBlock.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
-    };
-
+    }
     jpBlock.addEventListener('click', toggleTranslation);
     jpBlock.addEventListener('keydown', function(event) {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -1545,16 +1143,14 @@ def main():
     if not articles:
         raise RuntimeError("No articles were extracted.")
 
-    print(
-        f"Translation provider usage: DeepL={_TRANSLATION_STATS['deepl']} "
-        f"Google={_TRANSLATION_STATS['google']}"
-    )
+    print(f"Translation provider usage: DeepL={_TRANSLATION_STATS['deepl']} Google={_TRANSLATION_STATS['google']}")
 
     output_dir = os.path.dirname(args.output)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
     grammar_points = extract_grammar_points(articles)
+
     anki_filename = DEFAULT_ANKI_FILENAME
     anki_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
     anki_seen_words_filename = DEFAULT_ANKI_SEEN_WORDS_FILENAME
@@ -1569,22 +1165,12 @@ def main():
 
     seen_words = load_seen_words(anki_seen_words_path)
     add_known_progress_to_articles(articles, seen_words)
-    anki_cards, newly_added_words = build_anki_cards(
-        articles,
-        grammar_points=grammar_points,
-        seen_items=seen_words,
-    )
+    anki_cards, newly_added_words = build_anki_cards(articles, grammar_points=grammar_points, seen_items=seen_words)
     save_anki_tsv(anki_cards, anki_path)
     build_anki_apkg(anki_cards, anki_apkg_path)
     save_seen_words(anki_seen_words_path, seen_words | newly_added_words)
 
-    html = build_html(
-        articles,
-        anki_filename=anki_filename,
-        anki_apkg_filename=anki_apkg_filename,
-        grammar_points=grammar_points,
-    )
-
+    html = build_html(articles, anki_filename=anki_filename, anki_apkg_filename=anki_apkg_filename, grammar_points=grammar_points)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
