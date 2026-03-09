@@ -483,33 +483,29 @@ def build_anki_apkg(cards, apkg_path, deck_name='NHK Easy Vocabulary'):
     genanki.Package(deck).write_to_file(apkg_path); return True
 
 def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME, anki_apkg_filename=DEFAULT_ANKI_APKG_FILENAME, grammar_points=None):
-    grammar_points = grammar_points or []
-    html = """<!doctype html><html lang='ja'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>最新ニュース</title><style>:root{--bg:#0f1115;--card:#171a21;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--border:#2a3040;--jp-panel:#12151c;--popup:#202532}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.8}.wrap{max-width:980px;margin:0 auto;padding:24px 14px 56px}h1{margin:0 0 18px;color:var(--accent);font-size:1.8rem;text-align:center}article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:22px}h2{margin:0;cursor:pointer}.title-translation{display:none;color:var(--muted);margin:8px 0 14px}.section-title{margin:18px 0 10px;font-size:1.02rem;color:var(--accent);font-weight:700}.jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem}.bg-block{color:var(--muted);padding:0 2px 8px 2px;margin-bottom:8px;border-bottom:1px dashed var(--border);display:none}.bg-block.is-visible{display:block}.dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer}.dict-word.is-active{background:rgba(138,180,255,.18);border-radius:4px}.dict-popup{position:fixed;z-index:9999;display:none;max-width:min(92vw,320px);background:var(--popup);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.35)}.dict-popup .dw{font-weight:700;font-size:1.08rem}.dict-popup .dr{color:var(--accent);font-size:.95rem}.dict-popup .dm{color:var(--text);margin-top:4px}.downloads,.contacts{text-align:center}ruby rt{font-size:.68em;color:var(--muted)}</style></head><body><div class='wrap'><h1>最新ニュース</h1><div id='dict-popup' class='dict-popup' aria-hidden='true'></div>"""
+    grammar_points=grammar_points or []
+    html='<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>最新ニュース</title></head><body><div class="wrap"><h1>最新ニュース</h1>'
     for article in articles:
-        html += "<article>"
-        html += f"<h2 class='title-toggle' onclick='toggleTitle(this)'>{article.get('title_html', article['title'])}</h2>"
-        html += f"<div class='title-translation'>{article.get('title_translation','')}</div>"
-        html += "<div class='section-title'>Текст</div>"
-        sorted_vocab = sorted(article.get('vocab', []), key=lambda x: len(x.get('word','')), reverse=True)
+        html += '<article>'
+        html += f"<h2>{article.get('title_html', article['title'])}</h2>"
+        html += f"<div>{article.get('title_translation','')}</div>"
+        html += '<h3>Речник</h3><ul>'
+        for item in article['vocab']:
+            word=item['word']; reading=item['reading']; meaning=item['meaning']
+            word_html=f'<ruby>{word}<rt>{reading}</rt></ruby>' if reading else word
+            if meaning: html += f"<li>{word_html} — {meaning}</li>"
+            else: html += f"<li>{word_html}</li>"
+        html += '</ul><h3>Текст</h3>'
         for block in article['blocks']:
-            text_html = block['html']
-            for item in sorted_vocab:
-                word=(item.get('word') or '').strip(); reading=(item.get('reading') or '').strip(); meaning=(item.get('meaning') or '').strip()
-                if not word: continue
-                popup_word=word.replace('"','&quot;'); popup_reading=reading.replace('"','&quot;'); popup_meaning=meaning.replace('"','&quot;')
-                repl=f"<span class='dict-word' data-word=\"{popup_word}\" data-reading=\"{popup_reading}\" data-meaning=\"{popup_meaning}\" onclick='showDictPopup(event, this)'>{word}</span>"
-                text_html = re.sub(rf"(?<![>]){re.escape(word)}(?![^<]*<)", repl, text_html)
-            html += f"<div class='jp-block'>{text_html}</div>"
-            if block['translation']:
-                html += f"<div class='bg-block'>{block['translation']}</div>"
-        html += "</article>"
-    html += f"<div class='downloads'><a href='{anki_apkg_filename}' download>Свали Anki Карти</a> | <a href='{anki_filename}' download>TSV</a></div>"
+            html += f"<div>{block['html']}</div>"
+            if block['translation']: html += f"<div>{block['translation']}</div>"
+        html += '</article>'
+    html += f"<div><a href='{anki_apkg_filename}' download>Свали Anki Карти</a> | <a href='{anki_filename}' download>TSV</a></div>"
     if grammar_points:
-        html += "<section><div class='section-title'>Граматика в текстовете</div><ul>"
-        for g in grammar_points:
-            html += f"<li>{g['label']} — {g['explanation']}</li>"
-        html += "</ul></section>"
-    html += """<div class='contacts'>Contacts: vebaev (at) gmail.com</div></div><script>function toggleTitle(el){const tr=el.nextElementSibling;if(!tr)return;tr.style.display=tr.style.display==='block'?'none':'block';}function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}function showDictPopup(event,el){event.stopPropagation();const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const word=el.dataset.word||'';const reading=el.dataset.reading||'';const meaning=el.dataset.meaning||'';popup.innerHTML='<div class="dw">'+word+'</div>'+(reading?'<div class="dr">'+reading+'</div>':'')+(meaning?'<div class="dm">'+meaning+'</div>':'');el.classList.add('is-active');positionPopupNear(el,popup);}document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .bg-block').forEach(function(bgBlock){const jpBlock=bgBlock.previousElementSibling;if(!jpBlock)return;jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;bgBlock.classList.toggle('is-visible');});});</script></body></html>"""
+        html += '<section><h3>Граматика в текстовете</h3><ul>'
+        for g in grammar_points: html += f"<li>{g['label']} — {g['explanation']}</li>"
+        html += '</ul></section>'
+    html += '</div></body></html>'
     return html
 
 def main():
