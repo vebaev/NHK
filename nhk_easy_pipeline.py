@@ -271,8 +271,48 @@ def to_dictionary_form(word: str) -> str:
     return w
 
 
+def feature_reading(token) -> str:
+    feat = token_feature(token)
+    if feat is None:
+        return ""
+    for name in ("kana", "pron", "reading", "pronBase"):
+        value = getattr(feat, name, "") or ""
+        if value and value != "*":
+            return value.strip()
+    return ""
+
+
+def normalize_katakana_to_hiragana(text: str) -> str:
+    result = []
+    for ch in text or "":
+        code = ord(ch)
+        if 0x30A1 <= code <= 0x30F6:
+            result.append(chr(code - 0x60))
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
+def should_keep_token_for_vocab(token) -> bool:
+    surface = token_surface(token).strip()
+    if not surface:
+        return False
+    if len(surface) == 1 and re.fullmatch(r"[ぁ-んァ-ンー]", surface):
+        return False
+    feat = token_feature(token)
+    pos1 = getattr(feat, "pos1", "") if feat is not None else ""
+    pos2 = getattr(feat, "pos2", "") if feat is not None else ""
+    if pos1 in {"名詞", "動詞", "形容詞", "副詞"}:
+        if pos1 == "名詞" and pos2 in {"代名詞", "数詞", "非自立"}:
+            return False
+        return True
+    return False
+
+
 def extract_vocab_from_blocks(blocks):
     vocab_map = {}
+
+    # 1) ruby-based extraction
     for block in blocks:
         soup = BeautifulSoup(block["html"], "html.parser")
         for ruby in soup.find_all("ruby"):
@@ -311,10 +351,37 @@ def extract_vocab_from_blocks(blocks):
             if word not in vocab_map:
                 vocab_map[word] = reading
 
+    # 2) MeCab supplement from plain text, so more words in text become clickable
+    tagger = get_mecab_tagger()
+    if tagger is not None:
+        for block in blocks:
+            text = (block.get("text") or "").strip()
+            if not text:
+                continue
+            try:
+                tokens = list(tagger(text))
+            except Exception:
+                continue
+            for token in tokens:
+                if not should_keep_token_for_vocab(token):
+                    continue
+                surface = token_surface(token).strip()
+                lemma = token_lemma(token).strip() or surface
+                reading = normalize_katakana_to_hiragana(feature_reading(token).strip())
+                word = lemma if re.search(r"[一-龯ぁ-んァ-ン]", lemma) else surface
+                if not word or len(word) < 2:
+                    continue
+                if word not in vocab_map:
+                    vocab_map[word] = reading
+
     vocab = []
     for word, reading in vocab_map.items():
-        vocab.append({"word": word, "reading": reading, "meaning": translate_text(word, dest="bg")})
-    return vocab[:20]
+        meaning = translate_text(word, dest="bg")
+        vocab.append({"word": word, "reading": reading, "meaning": meaning})
+
+    # Prefer longer, more content-heavy words first
+    vocab.sort(key=lambda x: (-len(x["word"]), x["word"]))
+    return vocab[:40]
 
 
 def is_single_kanji_word(word: str) -> bool:
@@ -938,7 +1005,6 @@ def get_articles(n=4):
     return articles[:n]
 
 
-
 def wrap_vocab_words_in_html(html_fragment, vocab_items):
     if not html_fragment:
         return html_fragment
@@ -950,7 +1016,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
         reverse=True,
     )
 
-    skip_tags = {"rt", "script", "style"}
+    skip_tags = {"rt", "rp", "script", "style"}
 
     for text_node in list(soup.find_all(string=True)):
         parent = getattr(text_node, "parent", None)
@@ -966,16 +1032,17 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
 
         for item in sorted_vocab:
             word = (item.get("word") or "").strip()
-            reading = (item.get("reading") or "").strip().replace('"', "&quot;")
-            meaning = (item.get("meaning") or "").strip().replace('"', "&quot;")
+            reading = html_lib.escape((item.get("reading") or "").strip(), quote=True)
+            meaning = html_lib.escape((item.get("meaning") or "").strip(), quote=True)
             if not word or word not in replaced:
                 continue
 
+            escaped_word = html_lib.escape(word, quote=True)
             span = (
                 f"<span class='dict-word' "
-                f"data-word=\"{word.replace(chr(34), '&quot;')}\" "
+                f"data-word=\"{escaped_word}\" "
                 f"data-reading=\"{reading}\" "
-                f"data-meaning=\"{meaning}\">{word}</span>"
+                f"data-meaning=\"{meaning}\">{escaped_word}</span>"
             )
             replaced = replaced.replace(word, span)
             changed = True
@@ -985,7 +1052,6 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.replace_with(frag)
 
     return "".join(str(x) for x in soup.contents)
-
 
 def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME, anki_apkg_filename=DEFAULT_ANKI_APKG_FILENAME, grammar_points=None):
     grammar_points = grammar_points or []
@@ -1000,9 +1066,8 @@ def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME, anki_apkg_filename
 :root{
   --bg:#0f1115; --card:#171a21; --card2:#1d212b; --text:#e8ecf1; --muted:#aeb7c2; --accent:#8ab4ff;
   --border:#2a3040; --jp-panel:#12151c; --trans-text:#d2dae3; --popup:#202532;
-  --font-scale: 1; --content-max: 980px;
-  --jp-font: "Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;
-  --ui-font: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;
+  --ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
 body.theme-light{
   --bg:#f7f7f5; --card:#ffffff; --card2:#f2f2ee; --text:#1d232a; --muted:#596572; --accent:#275cc7;
@@ -1013,37 +1078,37 @@ body.theme-sepia{
   --border:#d8c7b0; --jp-panel:#fffaf0; --trans-text:#4e3f31; --popup:#fffaf0;
 }
 *{box-sizing:border-box}
-body{
-  margin:0; background:var(--bg); color:var(--text); font-family:var(--ui-font); line-height:1.8;
-  font-size:calc(16px * var(--font-scale));
-}
-.wrap{max-width:var(--content-max);margin:0 auto;padding:24px 16px 56px}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui-font);line-height:1.8}
+.wrap{max-width:980px;margin:0 auto;padding:26px 16px 40px}
 h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center}
-.topbar{
-  position:sticky; top:0; z-index:50; backdrop-filter: blur(8px);
-  background: rgba(0,0,0,.08);
-  border-bottom:1px solid var(--border); margin:0 -16px 18px; padding:10px 16px;
-}
-.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
-.controls button,.controls select{
-  background:var(--card2); color:var(--text); border:1px solid var(--border); border-radius:10px;
-  padding:8px 10px; font:inherit;
-}
-article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:24px}
-.meta{margin-bottom:12px;color:var(--muted);font-size:.95rem}
-.section-title{margin:18px 0 10px;font-size:1.05rem;color:var(--accent);font-weight:700}
+article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 .article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:0 0 14px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .title-translation{display:none;color:var(--muted);margin:0 0 14px}
-.article-audio{width:100%;margin:0 0 8px}
+.article-audio{width:100%;margin:0 0 10px}
+.section-title{margin:18px 0 10px;font-size:1.05rem;color:var(--accent);font-weight:700}
 .jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem;font-family:var(--jp-font)}
 .bg-block{color:var(--trans-text);padding:0 2px 8px 2px;margin-bottom:8px;border-bottom:1px dashed var(--border);display:none}
 .bg-block.is-visible{display:block}
 .grammar{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px}
 .grammar ul{list-style:none;padding:0;margin:10px 0 0}
-.grammar li{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--card2);margin-bottom:10px}
-.grammar-rule{font-weight:700;color:var(--accent);font-family:var(--jp-font)}
-.downloads,.contacts{text-align:center}
+.grammar li{padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card2);margin-bottom:10px}
+.grammar-rule{font-weight:700;color:var(--accent);font-family:var(--jp-font);display:block;margin-bottom:4px}
+.downloads{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:22px 0}
+.download-btn{
+  display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid var(--border);
+  background:var(--card2);color:var(--text);text-decoration:none
+}
+.contacts{text-align:center;color:var(--muted);margin-top:10px}
+.bottom-controls{
+  margin-top:22px;padding:14px;border:1px solid var(--border);border-radius:16px;background:var(--card);
+}
+.control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.control-grid select{
+  width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);
+  border-radius:12px;padding:10px 12px;font:inherit;
+}
+.control-label{font-size:.92rem;color:var(--muted);margin-bottom:6px}
 .dict-word{
   text-decoration: underline;
   text-decoration-thickness: 1.5px;
@@ -1065,27 +1130,13 @@ ruby rt{font-size:.68em;color:var(--muted)}
 </head>
 <body class="theme-dark">
 <div class="wrap">
-  <div class="topbar">
-    <div class="controls">
-      <button type="button" onclick="setTheme('theme-dark')">Dark</button>
-      <button type="button" onclick="setTheme('theme-sepia')">Sepia</button>
-      <button type="button" onclick="setTheme('theme-light')">Light</button>
-      <button type="button" onclick="setFontScale(-0.08)">A−</button>
-      <button type="button" onclick="setFontScale(0.08)">A+</button>
-      <select id="font-select" onchange="setJapaneseFont(this.value)">
-        <option value='mincho'>Mincho</option>
-        <option value='gothic'>Gothic</option>
-      </select>
-    </div>
-  </div>
-  <h1>最新ニュース</h1>
-  <div id="dict-popup" class="dict-popup" aria-hidden="true"></div>
+<h1>最新ニュース</h1>
+<div id="dict-popup" class="dict-popup" aria-hidden="true"></div>
 """
-
     for article in articles:
         html += "<article>"
         if article.get("image_url"):
-            html += f"<img class='article-image' src='{article['image_url']}' alt='{article['title']}' loading='lazy'/>"
+            html += f"<img class='article-image' src='{article['image_url']}' alt='{html_lib.escape(article['title'], quote=True)}' loading='lazy'/>"
         html += f"<h2 class='title-toggle'>{article.get('title_html', article['title'])}</h2>"
         html += f"<div class='title-translation'>{article.get('title_translation','')}</div>"
         if article.get("audio_url"):
@@ -1099,37 +1150,57 @@ ruby rt{font-size:.68em;color:var(--muted)}
                 html += f"<div class='bg-block'>{block['translation']}</div>"
         html += "</article>"
 
-    html += f"<div class='downloads'><a href='{anki_apkg_filename}' download>Свали Anki Карти</a> | <a href='{anki_filename}' download>TSV (backup)</a></div>"
+    html += f"""
+<div class='downloads'>
+  <a class='download-btn' href='{anki_apkg_filename}' download>Свали Anki карти (.apkg)</a>
+  <a class='download-btn' href='{anki_filename}' download>Свали TSV backup</a>
+</div>
+"""
 
     if grammar_points:
         html += "<section class='grammar'><div class='section-title'>Граматика в текстовете</div><ul>"
         for g in grammar_points:
-            html += f"<li><span class='grammar-rule'>{g['label']}</span><br><span>{g['explanation']}</span></li>"
+            html += f"<li><span class='grammar-rule'>{g['label']}</span><span>{g['explanation']}</span></li>"
         html += "</ul></section>"
 
     html += """
-<div class='contacts'>Contacts: vebaev (at) gmail.com</div>
+<div class='bottom-controls'>
+  <div class='control-grid'>
+    <div>
+      <div class='control-label'>Тема</div>
+      <select id='theme-select' onchange='setTheme(this.value)'>
+        <option value='theme-dark'>Dark</option>
+        <option value='theme-sepia'>Sepia</option>
+        <option value='theme-light'>Light</option>
+      </select>
+    </div>
+    <div>
+      <div class='control-label'>Японски шрифт</div>
+      <select id='font-select' onchange='setJapaneseFont(this.value)'>
+        <option value='mincho'>Mincho</option>
+        <option value='gothic'>Gothic</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class='contacts'>vebaev.github.io</div>
 </div>
 <script>
 function loadPrefs(){
   const theme = localStorage.getItem('nhk_theme') || 'theme-dark';
   document.body.className = theme;
-  const scale = parseFloat(localStorage.getItem('nhk_font_scale') || '1');
-  document.documentElement.style.setProperty('--font-scale', String(scale));
+  const themeSel = document.getElementById('theme-select');
+  if (themeSel) themeSel.value = theme;
+
   const jpFont = localStorage.getItem('nhk_jp_font') || 'mincho';
   applyJapaneseFont(jpFont);
-  const sel = document.getElementById('font-select');
-  if (sel) sel.value = jpFont;
+  const fontSel = document.getElementById('font-select');
+  if (fontSel) fontSel.value = jpFont;
 }
 function setTheme(theme){
   document.body.className = theme;
   localStorage.setItem('nhk_theme', theme);
-}
-function setFontScale(delta){
-  let scale = parseFloat(localStorage.getItem('nhk_font_scale') || '1');
-  scale = Math.max(0.88, Math.min(1.28, scale + delta));
-  localStorage.setItem('nhk_font_scale', String(scale));
-  document.documentElement.style.setProperty('--font-scale', String(scale));
 }
 function applyJapaneseFont(kind){
   const font = kind === 'gothic'
