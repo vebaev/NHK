@@ -997,43 +997,97 @@ def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME, anki_apkg_filename
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>最新ニュース</title>
 <style>
-:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--popup:#202532}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.8}
-.wrap{max-width:980px;margin:0 auto;padding:32px 16px 56px}
-h1{margin:0 0 24px;color:var(--accent);font-size:2rem;text-align:center}
-article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px;margin-bottom:28px}
-h2{margin:0 0 6px;font-size:1.375rem;cursor:pointer}
-.meta{margin-bottom:18px;color:var(--muted);font-size:.95rem}
-.title-translation{display:none;margin:6px 0 14px;color:var(--muted);font-size:.95rem}
-.section-title{margin:20px 0 10px;font-size:1.05rem;color:var(--accent);font-weight:700}
-.jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem}
+:root{
+  --bg:#0f1115; --card:#171a21; --card2:#1d212b; --text:#e8ecf1; --muted:#aeb7c2; --accent:#8ab4ff;
+  --border:#2a3040; --jp-panel:#12151c; --trans-text:#d2dae3; --popup:#202532;
+  --font-scale: 1; --content-max: 980px;
+  --jp-font: "Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;
+  --ui-font: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+body.theme-light{
+  --bg:#f7f7f5; --card:#ffffff; --card2:#f2f2ee; --text:#1d232a; --muted:#596572; --accent:#275cc7;
+  --border:#d3d9e1; --jp-panel:#fcfcfb; --trans-text:#3c4652; --popup:#ffffff;
+}
+body.theme-sepia{
+  --bg:#f3eadb; --card:#fbf4e7; --card2:#f4ead9; --text:#3c2f22; --muted:#6e5d4b; --accent:#8a5a22;
+  --border:#d8c7b0; --jp-panel:#fffaf0; --trans-text:#4e3f31; --popup:#fffaf0;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--text); font-family:var(--ui-font); line-height:1.8;
+  font-size:calc(16px * var(--font-scale));
+}
+.wrap{max-width:var(--content-max);margin:0 auto;padding:24px 16px 56px}
+h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center}
+.topbar{
+  position:sticky; top:0; z-index:50; backdrop-filter: blur(8px);
+  background: rgba(0,0,0,.08);
+  border-bottom:1px solid var(--border); margin:0 -16px 18px; padding:10px 16px;
+}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+.controls button,.controls select{
+  background:var(--card2); color:var(--text); border:1px solid var(--border); border-radius:10px;
+  padding:8px 10px; font:inherit;
+}
+article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:24px}
+.meta{margin-bottom:12px;color:var(--muted);font-size:.95rem}
+.section-title{margin:18px 0 10px;font-size:1.05rem;color:var(--accent);font-weight:700}
+.article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:0 0 14px}
+h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
+.title-translation{display:none;color:var(--muted);margin:0 0 14px}
+.article-audio{width:100%;margin:0 0 8px}
+.jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem;font-family:var(--jp-font)}
 .bg-block{color:var(--trans-text);padding:0 2px 8px 2px;margin-bottom:8px;border-bottom:1px dashed var(--border);display:none}
 .bg-block.is-visible{display:block}
-.article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin-bottom:10px}
-.article-audio{width:100%}
-ruby,rt,h1,h2,.word,.grammar-rule,.jp-block{font-family:var(--jp-font)}
+.grammar{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px}
+.grammar ul{list-style:none;padding:0;margin:10px 0 0}
+.grammar li{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--card2);margin-bottom:10px}
+.grammar-rule{font-weight:700;color:var(--accent);font-family:var(--jp-font)}
 .downloads,.contacts{text-align:center}
-.dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
+.dict-word{
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  border-radius: 4px;
+}
 .dict-word.is-active{background:rgba(138,180,255,.18)}
-.dict-popup{position:fixed;z-index:9999;display:none;max-width:min(92vw,320px);background:var(--popup);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.35)}
-.dict-popup .dw{font-weight:700;font-size:1.08rem}
-.dict-popup .dr{color:var(--accent);font-size:.95rem}
+.dict-popup{
+  position: fixed; z-index: 9999; display: none; max-width:min(92vw,320px);
+  background:var(--popup); color:var(--text); border:1px solid var(--border); border-radius:12px;
+  padding:10px 12px; box-shadow:0 12px 32px rgba(0,0,0,.28);
+}
+.dict-popup .dw{font-weight:700;font-size:1.08rem;font-family:var(--jp-font)}
+.dict-popup .dr{color:var(--accent);font-size:.95rem;margin-top:2px}
 .dict-popup .dm{color:var(--text);margin-top:4px}
+ruby rt{font-size:.68em;color:var(--muted)}
 </style>
 </head>
-<body>
+<body class="theme-dark">
 <div class="wrap">
-<h1>最新ニュース</h1>
-<div id="dict-popup" class="dict-popup" aria-hidden="true"></div>
+  <div class="topbar">
+    <div class="controls">
+      <button type="button" onclick="setTheme('theme-dark')">Dark</button>
+      <button type="button" onclick="setTheme('theme-sepia')">Sepia</button>
+      <button type="button" onclick="setTheme('theme-light')">Light</button>
+      <button type="button" onclick="setFontScale(-0.08)">A−</button>
+      <button type="button" onclick="setFontScale(0.08)">A+</button>
+      <select id="font-select" onchange="setJapaneseFont(this.value)">
+        <option value='mincho'>Mincho</option>
+        <option value='gothic'>Gothic</option>
+      </select>
+    </div>
+  </div>
+  <h1>最新ニュース</h1>
+  <div id="dict-popup" class="dict-popup" aria-hidden="true"></div>
 """
 
     for article in articles:
         html += "<article>"
-        html += f"<h2 class='title-toggle'>{article.get('title_html', article['title'])}</h2>"
-        html += f"<div class='title-translation'>{article.get('title_translation','')}</div>"
-
         if article.get("image_url"):
             html += f"<img class='article-image' src='{article['image_url']}' alt='{article['title']}' loading='lazy'/>"
+        html += f"<h2 class='title-toggle'>{article.get('title_html', article['title'])}</h2>"
+        html += f"<div class='title-translation'>{article.get('title_translation','')}</div>"
         if article.get("audio_url"):
             html += f"<audio class='article-audio' controls preload='none' src='{article['audio_url']}'></audio>"
 
@@ -1050,13 +1104,43 @@ ruby,rt,h1,h2,.word,.grammar-rule,.jp-block{font-family:var(--jp-font)}
     if grammar_points:
         html += "<section class='grammar'><div class='section-title'>Граматика в текстовете</div><ul>"
         for g in grammar_points:
-            html += f"<li><span class='grammar-rule'>{g['label']}</span> — {g['explanation']}</li>"
+            html += f"<li><span class='grammar-rule'>{g['label']}</span><br><span>{g['explanation']}</span></li>"
         html += "</ul></section>"
 
     html += """
 <div class='contacts'>Contacts: vebaev (at) gmail.com</div>
 </div>
 <script>
+function loadPrefs(){
+  const theme = localStorage.getItem('nhk_theme') || 'theme-dark';
+  document.body.className = theme;
+  const scale = parseFloat(localStorage.getItem('nhk_font_scale') || '1');
+  document.documentElement.style.setProperty('--font-scale', String(scale));
+  const jpFont = localStorage.getItem('nhk_jp_font') || 'mincho';
+  applyJapaneseFont(jpFont);
+  const sel = document.getElementById('font-select');
+  if (sel) sel.value = jpFont;
+}
+function setTheme(theme){
+  document.body.className = theme;
+  localStorage.setItem('nhk_theme', theme);
+}
+function setFontScale(delta){
+  let scale = parseFloat(localStorage.getItem('nhk_font_scale') || '1');
+  scale = Math.max(0.88, Math.min(1.28, scale + delta));
+  localStorage.setItem('nhk_font_scale', String(scale));
+  document.documentElement.style.setProperty('--font-scale', String(scale));
+}
+function applyJapaneseFont(kind){
+  const font = kind === 'gothic'
+    ? '"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif'
+    : '"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif';
+  document.documentElement.style.setProperty('--jp-font', font);
+}
+function setJapaneseFont(kind){
+  localStorage.setItem('nhk_jp_font', kind);
+  applyJapaneseFont(kind);
+}
 function closeDictPopup(){
   const popup = document.getElementById('dict-popup');
   if (!popup) return;
@@ -1064,47 +1148,38 @@ function closeDictPopup(){
   popup.setAttribute('aria-hidden', 'true');
   document.querySelectorAll('.dict-word.is-active').forEach(el => el.classList.remove('is-active'));
 }
-
 function positionPopupNear(el, popup){
   const rect = el.getBoundingClientRect();
   popup.style.display = 'block';
   popup.setAttribute('aria-hidden', 'false');
   const popupRect = popup.getBoundingClientRect();
-
   let top = rect.bottom + 8;
   let left = rect.left;
-
   if (left + popupRect.width > window.innerWidth - 8) left = window.innerWidth - popupRect.width - 8;
   if (left < 8) left = 8;
   if (top + popupRect.height > window.innerHeight - 8) top = rect.top - popupRect.height - 8;
   if (top < 8) top = 8;
-
   popup.style.left = left + 'px';
   popup.style.top = top + 'px';
 }
-
 function showDictPopup(el){
   const popup = document.getElementById('dict-popup');
   if (!popup) return;
-
   const alreadyActive = el.classList.contains('is-active');
   closeDictPopup();
   if (alreadyActive) return;
-
   const word = el.dataset.word || '';
   const reading = el.dataset.reading || '';
   const meaning = el.dataset.meaning || '';
-
   popup.innerHTML =
     '<div class="dw">' + word + '</div>' +
     (reading ? '<div class="dr">' + reading + '</div>' : '') +
     (meaning ? '<div class="dm">' + meaning + '</div>' : '');
-
   el.classList.add('is-active');
   positionPopupNear(el, popup);
 }
-
 document.addEventListener('DOMContentLoaded', function(){
+  loadPrefs();
   document.querySelectorAll('.title-toggle').forEach(function(title){
     title.addEventListener('click', function(){
       const tr = title.nextElementSibling;
@@ -1112,18 +1187,13 @@ document.addEventListener('DOMContentLoaded', function(){
       tr.style.display = tr.style.display === 'block' ? 'none' : 'block';
     });
   });
-
   document.querySelectorAll('.dict-word').forEach(function(el){
     el.addEventListener('click', function(event){
       event.stopPropagation();
       showDictPopup(el);
     });
   });
-
-  document.addEventListener('click', function(){
-    closeDictPopup();
-  });
-
+  document.addEventListener('click', function(){ closeDictPopup(); });
   document.querySelectorAll('.jp-block + .bg-block').forEach(function(bgBlock){
     const jpBlock = bgBlock.previousElementSibling;
     if (!jpBlock) return;
