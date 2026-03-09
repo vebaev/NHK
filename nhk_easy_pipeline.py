@@ -62,41 +62,71 @@ _MECAB_TAGGER = None
 # По-силен MeCab/UniDic grammar detector.
 # Това не е пълен parser, но е по-силен от plain regex и покрива повече learner grammar.
 GRAMMAR_RULES = [
-    {"id": "te_iru", "label": "〜ている / 〜ています", "explanation": "Продължително действие или състояние."},
-    {"id": "te_ita", "label": "〜ていた / 〜ていました", "explanation": "Продължително действие/състояние в миналото."},
-    {"id": "te_oku", "label": "〜ておく", "explanation": "Правя нещо предварително."},
-    {"id": "te_shimau", "label": "〜てしまう", "explanation": "Завършеност или нежелан резултат."},
-    {"id": "te_miru", "label": "〜てみる", "explanation": "Опитвам да направя нещо."},
-    {"id": "te_ageru", "label": "〜てあげる", "explanation": "Правя нещо за някого."},
-    {"id": "te_kureru", "label": "〜てくれる", "explanation": "Някой прави нещо за мен/нас."},
-    {"id": "te_morau", "label": "〜てもらう", "explanation": "Получавам услуга от някого."},
-    {"id": "nai", "label": "〜ない", "explanation": "Отрицателна форма."},
-    {"id": "nakereba_naranai", "label": "〜なければならない", "explanation": "Задължение: трябва да..."},
-    {"id": "nakereba_ikenai", "label": "〜なければいけない", "explanation": "Задължение: трябва да..."},
-    {"id": "nakutewa_naranai", "label": "〜なくてはならない", "explanation": "Задължение: трябва да..."},
-    {"id": "beki", "label": "〜べき", "explanation": "Трябва/редно е да..."},
-    {"id": "hazu_da", "label": "〜はずだ", "explanation": "Трябва да е така / очаква се."},
-    {"id": "kamoshirenai", "label": "〜かもしれない", "explanation": "Вероятност: може би..."},
-    {"id": "souda", "label": "〜そうだ", "explanation": "Изглежда че... / казват че..."},
-    {"id": "rashii", "label": "〜らしい", "explanation": "Изглежда / по слухове / типично за."},
-    {"id": "youda", "label": "〜ようだ / 〜ように", "explanation": "Прилика, сравнение, начин или цел."},
-    {"id": "koto_ga_dekiru", "label": "〜ことができる", "explanation": "Възможност или умение: мога да..."},
-    {"id": "koto_ni_naru", "label": "〜ことになる", "explanation": "Решение/резултат: решено е да..."},
-    {"id": "you_ni_naru", "label": "〜ようになる", "explanation": "Промяна на състояние: започвам да мога / става така, че..."},
-    {"id": "tsumori_da", "label": "〜つもりだ", "explanation": "Намерение."},
-    {"id": "to_omou", "label": "〜と思う", "explanation": "Мнение: мисля, че..."},
-    {"id": "to_iu", "label": "〜という", "explanation": "Назоваване или цитиране."},
-    {"id": "tame_ni", "label": "〜ため(に)", "explanation": "Причина или цел."},
+    {"id": "kedo", "label": "けど / けれど", "explanation": "Съюз за противопоставяне: но / обаче."},
+    {"id": "shikashi", "label": "しかし", "explanation": "Обаче / въпреки това."},
+    {"id": "temo", "label": "〜ても / 〜でも", "explanation": "Дори ако / дори и да."},
     {"id": "nagara", "label": "〜ながら", "explanation": "Едновременно действие: докато..."},
-    {"id": "tari_tari", "label": "〜たり〜たりする", "explanation": "Непълен списък от действия."},
-    {"id": "passive_rareru", "label": "受け身 (〜られる / 〜れる)", "explanation": "Страдателен залог."},
+    {"id": "tsutsu", "label": "〜つつ", "explanation": "Докато..., в хода на..."},
+    {"id": "aida_ni", "label": "間 / あいだ(に)", "explanation": "Докато / през времето, когато..."},
+    {"id": "uchi_ni", "label": "うちに", "explanation": "Докато все още..., преди да се промени..."},
+    {"id": "kara_reason", "label": "〜から", "explanation": "Причина: защото / понеже."},
+    {"id": "node", "label": "〜ので", "explanation": "Причина: тъй като / понеже."},
+    {"id": "sorede", "label": "それで", "explanation": "И затова / поради това."},
+    {"id": "soshite", "label": "そして", "explanation": "И / и след това."},
+    {"id": "yori", "label": "〜より", "explanation": "Сравнение: по-... от..."},
+    {"id": "hou", "label": "〜方", "explanation": "Страна / начин; използва се и в сравнения."},
+    {"id": "hou_ga_ii", "label": "〜方がいい", "explanation": "По-добре е да..."},
+    {"id": "noni", "label": "〜のに", "explanation": "Въпреки че / макар че."},
+    {"id": "you_ni", "label": "〜ように", "explanation": "Така че да..., по начин, че..."},
+    {"id": "tame_ni", "label": "〜ため(に)", "explanation": "За да..., заради..., в името на..."},
+    {"id": "sei_de", "label": "〜せいで", "explanation": "По вина на..., заради (негативно)."},
+    {"id": "okage_de", "label": "〜おかげで", "explanation": "Благодарение на..."},
+    {"id": "rashii", "label": "〜らしい", "explanation": "Изглежда / явно / характерно за."},
+    {"id": "ppoi", "label": "〜っぽい", "explanation": "Прилича на..., има оттенък на..."},
+    {"id": "dame", "label": "だめ", "explanation": "Не става / не бива / забранено е."},
+    {"id": "naranai", "label": "〜ならない", "explanation": "Не бива / не става; в комбинации може да означава задължение."},
+    {"id": "ikenai", "label": "〜いけない", "explanation": "Не бива / не става; в комбинации може да означава задължение."},
+    {"id": "nakereba_naranai", "label": "〜なければならない", "explanation": "Трябва да..."},
+    {"id": "nakereba_ikenai", "label": "〜なければいけない", "explanation": "Трябва да..."},
+    {"id": "nakutewa_naranai", "label": "〜なくてはならない", "explanation": "Трябва да..."},
+    {"id": "tari_tari", "label": "〜たり〜たりする", "explanation": "Правя разни неща като..."},
+    {"id": "dake", "label": "〜だけ", "explanation": "Само / единствено."},
+    {"id": "nomi", "label": "〜のみ", "explanation": "Само / единствено (по-формално)."},
+    {"id": "bakari", "label": "〜ばかり", "explanation": "Само..., все..."},
+    {"id": "shika_nai", "label": "〜しか〜ない", "explanation": "Нищо друго освен..., само..."},
+    {"id": "mou", "label": "もう", "explanation": "Вече."},
+    {"id": "mada", "label": "まだ", "explanation": "Още / все още."},
+    {"id": "mata", "label": "また", "explanation": "Пак / отново / също така."},
+    {"id": "te_ii", "label": "〜ていい", "explanation": "Разрешено е да..."},
+    {"id": "temo_ii", "label": "〜てもいい", "explanation": "Може да... / разрешено е да..."},
+    {"id": "te_miru", "label": "〜てみる", "explanation": "Да пробвам да..."},
+    {"id": "kke", "label": "〜っけ", "explanation": "Беше ли..., как беше..."},
+    {"id": "kana", "label": "〜かな", "explanation": "Чудя се дали..., дали..."},
+    {"id": "kai_dai", "label": "〜かい / 〜だい", "explanation": "Разговорна въпросителна форма."},
+    {"id": "janai", "label": "〜じゃない", "explanation": "Не е ли..., нали..."},
     {"id": "causative_saseru", "label": "使役 (〜させる / 〜せる)", "explanation": "Каузатив: карам/оставям някого да..."},
-    {"id": "potential_rareru", "label": "可能形", "explanation": "Възможностна форма: мога да..."},
-    {"id": "volitional", "label": "意向形 (〜よう / 〜おう)", "explanation": "Волево намерение: нека..., ще..."},
-    {"id": "tai", "label": "〜たい", "explanation": "Желание: искам да..."},
-    {"id": "kara_reason", "label": "〜から", "explanation": "Причина или отправна точка."},
-    {"id": "made", "label": "〜まで", "explanation": "Граница във време/място: до."},
-    {"id": "ni", "label": "〜に", "explanation": "Частица за посока, време, цел или непряк обект."},
+    {"id": "nakute", "label": "〜なくて", "explanation": "Без да..., не и..., понеже не..."},
+    {"id": "naide", "label": "〜ないで", "explanation": "Без да..., не правейки..."},
+    {"id": "zu", "label": "〜ず / 〜ずに", "explanation": "Без да..."},
+    {"id": "te_shimau", "label": "〜てしまう", "explanation": "Завършеност или нежелан резултат."},
+    {"id": "te_oku", "label": "〜ておく", "explanation": "Правя нещо предварително."},
+    {"id": "datte", "label": "だって", "explanation": "Защото..., дори..., дори и..."},
+    {"id": "wake", "label": "〜わけ", "explanation": "Причина / смисъл / следва, че..."},
+    {"id": "hazu", "label": "〜はず", "explanation": "Би трябвало / очаква се."},
+    {"id": "beki", "label": "〜べき", "explanation": "Трябва / редно е."},
+    {"id": "beki_datta", "label": "〜べきだった", "explanation": "Трябвало е да..."},
+    {"id": "beshi", "label": "〜べし", "explanation": "Трябва / следва (книжовно)."},
+    {"id": "mono_da", "label": "〜ものだ", "explanation": "По принцип така е / естествено е / подобава."},
+    {"id": "kamoshirenai", "label": "〜かもしれない", "explanation": "Може би..."},
+    {"id": "kamo", "label": "〜かも", "explanation": "Може би... (разговорно)."},
+    {"id": "koro", "label": "〜ころ", "explanation": "Около даден момент / по времето, когато..."},
+    {"id": "goro", "label": "〜ごろ", "explanation": "Около (час/период)."},
+    {"id": "kurai_gurai", "label": "〜くらい / 〜ぐらい", "explanation": "Около / приблизително / до такава степен."},
+    {"id": "made", "label": "〜まで", "explanation": "До / чак до."},
+    {"id": "kara_made", "label": "〜から〜まで", "explanation": "От... до..."},
+    {"id": "made_ni", "label": "〜までに", "explanation": "До (краен срок)."},
+    {"id": "hodo", "label": "〜ほど", "explanation": "До такава степен / колкото..."},
+    {"id": "sugiru", "label": "〜すぎる", "explanation": "Прекалено / твърде много."},
 ]
 GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
 
@@ -510,33 +540,51 @@ def detect_grammar_in_sentence(sentence: str):
     found = set()
 
     if tagger is None:
-        # безопасен fallback
-        raw_checks = [
-            ("te_iru", r"てい(?:る|ます|た|ました)"),
-            ("te_oku", r"てお(?:く|き|いた|きます|いた)"),
-            ("te_shimau", r"てしま(?:う|います|った|いました)"),
-            ("te_miru", r"てみ(?:る|ます|た|ました)"),
+        fallback = [
+            ("kedo", r"(けど|けれど|けれども)"),
+            ("shikashi", r"しかし"),
+            ("temo", r"(ても|でも)"),
+            ("nagara", r"ながら"),
+            ("tsutsu", r"つつ"),
+            ("aida_ni", r"(間に|あいだに|間)"),
+            ("uchi_ni", r"うちに"),
+            ("kara_reason", r"から"),
+            ("node", r"ので"),
+            ("sorede", r"それで"),
+            ("soshite", r"そして"),
+            ("yori", r"より"),
+            ("hou_ga_ii", r"方がいい"),
+            ("noni", r"のに"),
+            ("you_ni", r"ように"),
+            ("tame_ni", r"ために"),
+            ("sei_de", r"せいで"),
+            ("okage_de", r"おかげで"),
+            ("rashii", r"らしい"),
+            ("ppoi", r"っぽい"),
             ("nakereba_naranai", r"なければならない"),
             ("nakereba_ikenai", r"なければいけない"),
             ("nakutewa_naranai", r"なくてはならない"),
-            ("beki", r"べき"),
-            ("hazu_da", r"はず(?:だ|です)"),
-            ("kamoshirenai", r"かもしれない"),
-            ("souda", r"そう(?:だ|です)"),
-            ("rashii", r"らしい"),
-            ("youda", r"よう(?:だ|です|に)"),
-            ("koto_ga_dekiru", r"ことができ(?:る|ます|た|ました)"),
-            ("koto_ni_naru", r"ことにな(?:る|り|った|ります|りました)"),
-            ("you_ni_naru", r"ようにな(?:る|り|った|ります|りました)"),
-            ("tsumori_da", r"つもり(?:だ|です)"),
-            ("to_omou", r"と思(?:う|います|った|いました)"),
-            ("to_iu", r"という"),
-            ("tame_ni", r"ため(?:に)?"),
-            ("nagara", r"ながら"),
             ("tari_tari", r"たり.*たり"),
-            ("tai", r"たい"),
+            ("te_ii", r"ていい"),
+            ("temo_ii", r"てもいい"),
+            ("te_miru", r"てみる"),
+            ("kke", r"っけ"),
+            ("kana", r"かな"),
+            ("janai", r"じゃない"),
+            ("te_shimau", r"てしま"),
+            ("te_oku", r"ておく"),
+            ("wake", r"わけ"),
+            ("hazu", r"はず"),
+            ("beki", r"べき"),
+            ("kamoshirenai", r"かもしれない"),
+            ("kamo", r"かも"),
+            ("made_ni", r"までに"),
+            ("kara_made", r"から.*まで"),
+            ("made", r"まで"),
+            ("hodo", r"ほど"),
+            ("sugiru", r"すぎる"),
         ]
-        for rid, pat in raw_checks:
+        for rid, pat in fallback:
             if re.search(pat, sentence):
                 found.add(rid)
         return found
@@ -550,128 +598,142 @@ def detect_grammar_in_sentence(sentence: str):
     surfaces = [token_surface(t) for t in tokens]
     lemmas = [token_lemma(t) for t in tokens]
 
-    if "たり" in surfaces and surfaces.count("たり") >= 2:
-        found.add("tari_tari")
-
     for i in range(n):
         s = surfaces[i]
         l = lemmas[i]
-        cform = token_cform(tokens[i])
-        ctype = token_ctype(tokens[i])
+        pos = token_pos1(tokens[i])
 
-        if s == "ない":
-            found.add("nai")
-
-        if s == "たい" or l == "たい":
-            found.add("tai")
-
+        if s in {"けど", "けれど", "けれども"}:
+            found.add("kedo")
+        if s == "しかし":
+            found.add("shikashi")
+        if s in {"ても", "でも"}:
+            found.add("temo")
         if s == "ながら":
             found.add("nagara")
-
+        if s == "つつ":
+            found.add("tsutsu")
+        if s in {"間", "あいだ"}:
+            found.add("aida_ni")
+        if s == "うち" and i + 1 < n and has_surface(tokens, i + 1, "に"):
+            found.add("uchi_ni")
         if s == "から":
             found.add("kara_reason")
-
-        if s == "まで":
-            found.add("made")
-
-        if s == "に":
-            found.add("ni")
-
-        if s == "べき":
-            found.add("beki")
-
+        if s == "ので":
+            found.add("node")
+        if s == "それで":
+            found.add("sorede")
+        if s == "そして":
+            found.add("soshite")
+        if s == "より":
+            found.add("yori")
+        if s == "方":
+            found.add("hou")
+            if i + 2 < n and has_surface(tokens, i + 1, "が") and has_surface(tokens, i + 2, "いい"):
+                found.add("hou_ga_ii")
+        if s == "のに":
+            found.add("noni")
+        if s == "よう" and i + 1 < n and has_surface(tokens, i + 1, "に"):
+            found.add("you_ni")
+        if s == "ため" and (i + 1 >= n or has_surface(tokens, i + 1, "に")):
+            found.add("tame_ni")
+        if s == "せい" and i + 1 < n and has_surface(tokens, i + 1, "で"):
+            found.add("sei_de")
+        if s == "おかげ" and i + 1 < n and has_surface(tokens, i + 1, "で"):
+            found.add("okage_de")
         if s == "らしい":
             found.add("rashii")
-
-        if s == "つもり" and i + 1 < n and has_lemma(tokens, i + 1, "だ", "です"):
-            found.add("tsumori_da")
-
-        if s in {"て", "で"} and i + 1 < n:
-            if has_lemma(tokens, i + 1, "居る", "いる"):
-                found.add("te_iru")
-                if token_surface(tokens[i + 1]) in {"いた", "いました"} or "連用" in token_cform(tokens[i + 1]):
-                    if token_surface(tokens[i + 1]).startswith("い"):
-                        found.add("te_ita")
-            if has_lemma(tokens, i + 1, "置く", "おく"):
-                found.add("te_oku")
-            if has_lemma(tokens, i + 1, "仕舞う", "しまう"):
-                found.add("te_shimau")
-            if has_lemma(tokens, i + 1, "見る", "みる"):
-                found.add("te_miru")
-            if has_lemma(tokens, i + 1, "上げる", "あげる"):
-                found.add("te_ageru")
-            if has_lemma(tokens, i + 1, "呉れる", "くれる"):
-                found.add("te_kureru")
-            if has_lemma(tokens, i + 1, "貰う", "もらう"):
-                found.add("te_morau")
-
-        if s == "こと" and i + 2 < n:
-            if has_surface(tokens, i + 1, "が") and has_lemma(tokens, i + 2, "出来る", "できる"):
-                found.add("koto_ga_dekiru")
-            if has_surface(tokens, i + 1, "に") and has_lemma(tokens, i + 2, "成る", "なる"):
-                found.add("koto_ni_naru")
-
-        if s == "よう":
-            if i + 1 < n and has_surface(tokens, i + 1, "に"):
-                found.add("youda")
-                if i + 2 < n and has_lemma(tokens, i + 2, "成る", "なる"):
-                    found.add("you_ni_naru")
-            if i + 1 < n and has_lemma(tokens, i + 1, "だ", "です"):
-                found.add("youda")
-
-        if s == "はず" and i + 1 < n and has_lemma(tokens, i + 1, "だ", "です"):
-            found.add("hazu_da")
-
-        if s == "そう":
-            if i + 1 < n and (has_lemma(tokens, i + 1, "だ", "です") or token_pos1(tokens[i + 1]) == "助動詞"):
-                found.add("souda")
-
-        if s == "かも" and i + 2 < n and has_surface(tokens, i + 1, "しれ") and has_surface(tokens, i + 2, "ない"):
-            found.add("kamoshirenai")
-
-        if s == "と" and i + 1 < n and has_lemma(tokens, i + 1, "思う", "おもう"):
-            found.add("to_omou")
-
-        if s == "という" or (s == "と" and i + 1 < n and has_lemma(tokens, i + 1, "言う", "いう")):
-            found.add("to_iu")
-
-        if s == "ため":
-            found.add("tame_ni")
-
+        if s == "っぽい":
+            found.add("ppoi")
+        if s == "だめ":
+            found.add("dame")
+        if s == "なら" and i + 1 < n and has_surface(tokens, i + 1, "ない"):
+            found.add("naranai")
+        if s == "いけ" and i + 1 < n and has_surface(tokens, i + 1, "ない"):
+            found.add("ikenai")
         if s == "なけれ" and i + 3 < n and has_surface(tokens, i + 1, "ば"):
             if has_surface(tokens, i + 2, "なら") and has_surface(tokens, i + 3, "ない"):
                 found.add("nakereba_naranai")
             if has_surface(tokens, i + 2, "いけ") and has_surface(tokens, i + 3, "ない"):
                 found.add("nakereba_ikenai")
-
-        if s == "なく" and i + 3 < n and has_surface(tokens, i + 1, "て") and has_surface(tokens, i + 2, "は"):
-            if has_surface(tokens, i + 3, "なら") and i + 4 < n and has_surface(tokens, i + 4, "ない"):
-                found.add("nakutewa_naranai")
-
-        # Грубо разпознаване на potential/passive/causative по спрегната форма и лема.
-        if "させ" in s or l == "させる":
+        if s == "なく" and i + 4 < n and has_surface(tokens, i + 1, "て") and has_surface(tokens, i + 2, "は") and has_surface(tokens, i + 3, "なら") and has_surface(tokens, i + 4, "ない"):
+            found.add("nakutewa_naranai")
+        if s == "たり" and surfaces.count("たり") >= 2:
+            found.add("tari_tari")
+        if s == "だけ":
+            found.add("dake")
+        if s == "のみ":
+            found.add("nomi")
+        if s == "ばかり":
+            found.add("bakari")
+        if s == "しか" and "ない" in surfaces[i + 1:]:
+            found.add("shika_nai")
+        if s == "もう":
+            found.add("mou")
+        if s == "まだ":
+            found.add("mada")
+        if s == "また":
+            found.add("mata")
+        if s in {"て", "で"} and i + 1 < n and has_surface(tokens, i + 1, "いい"):
+            found.add("te_ii")
+        if s in {"ても", "でも"} and i + 1 < n and has_surface(tokens, i + 1, "いい"):
+            found.add("temo_ii")
+        if s in {"て", "で"} and i + 1 < n and has_lemma(tokens, i + 1, "見る", "みる"):
+            found.add("te_miru")
+        if s == "っけ":
+            found.add("kke")
+        if s == "かな":
+            found.add("kana")
+        if s in {"かい", "だい"}:
+            found.add("kai_dai")
+        if s == "じゃ" and i + 1 < n and has_surface(tokens, i + 1, "ない"):
+            found.add("janai")
+        if "させ" in s or l in {"させる", "せる"}:
             found.add("causative_saseru")
-        if "られ" in s or l in {"られる", "れる"}:
-            found.add("passive_rareru")
-
-        # potential form rough guesses
-        if l in {"出来る", "できる"}:
-            found.add("potential_rareru")
-        if token_pos1(tokens[i]) == "動詞":
-            if s.endswith("れる") or s.endswith("られる") or s.endswith("える"):
-                found.add("potential_rareru")
-
-        # volitional rough guesses
-        if token_pos1(tokens[i]) == "動詞" and (s.endswith("よう") or s.endswith("おう") or "意志推量形" in cform):
-            found.add("volitional")
-
-        # extra fallback from conjugation type/form
-        if "可能" in ctype or "可能" in cform:
-            found.add("potential_rareru")
-        if "使役" in ctype or "使役" in cform:
-            found.add("causative_saseru")
-        if "受身" in ctype or "受身" in cform:
-            found.add("passive_rareru")
+        if s == "なく" and i + 1 < n and has_surface(tokens, i + 1, "て"):
+            found.add("nakute")
+        if s == "ない" and i + 1 < n and has_surface(tokens, i + 1, "で"):
+            found.add("naide")
+        if s == "ず":
+            found.add("zu")
+        if s in {"て", "で"} and i + 1 < n and has_lemma(tokens, i + 1, "仕舞う", "しまう"):
+            found.add("te_shimau")
+        if s in {"て", "で"} and i + 1 < n and has_lemma(tokens, i + 1, "置く", "おく"):
+            found.add("te_oku")
+        if s == "だって":
+            found.add("datte")
+        if s == "わけ":
+            found.add("wake")
+        if s == "はず":
+            found.add("hazu")
+        if s == "べき":
+            found.add("beki")
+            if i + 2 < n and has_surface(tokens, i + 1, "だっ") and has_surface(tokens, i + 2, "た"):
+                found.add("beki_datta")
+        if s == "べし":
+            found.add("beshi")
+        if s == "もの" and i + 1 < n and has_surface(tokens, i + 1, "だ"):
+            found.add("mono_da")
+        if s == "かも" and i + 2 < n and has_surface(tokens, i + 1, "しれ") and has_surface(tokens, i + 2, "ない"):
+            found.add("kamoshirenai")
+        elif s == "かも":
+            found.add("kamo")
+        if s == "ころ":
+            found.add("koro")
+        if s == "ごろ":
+            found.add("goro")
+        if s in {"くらい", "ぐらい"}:
+            found.add("kurai_gurai")
+        if s == "まで":
+            found.add("made")
+            if i + 1 < n and has_surface(tokens, i + 1, "に"):
+                found.add("made_ni")
+            if "から" in surfaces[:i]:
+                found.add("kara_made")
+        if s == "ほど":
+            found.add("hodo")
+        if l == "過ぎる" or s == "すぎる":
+            found.add("sugiru")
 
     return found
 
@@ -1033,21 +1095,20 @@ h1,.article-head h2,.jp-block,.word,.grammar-rule,ruby,rt{font-family:var(--jp-f
 
         html += "<div class='section-title'>Речник</div><div class='vocab'><ul>"
         for item in article["vocab"]:
-            word = item["word"]
-            reading = item["reading"]
-            meaning = item["meaning"]
+    word = item["word"]
+    reading = item["reading"]
+    meaning = item["meaning"]
 
-            if reading:
-                word_html = f"<ruby>{word}<rt>{reading}</rt></ruby>"
-            else:
-                word_html = word
+    if reading:
+        word_html = f"<ruby>{word}<rt>{reading}</rt></ruby>"
+    else:
+        word_html = word
 
-            if meaning:
-                html += f"<li><span class='word'>{word_html}</span> — <span class='meaning'>{meaning}</span></li>"
-            else:
-                html += f"<li><span class='word'>{word_html}</span></li>"
-        html += "</ul></div><div class='section-title'>Текст</div>"
-
+    if meaning:
+        html += f"<li><span class='word'>{word_html}</span> — <span class='meaning'>{meaning}</span></li>"
+    else:
+        html += f"<li><span class='word'>{word_html}</span></li>"
+html += "</ul></div><div class='section-title'>Текст</div>" 
 
         for block in article["blocks"]:
             html += f"<div class='jp-block'>{block['html']}</div>"
