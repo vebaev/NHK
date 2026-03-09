@@ -54,116 +54,103 @@ GODAN_A_TO_U = {
     "ら": "る",
 }
 _MECAB_TAGGER = None
+
+# Граматиката вече не се търси с regex върху raw текста.
+# Използва се MeCab + UniDic token stream, както и при речника.
 GRAMMAR_RULES = [
     {
         "id": "te_iru",
         "label": "〜ている / 〜ています",
-        "regex": re.compile(r"てい(?:る|ます|て|た|ました)"),
         "explanation": "Продължително действие или състояние.",
     },
     {
         "id": "te_ita",
         "label": "〜ていた / 〜ていました",
-        "regex": re.compile(r"てい(?:た|ました)"),
         "explanation": "Продължително действие/състояние в миналото.",
     },
     {
         "id": "nai",
         "label": "〜ない",
-        "regex": re.compile(r"[ぁ-んァ-ン一-龯]ない"),
         "explanation": "Отрицателна форма (не правя/няма).",
     },
     {
         "id": "kamoshirenai",
         "label": "〜かもしれない",
-        "regex": re.compile(r"かもしれない"),
         "explanation": "Вероятност: „може би...“.",
     },
     {
         "id": "koto_ga_dekiru",
         "label": "〜ことができる",
-        "regex": re.compile(r"ことができ(?:る|ます|た|ました)"),
         "explanation": "Възможност/умение: „мога да...“.",
     },
     {
         "id": "koto_ni_naru",
         "label": "〜ことになる",
-        "regex": re.compile(r"ことにな(?:る|り|った|ります|りました)"),
         "explanation": "Решение/резултат: „оказва се, че... / решено е да...“.",
     },
     {
         "id": "you_ni",
         "label": "〜ように",
-        "regex": re.compile(r"ように"),
         "explanation": "Цел или начин: „за да... / така че...“.",
     },
     {
         "id": "tame_ni",
         "label": "〜ため(に)",
-        "regex": re.compile(r"ため(?:に)?"),
         "explanation": "Причина или цел: „поради... / за да...“.",
     },
     {
         "id": "nagara",
         "label": "〜ながら",
-        "regex": re.compile(r"ながら"),
         "explanation": "Едновременно действие: „докато...“.",
     },
     {
         "id": "tari_tari",
         "label": "〜たり〜たりする",
-        "regex": re.compile(r"たり.*たり"),
         "explanation": "Непълен списък от действия: „... и ... и т.н.“.",
     },
     {
         "id": "te_shimau",
         "label": "〜てしまう",
-        "regex": re.compile(r"てしま(?:う|います|った|いました)"),
         "explanation": "Завършеност или нежелан резултат.",
     },
     {
         "id": "to_omou",
         "label": "〜と思う",
-        "regex": re.compile(r"と思(?:う|います|った|いました)"),
         "explanation": "Мнение/мисъл: „мисля, че...“.",
     },
     {
         "id": "to_iu",
         "label": "〜という",
-        "regex": re.compile(r"という"),
         "explanation": "Назоваване/цитиране: „наречен... / че...“.",
     },
     {
         "id": "passive_rareru",
         "label": "受け身 (〜られる)",
-        "regex": re.compile(r"[ぁ-んァ-ン一-龯]られ(?:る|ます|た|ました)"),
         "explanation": "Страдателен залог: „бива направено...“.",
     },
     {
         "id": "causative_saseru",
         "label": "使役 (〜させる)",
-        "regex": re.compile(r"[ぁ-んァ-ン一-龯]させ(?:る|ます|た|ました)"),
         "explanation": "Каузатив: „карам/оставям някого да...“.",
     },
     {
         "id": "kara_reason",
         "label": "〜から",
-        "regex": re.compile(r"から"),
         "explanation": "Причина или отправна точка („защото/от“ според контекста).",
     },
     {
         "id": "made",
         "label": "〜まで",
-        "regex": re.compile(r"まで"),
         "explanation": "Граница във време/място: „до“.",
     },
     {
         "id": "ni",
         "label": "〜に",
-        "regex": re.compile(r"に"),
         "explanation": "Частица за посока, време, цел или непряк обект.",
     },
 ]
+
+GRAMMAR_RULES_BY_ID = {rule["id"]: rule for rule in GRAMMAR_RULES}
 
 
 def translate_text(text: str, dest: str = "bg") -> str:
@@ -176,7 +163,6 @@ def translate_text(text: str, dest: str = "bg") -> str:
 
     if DEEPL_API_KEY:
         try:
-            # Free plan ключовете обикновено завършват с :fx
             deepl_url = "https://api-free.deepl.com/v2/translate"
             if not DEEPL_API_KEY.endswith(":fx"):
                 deepl_url = "https://api.deepl.com/v2/translate"
@@ -205,7 +191,6 @@ def translate_text(text: str, dest: str = "bg") -> str:
                 _TRANSLATION_CACHE[cache_key] = result
                 return result
         except Exception:
-            # fallback към googletrans
             pass
 
     try:
@@ -225,7 +210,6 @@ def get_article_blocks(content):
         if not txt:
             continue
 
-        # махаме прекалено кратки / шумни редове
         if len(txt) < 3:
             continue
 
@@ -248,7 +232,6 @@ def extract_vocab_from_blocks(blocks):
             rb_text = ""
             rt_text = ""
 
-            # взимаме kanji/base text
             for child in ruby.contents:
                 name = getattr(child, "name", None)
                 if name == "rt":
@@ -267,7 +250,6 @@ def extract_vocab_from_blocks(blocks):
             if not rb_text:
                 continue
 
-            # пропускаме чиста хирагана/катакана
             if not re.search(r"[一-龯]", rb_text):
                 continue
 
@@ -275,7 +257,6 @@ def extract_vocab_from_blocks(blocks):
             word = rb_text
             reading = rt_text
 
-            # Ако след канджи има частица, не я включваме в речниковата форма
             if okurigana and okurigana.startswith(PARTICLE_PREFIXES):
                 okurigana = ""
 
@@ -398,7 +379,6 @@ def add_known_progress_to_articles(articles, known_words):
 def save_anki_tsv(cards, path):
     with open(path, "w", encoding="utf-8") as f:
         for front, back in cards:
-            # TAB-separated, съвместимо с Anki import
             f.write(f"{front}\t{back}\n")
 
 
@@ -410,32 +390,7 @@ def split_japanese_sentences(text: str):
     return [p.strip() for p in parts if p.strip()]
 
 
-def extract_grammar_points(articles):
-    found = {}
-
-    for article in articles:
-        for block in article.get("blocks", []):
-            sentences = split_japanese_sentences(block.get("text", ""))
-            for sentence in sentences:
-                for rule in GRAMMAR_RULES:
-                    if rule["id"] in found:
-                        continue
-                    if rule["regex"].search(sentence):
-                        found[rule["id"]] = {
-                            "label": rule["label"],
-                            "explanation": rule["explanation"],
-                        }
-
-    ordered = []
-    for rule in GRAMMAR_RULES:
-        item = found.get(rule["id"])
-        if item:
-            ordered.append(item)
-    return ordered
-
-
 def stable_int_id(seed: str, digits: int = 10) -> int:
-    # genanki изисква integer ids; правим стабилен id от текстов seed
     digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()
     h = int(digest[:12], 16)
     mod = 10 ** digits
@@ -511,8 +466,6 @@ def get_mecab_tagger():
 
 
 def is_target_pos(token) -> bool:
-    # UniDic/BCCWJ полетата не са напълно стабилни между версии, затова
-    # проверяваме както feature.pos1, така и fallback към string representation.
     feature = getattr(token, "feature", None)
     pos1 = getattr(feature, "pos1", "") if feature is not None else ""
     if pos1 in {"動詞", "形容詞"}:
@@ -520,18 +473,38 @@ def is_target_pos(token) -> bool:
     return "動詞" in str(feature) or "形容詞" in str(feature)
 
 
+def token_surface(token) -> str:
+    return getattr(token, "surface", "") or ""
+
+
+def token_feature(token):
+    return getattr(token, "feature", None)
+
+
+def token_pos1(token) -> str:
+    feature = token_feature(token)
+    return getattr(feature, "pos1", "") or ""
+
+
 def token_lemma(token) -> str:
-    feature = getattr(token, "feature", None)
+    feature = token_feature(token)
     if feature is None:
         return ""
 
     lemma = getattr(feature, "lemma", "") or ""
     if not lemma:
-        # някои версии използват други полета
         lemma = getattr(feature, "dictionary_form", "") or ""
     if not lemma:
         lemma = getattr(feature, "lemma_form", "") or ""
+    if not lemma:
+        lemma = getattr(feature, "orthBase", "") or ""
     return lemma.strip()
+
+
+def lemma_equals(token, *values) -> bool:
+    lemma = token_lemma(token)
+    surface = token_surface(token)
+    return lemma in values or surface in values
 
 
 def lemmatize_japanese(word: str) -> str:
@@ -562,7 +535,6 @@ def extract_following_okurigana(ruby_tag):
         if isinstance(sibling, str):
             txt = sibling
         elif hasattr(sibling, "get_text"):
-            # ако има следващ таг, не взимаме текст от него за окуригана
             break
 
         txt = (txt or "").lstrip(" 　\n\t")
@@ -582,19 +554,16 @@ def to_dictionary_form(word: str) -> str:
     if not w:
         return w
 
-    # する
     for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
         if w.endswith(suffix):
             stem = w[: -len(suffix)]
             return stem + "する"
 
-    # くる
     for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
         if w.endswith(suffix):
             stem = w[: -len(suffix)]
             return stem + "くる"
 
-    # ます形 -> 辞書形
     for suffix in ["ました", "ます"]:
         if w.endswith(suffix):
             stem = w[: -len(suffix)]
@@ -605,7 +574,6 @@ def to_dictionary_form(word: str) -> str:
                 return stem[:-1] + mapped
             return stem + "る"
 
-    # ない形
     if w.endswith("ない") and len(w) > 2:
         stem = w[:-2]
         mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
@@ -613,17 +581,153 @@ def to_dictionary_form(word: str) -> str:
             return stem[:-1] + mapped
         return stem + "る"
 
-    # て形 / た形 (нееднозначните って/んで ги пропускаме)
     for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
         if w.endswith(src) and len(w) > len(src):
             return w[: -len(src)] + dst
 
-    # прилагателни
     for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
         if w.endswith(src) and len(w) > len(src):
             return w[: -len(src)] + dst
 
     return w
+
+
+def grammar_hit(rule_id: str):
+    rule = GRAMMAR_RULES_BY_ID.get(rule_id)
+    if not rule:
+        return None
+    return {
+        "label": rule["label"],
+        "explanation": rule["explanation"],
+    }
+
+
+def detect_grammar_in_sentence(sentence: str):
+    tagger = get_mecab_tagger()
+    if tagger is None:
+        # fallback, ако fugashi/Mecab не са налични
+        found = set()
+        raw_checks = [
+            ("te_iru", r"てい(?:る|ます|た|ました)"),
+            ("te_ita", r"てい(?:た|ました)"),
+            ("nai", r"[ぁ-んァ-ン一-龯]ない"),
+            ("kamoshirenai", r"かもしれない"),
+            ("koto_ga_dekiru", r"ことができ(?:る|ます|た|ました)"),
+            ("koto_ni_naru", r"ことにな(?:る|り|った|ります|りました)"),
+            ("you_ni", r"ように"),
+            ("tame_ni", r"ため(?:に)?"),
+            ("nagara", r"ながら"),
+            ("tari_tari", r"たり.*たり"),
+            ("te_shimau", r"てしま(?:う|います|った|いました)"),
+            ("to_omou", r"と思(?:う|います|った|いました)"),
+            ("to_iu", r"という"),
+            ("passive_rareru", r"[ぁ-んァ-ン一-龯]られ(?:る|ます|た|ました)"),
+            ("causative_saseru", r"[ぁ-んァ-ン一-龯]させ(?:る|ます|た|ました)"),
+            ("kara_reason", r"から"),
+            ("made", r"まで"),
+            ("ni", r"に"),
+        ]
+        for rule_id, pattern in raw_checks:
+            if re.search(pattern, sentence):
+                found.add(rule_id)
+        return found
+
+    try:
+        tokens = list(tagger(sentence))
+    except Exception:
+        return set()
+
+    found = set()
+    n = len(tokens)
+
+    for i in range(n):
+        s0 = token_surface(tokens[i])
+        l0 = token_lemma(tokens[i])
+
+        if s0 == "ない":
+            found.add("nai")
+
+        if s0 == "かも" and i + 2 < n and token_surface(tokens[i + 1]) == "しれ" and token_surface(tokens[i + 2]) == "ない":
+            found.add("kamoshirenai")
+
+        if s0 == "よう" and i + 1 < n and token_surface(tokens[i + 1]) == "に":
+            found.add("you_ni")
+
+        if s0 == "ため":
+            found.add("tame_ni")
+
+        if s0 == "ながら":
+            found.add("nagara")
+
+        if s0 == "から":
+            found.add("kara_reason")
+
+        if s0 == "まで":
+            found.add("made")
+
+        if s0 == "に":
+            found.add("ni")
+
+        if s0 in {"て", "で"} and i + 1 < n and lemma_equals(tokens[i + 1], "居る", "いる"):
+            found.add("te_iru")
+            if i + 1 < n and token_surface(tokens[i + 1]) in {"いた", "いました"}:
+                found.add("te_ita")
+
+        if s0 in {"て", "で"} and i + 1 < n and lemma_equals(tokens[i + 1], "仕舞う", "しまう"):
+            found.add("te_shimau")
+
+        if s0 == "こと" and i + 2 < n:
+            if token_surface(tokens[i + 1]) == "が" and lemma_equals(tokens[i + 2], "出来る", "できる"):
+                found.add("koto_ga_dekiru")
+            if token_surface(tokens[i + 1]) == "に" and lemma_equals(tokens[i + 2], "成る", "なる"):
+                found.add("koto_ni_naru")
+
+        if s0 == "と" and i + 1 < n and lemma_equals(tokens[i + 1], "思う", "おもう"):
+            found.add("to_omou")
+
+        if s0 == "という" or (s0 == "と" and i + 1 < n and lemma_equals(tokens[i + 1], "言う", "いう")):
+            found.add("to_iu")
+
+        if s0 == "たり":
+            # искаме поне две たり в рамките на изречението
+            if sum(1 for tk in tokens if token_surface(tk) == "たり") >= 2:
+                found.add("tari_tari")
+
+        # грубо хващане на 受け身 / 使役 по лема/повърхност
+        if "られる" in s0 or "られ" in s0 or "れる" in s0:
+            found.add("passive_rareru")
+        if "させる" in s0 or "させ" in s0:
+            found.add("causative_saseru")
+
+        # допълнителна лема проверка за спрегнати форми
+        if l0 in {"られる", "れる"}:
+            found.add("passive_rareru")
+        if l0 == "させる":
+            found.add("causative_saseru")
+
+    return found
+
+
+def extract_grammar_points(articles):
+    found = {}
+
+    for article in articles:
+        for block in article.get("blocks", []):
+            sentences = split_japanese_sentences(block.get("text", ""))
+            for sentence in sentences:
+                rule_ids = detect_grammar_in_sentence(sentence)
+                for rule_id in rule_ids:
+                    if rule_id not in found:
+                        hit = grammar_hit(rule_id)
+                        if hit:
+                            found[rule_id] = hit
+
+    ordered = []
+    for rule in GRAMMAR_RULES:
+        item = found.get(rule["id"])
+        if item:
+            ordered.append(item)
+    return ordered
 
 
 def extract_ne_id(text: str) -> str:
@@ -767,18 +871,15 @@ def parse_article_from_nhk_easy(link: str):
         break
 
     if not audio_url:
-        mp3_match = re.search(r"https?://[^\"'\\s]+\\.mp3(?:\\?[^\"'\\s]*)?", page.text)
+        mp3_match = re.search(r"https?://[^\"'\s]+\.mp3(?:\?[^\"'\s]*)?", page.text)
         if mp3_match:
             audio_url = mp3_match.group(0)
 
     if not audio_url:
-        # Някои страници пазят линка като поле в JS payload
         audio_field_match = re.search(r'"(?:audio|voice|sound|movie)Url"\s*:\s*"([^"]+)"', page.text, re.IGNORECASE)
         if audio_field_match:
             audio_url = urljoin(link, audio_field_match.group(1))
 
-    # Структурата е Next.js shell. Ако няма реален body в DOM,
-    # взимаме смислени японски текстови фрагменти от payload-а.
     content = (
         psoup.select_one(".article-main__body")
         or psoup.select_one(".module--content")
@@ -802,10 +903,8 @@ def parse_article_from_nhk_easy(link: str):
     if not filtered_blocks:
         payload_texts = []
         for txt in re.findall(r'"children":"([^"]{10,}?)"', page.text):
-            # филтрираме системни UI текстове
             if "NHK" in txt or "トップ" in txt or "ニュース・防災" in txt:
                 continue
-            # държим само текстове с японски букви
             if not re.search(r"[ぁ-んァ-ン一-龯]", txt):
                 continue
             cleaned = txt.replace("\\n", " ").strip()
@@ -884,7 +983,6 @@ def get_articles(n=4):
                     article["audio_url"] = fallback["audio_url"]
                 if fallback.get("image_url"):
                     article["image_url"] = fallback["image_url"]
-                # Фуригана в заглавието - взимаме първия ruby блок ако е наличен
                 for b in fallback["blocks"]:
                     if "<ruby" in b["html"]:
                         article["title_html"] = b["html"]
