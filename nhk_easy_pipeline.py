@@ -41,73 +41,92 @@ GODAN_I_TO_U = {"い":"う","き":"く","ぎ":"ぐ","し":"す","ち":"つ","に
 GODAN_A_TO_U = {"わ":"う","か":"く","が":"ぐ","さ":"す","た":"つ","な":"ぬ","ば":"ぶ","ま":"む","ら":"る"}
 
 GRAMMAR_RULES = [
-    {"id": "kedo", "label": "けど / けれど", "explanation": "Съюз за противопоставяне: но / обаче."},
-    {"id": "shikashi", "label": "しかし", "explanation": "Обаче / въпреки това."},
-    {"id": "temo", "label": "〜ても / 〜でも", "explanation": "Дори ако / дори и да."},
-    {"id": "nagara", "label": "〜ながら", "explanation": "Едновременно действие: докато..."},
-    {"id": "tsutsu", "label": "〜つつ", "explanation": "Докато..., в хода на..."},
-    {"id": "aida_ni", "label": "間 / あいだ(に)", "explanation": "Докато / през времето, когато..."},
-    {"id": "uchi_ni", "label": "うちに", "explanation": "Докато все още..., преди да се промени..."},
-    {"id": "kara_reason", "label": "〜から", "explanation": "Причина: защото / понеже."},
-    {"id": "node", "label": "〜ので", "explanation": "Причина: тъй като / понеже."},
-    {"id": "sorede", "label": "それで", "explanation": "И затова / поради това."},
-    {"id": "soshite", "label": "そして", "explanation": "И / и след това."},
-    {"id": "yori", "label": "〜より", "explanation": "Сравнение: по-... от..."},
-    {"id": "hou", "label": "〜方", "explanation": "Страна / начин; използва се и в сравнения."},
-    {"id": "hou_ga_ii", "label": "〜方がいい / 〜方がよい", "explanation": "По-добре е да..."},
-    {"id": "noni", "label": "〜のに", "explanation": "Въпреки че / макар че."},
-    {"id": "you_ni", "label": "〜ように", "explanation": "Така че да..., по начин, че..."},
-    {"id": "tame_ni", "label": "〜ため(に)", "explanation": "За да..., заради..., в името на..."},
-    {"id": "sei_de", "label": "〜せいで", "explanation": "По вина на..., заради (негативно)."},
-    {"id": "okage_de", "label": "〜おかげで", "explanation": "Благодарение на..."},
-    {"id": "rashii", "label": "〜らしい", "explanation": "Изглежда / явно / характерно за."},
-    {"id": "ppoi", "label": "〜っぽい", "explanation": "Прилича на..., има оттенък на..."},
-    {"id": "dame", "label": "だめ", "explanation": "Не става / не бива / забранено е."},
-    {"id": "naranai", "label": "〜ならない", "explanation": "Не бива / не става; в комбинации може да означава задължение."},
-    {"id": "ikenai", "label": "〜いけない", "explanation": "Не бива / не става; в комбинации може да означава задължение."},
-    {"id": "nakereba_naranai", "label": "〜なければならない", "explanation": "Трябва да..."},
-    {"id": "nakereba_ikenai", "label": "〜なければいけない", "explanation": "Трябва да..."},
-    {"id": "nakutewa_naranai", "label": "〜なくてはならない", "explanation": "Трябва да..."},
-    {"id": "tari_tari", "label": "〜たり〜たりする", "explanation": "Правя разни неща като..."},
-    {"id": "dake", "label": "〜だけ", "explanation": "Само / единствено."},
-    {"id": "nomi", "label": "〜のみ", "explanation": "Само / единствено (по-формално)."},
-    {"id": "bakari", "label": "〜ばかり", "explanation": "Само..., все..."},
-    {"id": "shika_nai", "label": "〜しか〜ない", "explanation": "Нищо друго освен..., само..."},
-    {"id": "mou", "label": "もう", "explanation": "Вече."},
-    {"id": "mada", "label": "まだ", "explanation": "Още / все още."},
-    {"id": "mata", "label": "また", "explanation": "Пак / отново / също така."},
-    {"id": "te_ii", "label": "〜ていい", "explanation": "Разрешено е да..."},
-    {"id": "temo_ii", "label": "〜てもいい", "explanation": "Може да... / разрешено е да..."},
-    {"id": "te_miru", "label": "〜てみる", "explanation": "Да пробвам да..."},
-    {"id": "kke", "label": "〜っけ", "explanation": "Беше ли..., как беше..."},
-    {"id": "kana", "label": "〜かな", "explanation": "Чудя се дали..., дали..."},
-    {"id": "kai_dai", "label": "〜かい / 〜だい", "explanation": "Разговорна въпросителна форма."},
-    {"id": "janai", "label": "〜じゃない", "explanation": "Не е ли..., нали..."},
-    {"id": "causative_saseru", "label": "使役 (〜させる / 〜せる)", "explanation": "Каузатив: карам/оставям някого да..."},
-    {"id": "nakute", "label": "〜なくて", "explanation": "Без да..., не и..., понеже не..."},
-    {"id": "naide", "label": "〜ないで", "explanation": "Без да..., не правейки..."},
-    {"id": "zu", "label": "〜ず / 〜ずに", "explanation": "Без да..."},
-    {"id": "te_shimau", "label": "〜てしまう", "explanation": "Завършеност или нежелан резултат."},
-    {"id": "te_oku", "label": "〜ておく", "explanation": "Правя нещо предварително."},
-    {"id": "datte", "label": "だって", "explanation": "Защото..., дори..., дори и..."},
-    {"id": "wake", "label": "〜わけ", "explanation": "Причина / смисъл / следва, че..."},
-    {"id": "hazu", "label": "〜はず", "explanation": "Би трябвало / очаква се."},
-    {"id": "beki", "label": "〜べき", "explanation": "Трябва / редно е."},
-    {"id": "beki_datta", "label": "〜べきだった", "explanation": "Трябвало е да..."},
-    {"id": "beshi", "label": "〜べし", "explanation": "Трябва / следва (книжовно)."},
-    {"id": "mono_da", "label": "〜ものだ", "explanation": "По принцип така е / естествено е / подобава."},
-    {"id": "kamoshirenai", "label": "〜かもしれない", "explanation": "Може би..."},
-    {"id": "kamo", "label": "〜かも", "explanation": "Може би... (разговорно)."},
-    {"id": "koro", "label": "〜ころ", "explanation": "Около даден момент / по времето, когато..."},
-    {"id": "goro", "label": "〜ごろ", "explanation": "Около (час/период)."},
-    {"id": "kurai_gurai", "label": "〜くらい / 〜ぐらい", "explanation": "Около / приблизително / до такава степен."},
-    {"id": "made", "label": "〜まで", "explanation": "До / чак до."},
-    {"id": "kara_made", "label": "〜から〜まで", "explanation": "От... до..."},
-    {"id": "made_ni", "label": "〜までに", "explanation": "До (краен срок)."},
-    {"id": "hodo", "label": "〜ほど", "explanation": "До такава степен / колкото..."},
-    {"id": "sugiru", "label": "〜すぎる", "explanation": "Прекалено / твърде много."},
+    {"id":"kedo","label":"けど / けれど (Clause + けど)","explanation":"Съюз за противопоставяне: но / обаче."},
+    {"id":"shikashi","label":"しかし (sentence connector)","explanation":"Обаче / въпреки това."},
+    {"id":"temo","label":"〜ても / 〜でも (V/A/N + ても・でも)","explanation":"Дори ако / дори и да."},
+    {"id":"nagara","label":"〜ながら (V-ますstem + ながら)","explanation":"Едновременно действие: докато..."},
+    {"id":"tsutsu","label":"〜つつ (V-ますstem + つつ)","explanation":"Докато..., в хода на..."},
+    {"id":"aida_ni","label":"間 / あいだ(に) (Clause/N + 間(に))","explanation":"Докато / през времето, когато..."},
+    {"id":"uchi_ni","label":"うちに (Clause + うちに)","explanation":"Докато все още..., преди да се промени..."},
+    {"id":"kara_reason","label":"〜から (Clause + から)","explanation":"Причина: защото / понеже."},
+    {"id":"node","label":"〜ので (Clause + ので)","explanation":"Причина: тъй като / понеже."},
+    {"id":"de_reason","label":"〜で (N/na-A + で)","explanation":"Причина/основание или средство; маркирано по-консервативно."},
+    {"id":"sorede","label":"それで (sentence connector)","explanation":"И затова / поради това."},
+    {"id":"soshite","label":"そして (sentence connector)","explanation":"И / и след това."},
+    {"id":"yori","label":"〜より (X より Y)","explanation":"Сравнение: по-... от..."},
+    {"id":"hou","label":"〜方 (X の方 / V-辞書形 + 方)","explanation":"Страна / начин; използва се и в сравнения."},
+    {"id":"hou_ga_ii","label":"〜方がいい (V-辞書形 / V-ない形 + 方がいい)","explanation":"По-добре е да..."},
+    {"id":"noni","label":"〜のに (Clause + のに)","explanation":"Въпреки че / макар че."},
+    {"id":"you_ni","label":"〜ように (Clause + ように)","explanation":"Така че да..., по начин, че..."},
+    {"id":"tame_ni","label":"〜ため(に) (N/Clause + ため(に))","explanation":"За да..., заради..., в името на..."},
+    {"id":"sei_de","label":"〜せいで (N/Clause + せいで)","explanation":"По вина на..., заради (негативно)."},
+    {"id":"okage_de","label":"〜おかげで (N/Clause + おかげで)","explanation":"Благодарение на..."},
+    {"id":"mitai","label":"〜みたい (N/Clause + みたい)","explanation":"Изглежда като / сякаш / като че ли."},
+    {"id":"rashii","label":"〜らしい (N/Clause + らしい)","explanation":"Изглежда / явно / характерно за."},
+    {"id":"ppoi","label":"〜っぽい (N stem + っぽい)","explanation":"Прилича на..., има оттенък на..."},
+    {"id":"sou","label":"〜そう (V-ますstem/A-stem + そうだ)","explanation":"Изглежда, че... / на вид..."},
+    {"id":"dame","label":"だめ (predicate)","explanation":"Не става / не бива / забранено е."},
+    {"id":"naranai","label":"〜ならない (…てはならない / なければならない)","explanation":"Не бива / не става; в комбинации може да означава задължение."},
+    {"id":"ikenai","label":"〜いけない (…てはいけない / なければいけない)","explanation":"Не бива / не става; в комбинации може да означава задължение."},
+    {"id":"nakereba_naranai","label":"〜なければならない (V-ない + ければならない)","explanation":"Трябва да..."},
+    {"id":"nakereba_ikenai","label":"〜なければいけない (V-ない + ければいけない)","explanation":"Трябва да..."},
+    {"id":"nakutewa_naranai","label":"〜なくてはならない (V-ない + くてはならない)","explanation":"Трябва да..."},
+    {"id":"tari_tari","label":"〜たり〜たりする (V-た + り ... V-た + りする)","explanation":"Правя разни неща като..."},
+    {"id":"dake","label":"〜だけ (X + だけ)","explanation":"Само / единствено."},
+    {"id":"nomi","label":"〜のみ (X + のみ)","explanation":"Само / единствено (по-формално)."},
+    {"id":"bakari","label":"〜ばかり (X + ばかり)","explanation":"Само..., все..."},
+    {"id":"shika_nai","label":"〜しか〜ない (X + しか + negative)","explanation":"Нищо друго освен..., само..."},
+    {"id":"mou","label":"もう (adverb)","explanation":"Вече."},
+    {"id":"mada","label":"まだ (adverb)","explanation":"Още / все още."},
+    {"id":"mata","label":"また (adverb)","explanation":"Пак / отново / също така."},
+    {"id":"te_ii","label":"〜ていい / 〜でいい (V-te + いい)","explanation":"Разрешено е да... / приемливо е да..."},
+    {"id":"temo_ii","label":"〜てもいい / 〜でもいい (V-te + も + いい)","explanation":"Може да... / разрешено е да..."},
+    {"id":"to_suru","label":"〜とする (Clause + とする)","explanation":"Да приемем, че... / да считаме за... / правя като..."},
+    {"id":"you_to_suru","label":"〜ようとする (V-意向形 + とする)","explanation":"Да се опитам да започна / на път да..."},
+    {"id":"te_miru","label":"〜てみる (V-te + みる)","explanation":"Да пробвам да..."},
+    {"id":"kke","label":"〜っけ (sentence-final)","explanation":"Беше ли..., как беше..."},
+    {"id":"kana","label":"〜かな (sentence-final)","explanation":"Чудя се дали..., дали..."},
+    {"id":"kai_dai","label":"〜かい / 〜だい (sentence-final)","explanation":"Разговорна въпросителна форма."},
+    {"id":"janai","label":"〜じゃない (sentence-final / tag)","explanation":"Не е ли..., нали..."},
+    {"id":"jan","label":"〜じゃん (sentence-final)","explanation":"Нали / ето че / не е ли така."},
+    {"id":"causative_saseru","label":"使役 〜させる / 〜せる (V causative)","explanation":"Каузатив: карам/оставям някого да..."},
+    {"id":"naru","label":"〜なる (N/Adj + になる)","explanation":"Става / оказва се / превръща се."},
+    {"id":"adverb_suru","label":"<наречие> + する (Adv + する)","explanation":"Наречие плюс する."},
+    {"id":"jibun","label":"自分 (reflexive marker)","explanation":"Себе си / собствен."},
+    {"id":"nakute","label":"〜なくて (V/A-ない + くて)","explanation":"Без да..., не и..., понеже не..."},
+    {"id":"naide","label":"〜ないで (V-ない + で)","explanation":"Без да..., не правейки..."},
+    {"id":"zu","label":"〜ず / 〜ずに (V-ない stem + ず(に))","explanation":"Без да..."},
+    {"id":"te_shimau","label":"〜てしまう / 〜でしまう (V-te + しまう)","explanation":"Завършеност или нежелан резултат."},
+    {"id":"te_oku","label":"〜ておく / 〜でおく (V-te + おく)","explanation":"Правя нещо предварително."},
+    {"id":"te_iku","label":"〜ていく / 〜でいく (V-te + いく)","explanation":"Посока напред / развитие занапред."},
+    {"id":"te_kuru","label":"〜てくる / 〜でくる (V-te + くる)","explanation":"Идване / развитие към говорещия / до настоящето."},
+    {"id":"datte","label":"だって (connector / quotative)","explanation":"Защото..., дори..., цитирам / оправдавам се."},
+    {"id":"wake","label":"〜わけ (N/Clause + わけ)","explanation":"Причина / смисъл / следва, че..."},
+    {"id":"hazu","label":"〜はず (Clause + はずだ)","explanation":"Би трябвало / очаква се."},
+    {"id":"beki","label":"〜べき (V-dictionary + べき)","explanation":"Трябва / редно е."},
+    {"id":"beki_datta","label":"〜べきだった (V-dictionary + べきだった)","explanation":"Трябвало е да..."},
+    {"id":"beshi","label":"〜べし (classical / written)","explanation":"Трябва / следва (книжовно)."},
+    {"id":"mono_da","label":"〜ものだ (Clause + ものだ)","explanation":"По принцип така е / естествено е / подобава."},
+    {"id":"kamoshirenai","label":"〜かもしれない (Clause + かもしれない)","explanation":"Може би..."},
+    {"id":"kamo","label":"〜かも (Clause + かも)","explanation":"Може би... (разговорно)."},
+    {"id":"koro","label":"〜ころ (time marker)","explanation":"Около даден момент / по времето, когато..."},
+    {"id":"goro","label":"〜ごろ (time marker)","explanation":"Около (час/период)."},
+    {"id":"kurai_gurai","label":"〜くらい / 〜ぐらい (amount / degree)","explanation":"Около / приблизително / до такава степен."},
+    {"id":"made","label":"〜まで (limit marker)","explanation":"До / чак до."},
+    {"id":"kara_made","label":"〜から〜まで (from ... to ...)","explanation":"От... до..."},
+    {"id":"made_ni","label":"〜までに (deadline)","explanation":"До (краен срок)."},
+    {"id":"hodo","label":"〜ほど (degree / extent)","explanation":"До такава степен / колкото..."},
+    {"id":"sugiru","label":"〜すぎる (V/A-stem + すぎる)","explanation":"Прекалено / твърде много."},
+    {"id":"shichimi","label":"七味（しちみ） (lexical item)","explanation":"Лексикална единица: „седем вкуса“ / смес от подправки."},
 ]
 GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
+
+
+def grammar_hit(rule_id: str):
+    rule = GRAMMAR_RULES_BY_ID.get(rule_id)
+    if not rule:
+        return None
+    return {"label": rule["label"], "explanation": rule["explanation"]}
 
 
 def translate_text(text: str, dest: str = "bg") -> str:
@@ -469,39 +488,74 @@ def detect_grammar_in_sentence(sentence: str):
             ("uchi_ni", r"うちに"),
             ("kara_reason", r"から"),
             ("node", r"ので"),
+            ("de_reason", r"で"),
             ("sorede", r"それで"),
             ("soshite", r"そして"),
             ("yori", r"より"),
             ("hou_ga_ii", r"(方がいい|方がよい|ほうがいい|ほうがよい)"),
+            ("hou", r"(方|ほう)"),
             ("noni", r"のに"),
             ("you_ni", r"ように"),
             ("tame_ni", r"ために"),
             ("sei_de", r"せいで"),
             ("okage_de", r"おかげで"),
+            ("mitai", r"みたい"),
             ("rashii", r"らしい"),
             ("ppoi", r"っぽい"),
+            ("sou", r"そう"),
+            ("dame", r"だめ"),
+            ("naranai", r"ならない"),
+            ("ikenai", r"いけない"),
             ("nakereba_naranai", r"なければならない"),
             ("nakereba_ikenai", r"なければいけない"),
             ("nakutewa_naranai", r"なくてはならない"),
             ("tari_tari", r"たり.*たり"),
+            ("dake", r"だけ"),
+            ("nomi", r"のみ"),
+            ("bakari", r"ばかり"),
+            ("shika_nai", r"しか.*ない"),
+            ("mou", r"もう"),
+            ("mada", r"まだ"),
+            ("mata", r"また"),
             ("te_ii", r"(ていい|でいい)"),
             ("temo_ii", r"(てもいい|でもいい)"),
+            ("to_suru", r"とする"),
+            ("you_to_suru", r"ようとする"),
             ("te_miru", r"(てみる|でみる)"),
             ("kke", r"っけ"),
             ("kana", r"かな"),
+            ("kai_dai", r"(かい|だい)"),
             ("janai", r"じゃない"),
+            ("jan", r"じゃん"),
+            ("causative_saseru", r"(させる|せる)"),
+            ("naru", r"なる"),
+            ("adverb_suru", r"する"),
+            ("jibun", r"自分"),
+            ("nakute", r"なくて"),
+            ("naide", r"ないで"),
+            ("zu", r"(ず|ずに)"),
             ("te_shimau", r"(てしま|でしま)"),
             ("te_oku", r"(ておく|でおく)"),
+            ("te_iku", r"(ていく|でいく)"),
+            ("te_kuru", r"(てくる|でくる)"),
+            ("datte", r"だって"),
             ("wake", r"わけ"),
             ("hazu", r"はず"),
+            ("beki_datta", r"べきだった"),
             ("beki", r"べき"),
+            ("beshi", r"べし"),
+            ("mono_da", r"ものだ"),
             ("kamoshirenai", r"かもしれない"),
             ("kamo", r"かも"),
+            ("koro", r"ころ"),
+            ("goro", r"ごろ"),
+            ("kurai_gurai", r"(くらい|ぐらい)"),
             ("made_ni", r"までに"),
             ("kara_made", r"から.*まで"),
             ("made", r"まで"),
             ("hodo", r"ほど"),
             ("sugiru", r"すぎる"),
+            ("shichimi", r"七味"),
         ]
         for rid, pat in fallback:
             if re.search(pat, sentence):
@@ -520,6 +574,8 @@ def detect_grammar_in_sentence(sentence: str):
     for i in range(n):
         s = surfaces[i]
         l = lemmas[i]
+        feat = token_feature(tokens[i])
+        pos1 = getattr(feat, "pos1", "") if feat is not None else ""
 
         if s in {"けど", "けれど", "けれども"}:
             found.add("kedo")
@@ -533,22 +589,29 @@ def detect_grammar_in_sentence(sentence: str):
             found.add("tsutsu")
         if s in {"間", "あいだ"}:
             found.add("aida_ni")
+            if _s(tokens, i + 1) == "に":
+                found.add("aida_ni")
         if s == "うち" and _s(tokens, i + 1) == "に":
             found.add("uchi_ni")
+
         if s == "から":
             found.add("kara_reason")
         if s == "ので":
             found.add("node")
+        if s == "で" and i > 0 and i + 1 < n:
+            found.add("de_reason")
         if s == "それで":
             found.add("sorede")
         if s == "そして":
             found.add("soshite")
+
         if s == "より":
             found.add("yori")
         if s in {"方", "ほう"}:
             found.add("hou")
             if _s(tokens, i + 1) == "が" and _s(tokens, i + 2) in {"いい", "よい", "良い"}:
                 found.add("hou_ga_ii")
+
         if s == "のに":
             found.add("noni")
         if s == "よう" and _s(tokens, i + 1) == "に":
@@ -559,10 +622,16 @@ def detect_grammar_in_sentence(sentence: str):
             found.add("sei_de")
         if s == "おかげ" and _s(tokens, i + 1) == "で":
             found.add("okage_de")
+
+        if s == "みたい":
+            found.add("mitai")
         if s == "らしい":
             found.add("rashii")
         if s == "っぽい":
             found.add("ppoi")
+        if s == "そう":
+            found.add("sou")
+
         if s == "だめ":
             found.add("dame")
         if s == "なら" and _s(tokens, i + 1) == "ない":
@@ -576,8 +645,10 @@ def detect_grammar_in_sentence(sentence: str):
                 found.add("nakereba_ikenai")
         if s == "なく" and _seq(tokens, i + 1, i + 5) == ["て", "は", "なら", "ない"]:
             found.add("nakutewa_naranai")
+
         if s == "たり" and surfaces.count("たり") >= 2:
             found.add("tari_tari")
+
         if s == "だけ":
             found.add("dake")
         if s == "のみ":
@@ -586,20 +657,28 @@ def detect_grammar_in_sentence(sentence: str):
             found.add("bakari")
         if s == "しか" and "ない" in surfaces[i + 1:]:
             found.add("shika_nai")
+
         if s == "もう":
             found.add("mou")
         if s == "まだ":
             found.add("mada")
         if s == "また":
             found.add("mata")
+
         if (s in {"て", "で"} and _s(tokens, i + 1) in {"いい", "よい", "良い"}) or s in {"ていい", "でいい"}:
             found.add("te_ii")
         if s in {"ても", "でも"} and _s(tokens, i + 1) in {"いい", "よい", "良い"}:
             found.add("temo_ii")
         if s in {"て", "で"} and _s(tokens, i + 1) == "も" and _s(tokens, i + 2) in {"いい", "よい", "良い"}:
             found.add("temo_ii")
+
+        if s == "と" and _l(tokens, i + 1) in {"為る", "する"}:
+            found.add("to_suru")
+        if s == "よう" and _s(tokens, i + 1) == "と" and _l(tokens, i + 2) in {"為る", "する"}:
+            found.add("you_to_suru")
         if s in {"て", "で"} and _l(tokens, i + 1) in {"見る", "みる"}:
             found.add("te_miru")
+
         if s == "っけ":
             found.add("kke")
         if s == "かな":
@@ -608,18 +687,37 @@ def detect_grammar_in_sentence(sentence: str):
             found.add("kai_dai")
         if s == "じゃ" and _s(tokens, i + 1) == "ない":
             found.add("janai")
+        if s == "じゃん":
+            found.add("jan")
+
         if "させ" in s or l in {"させる", "せる"}:
             found.add("causative_saseru")
+
+        if l in {"成る", "なる"} or s == "なる":
+            found.add("naru")
+
+        if pos1 == "副詞" and _l(tokens, i + 1) in {"為る", "する"}:
+            found.add("adverb_suru")
+
+        if s == "自分":
+            found.add("jibun")
+
         if s == "なく" and _s(tokens, i + 1) == "て":
             found.add("nakute")
         if s == "ない" and _s(tokens, i + 1) == "で":
             found.add("naide")
         if s in {"ず", "ずに"} or (s == "ず" and _s(tokens, i + 1) == "に"):
             found.add("zu")
+
         if s in {"て", "で"} and _l(tokens, i + 1) in {"仕舞う", "しまう"}:
             found.add("te_shimau")
         if s in {"て", "で"} and _l(tokens, i + 1) in {"置く", "おく"}:
             found.add("te_oku")
+        if s in {"て", "で"} and _l(tokens, i + 1) in {"行く", "いく"}:
+            found.add("te_iku")
+        if s in {"て", "で"} and _l(tokens, i + 1) in {"来る", "くる"}:
+            found.add("te_kuru")
+
         if s == "だって":
             found.add("datte")
         if s == "わけ":
@@ -634,10 +732,12 @@ def detect_grammar_in_sentence(sentence: str):
             found.add("beshi")
         if s == "もの" and _s(tokens, i + 1) == "だ":
             found.add("mono_da")
+
         if s == "かも" and _s(tokens, i + 1) == "しれ" and _s(tokens, i + 2) == "ない":
             found.add("kamoshirenai")
         elif s == "かも":
             found.add("kamo")
+
         if s == "ころ":
             found.add("koro")
         if s == "ごろ":
@@ -654,6 +754,9 @@ def detect_grammar_in_sentence(sentence: str):
             found.add("hodo")
         if l == "過ぎる" or s == "すぎる":
             found.add("sugiru")
+
+        if s == "七味":
+            found.add("shichimi")
 
     return found
 
@@ -682,8 +785,7 @@ def extract_grammar_points(articles):
             for sentence in split_japanese_sentences(block.get("text", "")):
                 for rule_id in detect_grammar_in_sentence(sentence):
                     if rule_id not in found and rule_id in GRAMMAR_RULES_BY_ID:
-                        rule = GRAMMAR_RULES_BY_ID[rule_id]
-                        found[rule_id] = {"label": rule["label"], "explanation": rule["explanation"]}
+                        found[rule_id] = grammar_hit(rule_id)
 
     ordered = []
     for rule in GRAMMAR_RULES:
