@@ -134,8 +134,10 @@ def load_word_glossary():
 def get_jmdict_db_path():
     candidates = [
         os.environ.get("JMDICT_DB", "").strip(),
-        "jmdict_mini.db",
-        os.path.join(os.path.dirname(__file__), "jmdict_mini.db"),
+        "data/jmdict.db",
+        "jmdict.db",
+        os.path.join(os.path.dirname(__file__), "data", "jmdict.db"),
+        os.path.join(os.path.dirname(__file__), "jmdict.db"),
     ]
     for path in candidates:
         if path and os.path.exists(path):
@@ -208,56 +210,55 @@ def lookup_dictionary_meaning(word: str, reading: str = "") -> str:
     return ""
 
 
-def build_mini_jmdict_db(db_path="jmdict_mini.db"):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("DROP TABLE IF EXISTS entries")
-    cur.execute("CREATE TABLE entries (surface TEXT, reading TEXT, gloss TEXT, priority INTEGER DEFAULT 0)")
-    seed = [
-        ("株式市場", "かぶしきしじょう", "фондов пазар", 100),
-        ("株", "かぶ", "акция", 100),
-        ("物価", "ぶっか", "цени; ценово равнище", 95),
-        ("経済", "けいざい", "икономика", 95),
-        ("世界経済", "せかいけいざい", "световна икономика", 100),
-        ("石油", "せきゆ", "петрол", 95),
-        ("石油価格", "せきゆかかく", "цена на петрола", 100),
-        ("価格", "かかく", "цена", 95),
-        ("平均", "へいきん", "средна стойност; средно", 90),
-        ("心配", "しんぱい", "безпокойство; тревога", 90),
-        ("影響", "えいきょう", "влияние; ефект", 90),
-        ("地震", "じしん", "земетресение", 95),
-        ("政府", "せいふ", "правителство", 95),
-        ("会社", "かいしゃ", "компания", 95),
-        ("企業", "きぎょう", "предприятие; компания", 90),
-        ("発表", "はっぴょう", "обявяване; съобщение", 90),
-        ("続く", "つづく", "продължавам; продължава", 90),
-        ("売る", "うる", "продавам", 90),
-        ("買う", "かう", "купувам", 90),
-        ("増える", "ふえる", "увеличавам се", 90),
-        ("減る", "へる", "намалявам", 90),
-        ("上がる", "あがる", "покачвам се", 90),
-        ("下がる", "さがる", "спадам; понижавам се", 90),
-        ("必要", "ひつよう", "необходим", 90),
-        ("安全", "あんぜん", "безопасност; безопасен", 90),
-        ("問題", "もんだい", "проблем; въпрос", 90),
-        ("原因", "げんいん", "причина", 90),
-        ("結果", "けっか", "резултат", 90),
-        ("対策", "たいさく", "мярка; противодействие", 90),
-        ("病院", "びょういん", "болница", 90),
-        ("学校", "がっこう", "училище", 90),
-        ("大学", "だいがく", "университет", 90),
-        ("学生", "がくせい", "студент; ученик", 90),
-        ("東京", "とうきょう", "Токио", 90),
-        ("日本", "にほん", "Япония", 90),
-        ("一番", "いちばん", "най; номер едно; най-много", 100),
-        ("新しい", "あたらしい", "нов", 95),
-        ("トップ", "とっぷ", "връх; водещо място; топ", 80),
-        ("力", "ちから", "сила", 90),
-    ]
-    cur.executemany("INSERT INTO entries(surface, reading, gloss, priority) VALUES (?, ?, ?, ?)", seed)
-    conn.commit()
-    conn.close()
-    return db_path
+
+def lookup_dictionary_entry(word: str, reading: str = ""):
+    glossary = load_word_glossary()
+    if word in glossary:
+        return {"gloss": glossary[word], "reading": reading}
+    if reading and reading in glossary:
+        return {"gloss": glossary[reading], "reading": reading}
+
+    conn = get_jmdict_connection()
+    if conn is None:
+        return None
+
+    queries = []
+    if word:
+        queries.append(("surface", word))
+        lemma = to_dictionary_form(word)
+        if lemma and lemma != word:
+            queries.append(("surface", lemma))
+    if reading:
+        queries.append(("reading", reading))
+
+    seen = set()
+    for mode, value in queries:
+        if not value or (mode, value) in seen:
+            continue
+        seen.add((mode, value))
+        try:
+            if mode == "surface":
+                rows = conn.execute(
+                    "SELECT surface, reading, gloss, pos, priority FROM entries WHERE surface = ? ORDER BY priority DESC, length(surface) DESC LIMIT 5",
+                    (value,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT surface, reading, gloss, pos, priority FROM entries WHERE reading = ? ORDER BY priority DESC, length(surface) DESC LIMIT 5",
+                    (value,),
+                ).fetchall()
+            if rows:
+                row = rows[0]
+                return {
+                    "surface": (row["surface"] or "").strip(),
+                    "reading": (row["reading"] or "").strip(),
+                    "gloss": (row["gloss"] or "").strip(),
+                    "pos": (row["pos"] or "").strip(),
+                    "priority": int(row["priority"] or 0),
+                }
+        except Exception:
+            continue
+    return None
 
 
 def merge_compound_nouns(tokens):
@@ -310,6 +311,7 @@ def translate_text(text: str, dest: str = "bg") -> str:
     except Exception:
         return ""
 
+
 def translate_word(word: str, reading: str = "") -> str:
     word = (word or "").strip()
     if not word:
@@ -317,10 +319,13 @@ def translate_word(word: str, reading: str = "") -> str:
     cache_key = ("word", word, reading)
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
-    dict_result = lookup_dictionary_meaning(word, reading=reading)
-    if dict_result:
-        _TRANSLATION_CACHE[cache_key] = dict_result
-        return dict_result
+
+    entry = lookup_dictionary_entry(word, reading=reading)
+    if entry and entry.get("gloss"):
+        result = entry["gloss"]
+        _TRANSLATION_CACHE[cache_key] = result
+        return result
+
     result = translate_text(word, dest="bg")
     _TRANSLATION_CACHE[cache_key] = result
     return result
@@ -1154,12 +1159,6 @@ def main():
     output_dir = os.path.dirname(args.output)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
-
-    if not get_jmdict_db_path():
-        try:
-            build_mini_jmdict_db(os.path.join(output_dir if output_dir else ".", "jmdict_mini.db"))
-        except Exception:
-            pass
 
     articles = get_articles(args.count)
     if not articles:
