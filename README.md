@@ -6,8 +6,6 @@
 ![Platform](https://img.shields.io/badge/platform-Web-blue)
 ![PWA](https://img.shields.io/badge/PWA-supported-orange)
 
-[Отвори приложението](https://vebaev.github.io/NHK/)
-
 </p>
 
 # NHK Easy Японски новини
