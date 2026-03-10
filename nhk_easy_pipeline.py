@@ -1145,7 +1145,14 @@ ruby rt{font-size:.68em;color:var(--muted)}
             if block["translation"]:
                 html += f"<div class='bg-block'>{block['translation']}</div>"
         html += "</article>"
-    html += f"<div class='downloads'><a class='download-btn' href='{anki_apkg_filename}' download>Свали Anki карти (.apkg)</a><a class='download-btn' href='{anki_filename}' download>Свали TSV backup</a></div>"
+    html += (
+        f"<div class='downloads'>"
+        f"<a class='download-btn' href='{anki_apkg_filename}' download>Свали Anki речник (.apkg)</a>"
+        f"<a class='download-btn' href='{anki_filename}' download>Свали речник TSV</a>"
+        f"<a class='download-btn' href='{DEFAULT_GRAMMAR_APKG_FILENAME}' download>Свали Anki граматика (.apkg)</a>"
+        f"<a class='download-btn' href='{DEFAULT_GRAMMAR_TSV_FILENAME}' download>Свали граматика TSV</a>"
+        f"</div>"
+    )
     if grammar_points:
         html += "<section class='grammar'><div class='section-title'>Граматика в текстовете</div><ul>"
         for g in grammar_points:
