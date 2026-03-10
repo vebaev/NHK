@@ -560,23 +560,49 @@ def is_single_kanji_word(word: str) -> bool:
     return bool(re.fullmatch(r"[一-龯]", (word or "").strip()))
 def is_known_vocab_item(word: str, known_items):
     return word in known_items or f"v:{word}" in known_items
+def is_valid_anki_vocab_item(word: str, reading: str = ""):
+    word = (word or "").strip()
+    reading = (reading or "").strip()
+    if not word or is_suspicious_vocab_word(word) or is_single_kanji_word(word):
+        return None
+    entry = lookup_dictionary_entry(word, reading=reading)
+    if not entry or not (entry.get("gloss") or "").strip():
+        return None
+    canonical_word = (entry.get("surface") or word).strip() or word
+    canonical_reading = (entry.get("reading") or reading).strip() or reading
+    if is_suspicious_vocab_word(canonical_word) or is_single_kanji_word(canonical_word):
+        return None
+    return {
+        "word": canonical_word,
+        "reading": canonical_reading,
+        "meaning": (entry.get("gloss") or "").strip(),
+    }
+
 def build_vocab_anki_cards(articles):
     cards = []
     seen_words = set()
 
     for article in articles:
         for item in article.get("vocab", []):
-            word = (item.get("word") or "").strip()
-            reading = (item.get("reading") or "").strip()
-            meaning = (item.get("meaning") or "").strip()
+            validated = is_valid_anki_vocab_item(
+                item.get("word", ""),
+                item.get("reading", ""),
+            )
+            if not validated:
+                continue
 
-            if not word or not meaning or word in seen_words:
+            word = validated["word"]
+            reading = validated["reading"]
+            meaning = validated["meaning"]
+
+            if word in seen_words:
                 continue
 
             seen_words.add(word)
             front = f"<ruby>{word}<rt>{reading}</rt></ruby>" if reading and reading != word else word
             cards.append((front, meaning))
 
+    cards.sort(key=lambda x: x[0])
     return cards
 
 
