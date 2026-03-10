@@ -1,0 +1,4 @@
+- name: Download dictionary
+  run: |
+    mkdir -p data
+    curl -L https://github.com/vebaev/NHK/releases/download/dict/jmdict.db -o data/jmdict.db
