@@ -28,6 +28,8 @@ NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
 DEFAULT_ANKI_FILENAME = "anki_cards.tsv"
 DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_vocab.apkg"
+DEFAULT_GRAMMAR_TSV_FILENAME = "anki_grammar.tsv"
+DEFAULT_GRAMMAR_APKG_FILENAME = "nhk_easy_grammar.apkg"
 DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
 
 translator = Translator()
@@ -553,33 +555,39 @@ def is_single_kanji_word(word: str) -> bool:
     return bool(re.fullmatch(r"[一-龯]", (word or "").strip()))
 def is_known_vocab_item(word: str, known_items):
     return word in known_items or f"v:{word}" in known_items
-def build_anki_cards(articles, grammar_points=None, seen_items=None):
+def build_vocab_anki_cards(articles):
     cards = []
-    seen = set()
-    known = set(seen_items or [])
-    newly_added_items = set()
+    seen_words = set()
+
     for article in articles:
         for item in article.get("vocab", []):
             word = (item.get("word") or "").strip()
             reading = (item.get("reading") or "").strip()
             meaning = (item.get("meaning") or "").strip()
-            if not word or not meaning or is_single_kanji_word(word) or word in seen or is_known_vocab_item(word, known):
+
+            if not word or not meaning or word in seen_words:
                 continue
-            seen.add(word)
-            newly_added_items.add(f"v:{word}")
+
+            seen_words.add(word)
             front = f"<ruby>{word}<rt>{reading}</rt></ruby>" if reading and reading != word else word
             cards.append((front, meaning))
+
+    return cards
+
+
+def build_grammar_anki_cards(grammar_points):
+    cards = []
+    seen_labels = set()
+
     for g in grammar_points or []:
         label = (g.get("label") or "").strip()
         explanation = (g.get("explanation") or "").strip()
-        if not label or not explanation:
+        if not label or not explanation or label in seen_labels:
             continue
-        grammar_key = f"g:{label}"
-        if grammar_key in known:
-            continue
-        newly_added_items.add(grammar_key)
-        cards.append((f"Граматика: {label}", explanation))
-    return cards, newly_added_items
+        seen_labels.add(label)
+        cards.append((label, explanation))
+
+    return cards
 def load_seen_words(path):
     if not os.path.exists(path):
         return set()
@@ -621,10 +629,23 @@ def build_anki_apkg(cards, apkg_path, deck_name="NHK Easy Vocabulary"):
     if genanki is None:
         print("genanki is not installed; skipping .apkg generation")
         return False
-    model = genanki.Model(stable_int_id("nhk_easy_vocab_model"), "NHK Easy Vocab Model", fields=[{"name": "Front"}, {"name": "Back"}], templates=[{"name": "Card 1", "qfmt": "<div class='jp-word'>{{Front}}</div>", "afmt": "<div class='jp-word'>{{Front}}</div><hr id='answer'><div class='bg-meaning'>{{Back}}</div>"}], css=".card {font-family: Arial, sans-serif; font-size: 25px; text-align: center; color: black; background-color: white;}.jp-word {font-size: 31px;}.bg-meaning {font-size: 25px;}.jp-word ruby rt {font-size: 14px;}")
-    deck = genanki.Deck(stable_int_id("nhk_easy_vocab_deck"), deck_name)
+
+    model = genanki.Model(
+        stable_int_id("nhk_easy_vocab_model_" + deck_name),
+        "NHK Easy Card Model " + deck_name,
+        fields=[{"name": "Front"}, {"name": "Back"}],
+        templates=[{
+            "name": "Card 1",
+            "qfmt": "<div class='jp-word'>{{Front}}</div>",
+            "afmt": "<div class='jp-word'>{{Front}}</div><hr id='answer'><div class='bg-meaning'>{{Back}}</div>",
+        }],
+        css=".card {font-family: Arial, sans-serif; font-size: 25px; text-align: center; color: black; background-color: white;}.jp-word {font-size: 31px;}.bg-meaning {font-size: 25px;}.jp-word ruby rt {font-size: 14px;}",
+    )
+
+    deck = genanki.Deck(stable_int_id("nhk_easy_vocab_deck_" + deck_name), deck_name)
     for front, back in cards:
-        deck.add_note(genanki.Note(model=model, fields=[front, back], guid=uuid.uuid4().hex))
+        deck.add_note(genanki.Note(model=model, fields=[front, back], guid=genanki.guid_for(front, back)))
+
     genanki.Package(deck).write_to_file(apkg_path)
     return True
 def split_japanese_sentences(text: str):
@@ -1146,26 +1167,40 @@ def main():
 
     grammar_points = extract_grammar_points(articles)
 
-    anki_filename = DEFAULT_ANKI_FILENAME
-    anki_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
+    vocab_tsv_filename = DEFAULT_ANKI_FILENAME
+    vocab_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
+    grammar_tsv_filename = DEFAULT_GRAMMAR_TSV_FILENAME
+    grammar_apkg_filename = DEFAULT_GRAMMAR_APKG_FILENAME
     anki_seen_words_filename = DEFAULT_ANKI_SEEN_WORDS_FILENAME
+
     if output_dir:
-        anki_path = os.path.join(output_dir, anki_filename)
-        anki_apkg_path = os.path.join(output_dir, anki_apkg_filename)
+        vocab_tsv_path = os.path.join(output_dir, vocab_tsv_filename)
+        vocab_apkg_path = os.path.join(output_dir, vocab_apkg_filename)
+        grammar_tsv_path = os.path.join(output_dir, grammar_tsv_filename)
+        grammar_apkg_path = os.path.join(output_dir, grammar_apkg_filename)
         anki_seen_words_path = os.path.join(output_dir, anki_seen_words_filename)
     else:
-        anki_path = anki_filename
-        anki_apkg_path = anki_apkg_filename
+        vocab_tsv_path = vocab_tsv_filename
+        vocab_apkg_path = vocab_apkg_filename
+        grammar_tsv_path = grammar_tsv_filename
+        grammar_apkg_path = grammar_apkg_filename
         anki_seen_words_path = anki_seen_words_filename
 
     seen_words = load_seen_words(anki_seen_words_path)
     add_known_progress_to_articles(articles, seen_words)
-    anki_cards, newly_added_words = build_anki_cards(articles, grammar_points=grammar_points, seen_items=seen_words)
-    save_anki_tsv(anki_cards, anki_path)
-    build_anki_apkg(anki_cards, anki_apkg_path)
-    save_seen_words(anki_seen_words_path, seen_words | newly_added_words)
 
-    html = build_html(articles, anki_filename=anki_filename, anki_apkg_filename=anki_apkg_filename, grammar_points=grammar_points)
+    vocab_cards = build_vocab_anki_cards(articles)
+    grammar_cards = build_grammar_anki_cards(grammar_points)
+
+    save_anki_tsv(vocab_cards, vocab_tsv_path)
+    save_anki_tsv(grammar_cards, grammar_tsv_path)
+
+    build_anki_apkg(vocab_cards, vocab_apkg_path, deck_name="NHK Easy Vocabulary")
+    build_anki_apkg(grammar_cards, grammar_apkg_path, deck_name="NHK Easy Grammar")
+
+    save_seen_words(anki_seen_words_path, seen_words)
+
+    html = build_html(articles, anki_filename=vocab_tsv_filename, anki_apkg_filename=vocab_apkg_filename, grammar_points=grammar_points)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
