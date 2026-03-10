@@ -9,7 +9,7 @@ import uuid
 from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 from googletrans import Translator
 
 try:
@@ -21,7 +21,6 @@ try:
     import genanki
 except Exception:
     genanki = None
-
 
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
@@ -35,6 +34,7 @@ DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
 _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _MECAB_TAGGER = None
+_WORD_GLOSSARY = None
 
 PARTICLE_PREFIXES = ("が", "を", "に", "で", "は", "と", "へ", "や", "も", "の")
 GODAN_I_TO_U = {"い":"う","き":"く","ぎ":"ぐ","し":"す","ち":"つ","に":"ぬ","び":"ぶ","み":"む","り":"る"}
@@ -109,26 +109,37 @@ GRAMMAR_RULES = [
 ]
 GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
 
+def load_word_glossary():
+    global _WORD_GLOSSARY
+    if _WORD_GLOSSARY is not None:
+        return _WORD_GLOSSARY
+    candidates = ["glossary_overrides.json", os.path.join(os.path.dirname(__file__), "glossary_overrides.json")]
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    _WORD_GLOSSARY = {str(k).strip(): str(v).strip() for k, v in data.items() if str(k).strip()}
+                    return _WORD_GLOSSARY
+            except Exception:
+                pass
+    _WORD_GLOSSARY = {}
+    return _WORD_GLOSSARY
 
 def translate_text(text: str, dest: str = "bg") -> str:
     text = (text or "").strip()
     if not text:
         return ""
-    cache_key = (text, dest, bool(DEEPL_API_KEY))
+    cache_key = ("text", text, dest, bool(DEEPL_API_KEY))
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
-
     if DEEPL_API_KEY:
         try:
             deepl_url = "https://api-free.deepl.com/v2/translate"
             if not DEEPL_API_KEY.endswith(":fx"):
                 deepl_url = "https://api.deepl.com/v2/translate"
-            resp = requests.post(
-                deepl_url,
-                headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"},
-                data={"text": text, "target_lang": dest.upper()},
-                timeout=20,
-            )
+            resp = requests.post(deepl_url, headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"}, data={"text": text, "target_lang": dest.upper()}, timeout=20)
             resp.raise_for_status()
             data = resp.json()
             translations = data.get("translations") or []
@@ -139,7 +150,6 @@ def translate_text(text: str, dest: str = "bg") -> str:
                 return result
         except Exception:
             pass
-
     try:
         result = translator.translate(text, dest=dest).text
         _TRANSLATION_STATS["google"] += 1
@@ -148,6 +158,21 @@ def translate_text(text: str, dest: str = "bg") -> str:
     except Exception:
         return ""
 
+def translate_word(word: str, reading: str = "") -> str:
+    word = (word or "").strip()
+    if not word:
+        return ""
+    glossary = load_word_glossary()
+    if word in glossary:
+        return glossary[word]
+    if reading and reading in glossary:
+        return glossary[reading]
+    cache_key = ("word", word, reading)
+    if cache_key in _TRANSLATION_CACHE:
+        return _TRANSLATION_CACHE[cache_key]
+    result = translate_text(word, dest="bg")
+    _TRANSLATION_CACHE[cache_key] = result
+    return result
 
 def get_article_blocks(content):
     blocks = []
@@ -157,7 +182,6 @@ def get_article_blocks(content):
             continue
         blocks.append({"text": txt, "html": "".join(str(x) for x in el.contents).strip()})
     return blocks
-
 
 def get_mecab_tagger():
     global _MECAB_TAGGER
@@ -171,15 +195,10 @@ def get_mecab_tagger():
         _MECAB_TAGGER = None
     return _MECAB_TAGGER
 
-
 def token_feature(token):
     return getattr(token, "feature", None)
-
-
 def token_surface(token) -> str:
     return getattr(token, "surface", "") or ""
-
-
 def token_lemma(token) -> str:
     feat = token_feature(token)
     if feat is None:
@@ -189,14 +208,25 @@ def token_lemma(token) -> str:
         if value:
             return value.strip()
     return ""
-
-
+def feature_reading(token) -> str:
+    feat = token_feature(token)
+    if feat is None:
+        return ""
+    for name in ("kana", "pron", "reading", "pronBase"):
+        value = getattr(feat, name, "") or ""
+        if value and value != "*":
+            return value.strip()
+    return ""
+def normalize_katakana_to_hiragana(text: str) -> str:
+    result = []
+    for ch in text or "":
+        code = ord(ch)
+        result.append(chr(code - 0x60) if 0x30A1 <= code <= 0x30F6 else ch)
+    return "".join(result)
 def is_target_pos(token) -> bool:
     feat = token_feature(token)
     pos1 = getattr(feat, "pos1", "") if feat is not None else ""
     return pos1 in {"動詞", "形容詞"} or "動詞" in str(feat) or "形容詞" in str(feat)
-
-
 def lemmatize_japanese(word: str) -> str:
     w = (word or "").strip()
     if not w:
@@ -213,8 +243,6 @@ def lemmatize_japanese(word: str) -> str:
     except Exception:
         pass
     return to_dictionary_form(w)
-
-
 def extract_following_okurigana(ruby_tag):
     sibling = ruby_tag.next_sibling
     while sibling is not None:
@@ -232,21 +260,16 @@ def extract_following_okurigana(ruby_tag):
             return m.group(1)
         return ""
     return ""
-
-
 def to_dictionary_form(word: str) -> str:
     w = (word or "").strip()
     if not w:
         return w
-
     for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
         if w.endswith(suffix):
             return w[:-len(suffix)] + "する"
-
     for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
         if w.endswith(suffix):
             return w[:-len(suffix)] + "くる"
-
     for suffix in ["ました", "ます"]:
         if w.endswith(suffix):
             stem = w[:-len(suffix)]
@@ -254,45 +277,17 @@ def to_dictionary_form(word: str) -> str:
                 return w
             mapped = GODAN_I_TO_U.get(stem[-1])
             return stem[:-1] + mapped if mapped else stem + "る"
-
     if w.endswith("ない") and len(w) > 2:
         stem = w[:-2]
         mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
         return stem[:-1] + mapped if mapped else stem + "る"
-
     for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
-
     for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
-
     return w
-
-
-def feature_reading(token) -> str:
-    feat = token_feature(token)
-    if feat is None:
-        return ""
-    for name in ("kana", "pron", "reading", "pronBase"):
-        value = getattr(feat, name, "") or ""
-        if value and value != "*":
-            return value.strip()
-    return ""
-
-
-def normalize_katakana_to_hiragana(text: str) -> str:
-    result = []
-    for ch in text or "":
-        code = ord(ch)
-        if 0x30A1 <= code <= 0x30F6:
-            result.append(chr(code - 0x60))
-        else:
-            result.append(ch)
-    return "".join(result)
-
-
 def should_keep_token_for_vocab(token) -> bool:
     surface = token_surface(token).strip()
     if not surface:
@@ -308,17 +303,13 @@ def should_keep_token_for_vocab(token) -> bool:
         return True
     return False
 
-
 def extract_vocab_from_blocks(blocks):
     vocab_map = {}
-
-    # 1) ruby-based extraction
     for block in blocks:
         soup = BeautifulSoup(block["html"], "html.parser")
         for ruby in soup.find_all("ruby"):
             rb_text = ""
             rt_text = ""
-
             for child in ruby.contents:
                 name = getattr(child, "name", None)
                 if name == "rt":
@@ -326,20 +317,14 @@ def extract_vocab_from_blocks(blocks):
                 elif name == "rp":
                     continue
                 else:
-                    if hasattr(child, "get_text"):
-                        rb_text += child.get_text("", strip=True)
-                    else:
-                        rb_text += str(child).strip()
-
+                    rb_text += child.get_text("", strip=True) if hasattr(child, "get_text") else str(child).strip()
             rb_text = rb_text.strip()
             rt_text = rt_text.strip()
             if not rb_text or not re.search(r"[一-龯]", rb_text):
                 continue
-
             okurigana = extract_following_okurigana(ruby)
             word = rb_text
             reading = rt_text
-
             if okurigana and okurigana.startswith(PARTICLE_PREFIXES):
                 okurigana = ""
             if okurigana:
@@ -347,11 +332,8 @@ def extract_vocab_from_blocks(blocks):
                 surface_reading = (rt_text + okurigana).strip()
                 word = lemmatize_japanese(surface_word)
                 reading = to_dictionary_form(surface_reading)
-
             if word not in vocab_map:
                 vocab_map[word] = reading
-
-    # 2) MeCab supplement from plain text, so more words in text become clickable
     tagger = get_mecab_tagger()
     if tagger is not None:
         for block in blocks:
@@ -373,31 +355,21 @@ def extract_vocab_from_blocks(blocks):
                     continue
                 if word not in vocab_map:
                     vocab_map[word] = reading
-
     vocab = []
     for word, reading in vocab_map.items():
-        meaning = translate_text(word, dest="bg")
-        vocab.append({"word": word, "reading": reading, "meaning": meaning})
-
-    # Prefer longer, more content-heavy words first
+        vocab.append({"word": word, "reading": reading, "meaning": translate_word(word, reading)})
     vocab.sort(key=lambda x: (-len(x["word"]), x["word"]))
-    return vocab[:40]
-
+    return vocab[:60]
 
 def is_single_kanji_word(word: str) -> bool:
     return bool(re.fullmatch(r"[一-龯]", (word or "").strip()))
-
-
 def is_known_vocab_item(word: str, known_items):
     return word in known_items or f"v:{word}" in known_items
-
-
 def build_anki_cards(articles, grammar_points=None, seen_items=None):
     cards = []
     seen = set()
     known = set(seen_items or [])
     newly_added_items = set()
-
     for article in articles:
         for item in article.get("vocab", []):
             word = (item.get("word") or "").strip()
@@ -409,7 +381,6 @@ def build_anki_cards(articles, grammar_points=None, seen_items=None):
             newly_added_items.add(f"v:{word}")
             front = f"<ruby>{word}<rt>{reading}</rt></ruby>" if reading and reading != word else word
             cards.append((front, meaning))
-
     for g in grammar_points or []:
         label = (g.get("label") or "").strip()
         explanation = (g.get("explanation") or "").strip()
@@ -420,10 +391,7 @@ def build_anki_cards(articles, grammar_points=None, seen_items=None):
             continue
         newly_added_items.add(grammar_key)
         cards.append((f"Граматика: {label}", explanation))
-
     return cards, newly_added_items
-
-
 def load_seen_words(path):
     if not os.path.exists(path):
         return set()
@@ -433,13 +401,9 @@ def load_seen_words(path):
         return {str(x).strip() for x in data if str(x).strip()} if isinstance(data, list) else set()
     except Exception:
         return set()
-
-
 def save_seen_words(path, words):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(sorted({w.strip() for w in words if w and w.strip()}), f, ensure_ascii=False, indent=2)
-
-
 def add_known_progress_to_articles(articles, known_words):
     known = set(known_words or [])
     for article in articles:
@@ -451,280 +415,126 @@ def add_known_progress_to_articles(articles, known_words):
                 continue
             seen_in_article.add(word)
             vocab_words.append(word)
-
         total = len(vocab_words)
         known_count = sum(1 for w in vocab_words if is_known_vocab_item(w, known))
         article["known_total"] = total
         article["known_count"] = known_count
         article["known_percent"] = int(round((known_count / total) * 100)) if total else 0
-
-
 def save_anki_tsv(cards, path):
     with open(path, "w", encoding="utf-8") as f:
         for front, back in cards:
             f.write(f"{front}\t{back}\n")
-
-
 def stable_int_id(seed: str, digits: int = 10) -> int:
     digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()
     h = int(digest[:12], 16)
     mod = 10 ** digits
     return (h % mod) + (10 ** (digits - 1))
-
-
 def build_anki_apkg(cards, apkg_path, deck_name="NHK Easy Vocabulary"):
     if genanki is None:
         print("genanki is not installed; skipping .apkg generation")
         return False
-
-    model = genanki.Model(
-        stable_int_id("nhk_easy_vocab_model"),
-        "NHK Easy Vocab Model",
-        fields=[{"name": "Front"}, {"name": "Back"}],
-        templates=[{
-            "name": "Card 1",
-            "qfmt": "<div class='jp-word'>{{Front}}</div>",
-            "afmt": "<div class='jp-word'>{{Front}}</div><hr id='answer'><div class='bg-meaning'>{{Back}}</div>",
-        }],
-        css="""
-.card {font-family: Arial, sans-serif; font-size: 25px; text-align: center; color: black; background-color: white;}
-.jp-word {font-size: 31px;}
-.bg-meaning {font-size: 25px;}
-.jp-word ruby rt {font-size: 14px;}
-""",
-    )
-
+    model = genanki.Model(stable_int_id("nhk_easy_vocab_model"), "NHK Easy Vocab Model", fields=[{"name": "Front"}, {"name": "Back"}], templates=[{"name": "Card 1", "qfmt": "<div class='jp-word'>{{Front}}</div>", "afmt": "<div class='jp-word'>{{Front}}</div><hr id='answer'><div class='bg-meaning'>{{Back}}</div>"}], css=".card {font-family: Arial, sans-serif; font-size: 25px; text-align: center; color: black; background-color: white;}.jp-word {font-size: 31px;}.bg-meaning {font-size: 25px;}.jp-word ruby rt {font-size: 14px;}")
     deck = genanki.Deck(stable_int_id("nhk_easy_vocab_deck"), deck_name)
     for front, back in cards:
         deck.add_note(genanki.Note(model=model, fields=[front, back], guid=uuid.uuid4().hex))
-
     genanki.Package(deck).write_to_file(apkg_path)
     return True
-
-
 def split_japanese_sentences(text: str):
     t = (text or "").strip()
     if not t:
         return []
     return [p.strip() for p in re.split(r"(?<=[。！？])\s*", t) if p.strip()]
-
-
 def _s(tokens, idx):
     return token_surface(tokens[idx]) if 0 <= idx < len(tokens) else ""
-
-
 def _l(tokens, idx):
     return token_lemma(tokens[idx]) if 0 <= idx < len(tokens) else ""
-
-
 def _seq(tokens, start, end):
     return [token_surface(t) for t in tokens[start:end]]
-
-
 def detect_grammar_in_sentence(sentence: str):
     tagger = get_mecab_tagger()
     found = set()
-
     if tagger is None:
-        fallback = [
-            ("kedo", r"(けど|けれど|けれども)"),
-            ("shikashi", r"しかし"),
-            ("temo", r"(ても|でも|て\s*も|で\s*も)"),
-            ("nagara", r"ながら"),
-            ("tsutsu", r"つつ"),
-            ("aida_ni", r"(間に|あいだに|間)"),
-            ("uchi_ni", r"うちに"),
-            ("kara_reason", r"から"),
-            ("node", r"ので"),
-            ("sorede", r"それで"),
-            ("soshite", r"そして"),
-            ("yori", r"より"),
-            ("hou_ga_ii", r"(方がいい|方がよい|ほうがいい|ほうがよい)"),
-            ("noni", r"のに"),
-            ("you_ni", r"ように"),
-            ("tame_ni", r"ために"),
-            ("sei_de", r"せいで"),
-            ("okage_de", r"おかげで"),
-            ("rashii", r"らしい"),
-            ("ppoi", r"っぽい"),
-            ("nakereba_naranai", r"なければならない"),
-            ("nakereba_ikenai", r"なければいけない"),
-            ("nakutewa_naranai", r"なくてはならない"),
-            ("tari_tari", r"たり.*たり"),
-            ("te_ii", r"(ていい|でいい)"),
-            ("temo_ii", r"(てもいい|でもいい)"),
-            ("te_miru", r"(てみる|でみる)"),
-            ("kke", r"っけ"),
-            ("kana", r"かな"),
-            ("janai", r"じゃない"),
-            ("te_shimau", r"(てしま|でしま)"),
-            ("te_oku", r"(ておく|でおく)"),
-            ("wake", r"わけ"),
-            ("hazu", r"はず"),
-            ("beki", r"べき"),
-            ("kamoshirenai", r"かもしれない"),
-            ("kamo", r"かも"),
-            ("made_ni", r"までに"),
-            ("kara_made", r"から.*まで"),
-            ("made", r"まで"),
-            ("hodo", r"ほど"),
-            ("sugiru", r"すぎる"),
-        ]
-        for rid, pat in fallback:
-            if re.search(pat, sentence):
-                found.add(rid)
         return found
-
     try:
         tokens = list(tagger(sentence))
     except Exception:
         return found
-
     surfaces = [token_surface(t) for t in tokens]
     lemmas = [token_lemma(t) for t in tokens]
-    n = len(tokens)
-
-    for i in range(n):
+    for i in range(len(tokens)):
         s = surfaces[i]
         l = lemmas[i]
-
-        if s in {"けど", "けれど", "けれども"}:
-            found.add("kedo")
-        if s == "しかし":
-            found.add("shikashi")
-        if s in {"ても", "でも"} or (s in {"て", "で"} and _s(tokens, i + 1) == "も"):
-            found.add("temo")
-        if s == "ながら":
-            found.add("nagara")
-        if s == "つつ":
-            found.add("tsutsu")
-        if s in {"間", "あいだ"}:
-            found.add("aida_ni")
-        if s == "うち" and _s(tokens, i + 1) == "に":
-            found.add("uchi_ni")
-        if s == "から":
-            found.add("kara_reason")
-        if s == "ので":
-            found.add("node")
-        if s == "それで":
-            found.add("sorede")
-        if s == "そして":
-            found.add("soshite")
-        if s == "より":
-            found.add("yori")
+        if s in {"けど", "けれど", "けれども"}: found.add("kedo")
+        if s == "しかし": found.add("shikashi")
+        if s in {"ても", "でも"} or (s in {"て", "で"} and _s(tokens, i + 1) == "も"): found.add("temo")
+        if s == "ながら": found.add("nagara")
+        if s == "つつ": found.add("tsutsu")
+        if s in {"間", "あいだ"}: found.add("aida_ni")
+        if s == "うち" and _s(tokens, i + 1) == "に": found.add("uchi_ni")
+        if s == "から": found.add("kara_reason")
+        if s == "ので": found.add("node")
+        if s == "それで": found.add("sorede")
+        if s == "そして": found.add("soshite")
+        if s == "より": found.add("yori")
         if s in {"方", "ほう"}:
             found.add("hou")
-            if _s(tokens, i + 1) == "が" and _s(tokens, i + 2) in {"いい", "よい", "良い"}:
-                found.add("hou_ga_ii")
-        if s == "のに":
-            found.add("noni")
-        if s == "よう" and _s(tokens, i + 1) == "に":
-            found.add("you_ni")
-        if s == "ため" and (_s(tokens, i + 1) in {"", "に"}):
-            found.add("tame_ni")
-        if s == "せい" and _s(tokens, i + 1) == "で":
-            found.add("sei_de")
-        if s == "おかげ" and _s(tokens, i + 1) == "で":
-            found.add("okage_de")
-        if s == "らしい":
-            found.add("rashii")
-        if s == "っぽい":
-            found.add("ppoi")
-        if s == "だめ":
-            found.add("dame")
-        if s == "なら" and _s(tokens, i + 1) == "ない":
-            found.add("naranai")
-        if s == "いけ" and _s(tokens, i + 1) == "ない":
-            found.add("ikenai")
+            if _s(tokens, i + 1) == "が" and _s(tokens, i + 2) in {"いい", "よい", "良い"}: found.add("hou_ga_ii")
+        if s == "のに": found.add("noni")
+        if s == "よう" and _s(tokens, i + 1) == "に": found.add("you_ni")
+        if s == "ため" and (_s(tokens, i + 1) in {"", "に"}): found.add("tame_ni")
+        if s == "せい" and _s(tokens, i + 1) == "で": found.add("sei_de")
+        if s == "おかげ" and _s(tokens, i + 1) == "で": found.add("okage_de")
+        if s == "らしい": found.add("rashii")
+        if s == "っぽい": found.add("ppoi")
+        if s == "だめ": found.add("dame")
+        if s == "なら" and _s(tokens, i + 1) == "ない": found.add("naranai")
+        if s == "いけ" and _s(tokens, i + 1) == "ない": found.add("ikenai")
         if s == "なけれ" and _s(tokens, i + 1) == "ば":
-            if _s(tokens, i + 2) == "なら" and _s(tokens, i + 3) == "ない":
-                found.add("nakereba_naranai")
-            if _s(tokens, i + 2) == "いけ" and _s(tokens, i + 3) == "ない":
-                found.add("nakereba_ikenai")
-        if s == "なく" and _seq(tokens, i + 1, i + 5) == ["て", "は", "なら", "ない"]:
-            found.add("nakutewa_naranai")
-        if s == "たり" and surfaces.count("たり") >= 2:
-            found.add("tari_tari")
-        if s == "だけ":
-            found.add("dake")
-        if s == "のみ":
-            found.add("nomi")
-        if s == "ばかり":
-            found.add("bakari")
-        if s == "しか" and "ない" in surfaces[i + 1:]:
-            found.add("shika_nai")
-        if s == "もう":
-            found.add("mou")
-        if s == "まだ":
-            found.add("mada")
-        if s == "また":
-            found.add("mata")
-        if (s in {"て", "で"} and _s(tokens, i + 1) in {"いい", "よい", "良い"}) or s in {"ていい", "でいい"}:
-            found.add("te_ii")
-        if s in {"ても", "でも"} and _s(tokens, i + 1) in {"いい", "よい", "良い"}:
-            found.add("temo_ii")
-        if s in {"て", "で"} and _s(tokens, i + 1) == "も" and _s(tokens, i + 2) in {"いい", "よい", "良い"}:
-            found.add("temo_ii")
-        if s in {"て", "で"} and _l(tokens, i + 1) in {"見る", "みる"}:
-            found.add("te_miru")
-        if s == "っけ":
-            found.add("kke")
-        if s == "かな":
-            found.add("kana")
-        if s in {"かい", "だい"}:
-            found.add("kai_dai")
-        if s == "じゃ" and _s(tokens, i + 1) == "ない":
-            found.add("janai")
-        if "させ" in s or l in {"させる", "せる"}:
-            found.add("causative_saseru")
-        if s == "なく" and _s(tokens, i + 1) == "て":
-            found.add("nakute")
-        if s == "ない" and _s(tokens, i + 1) == "で":
-            found.add("naide")
-        if s in {"ず", "ずに"} or (s == "ず" and _s(tokens, i + 1) == "に"):
-            found.add("zu")
-        if s in {"て", "で"} and _l(tokens, i + 1) in {"仕舞う", "しまう"}:
-            found.add("te_shimau")
-        if s in {"て", "で"} and _l(tokens, i + 1) in {"置く", "おく"}:
-            found.add("te_oku")
-        if s == "だって":
-            found.add("datte")
-        if s == "わけ":
-            found.add("wake")
-        if s == "はず":
-            found.add("hazu")
+            if _s(tokens, i + 2) == "なら" and _s(tokens, i + 3) == "ない": found.add("nakereba_naranai")
+            if _s(tokens, i + 2) == "いけ" and _s(tokens, i + 3) == "ない": found.add("nakereba_ikenai")
+        if s == "なく" and _seq(tokens, i + 1, i + 5) == ["て", "は", "なら", "ない"]: found.add("nakutewa_naranai")
+        if s == "たり" and surfaces.count("たり") >= 2: found.add("tari_tari")
+        if s == "だけ": found.add("dake")
+        if s == "のみ": found.add("nomi")
+        if s == "ばかり": found.add("bakari")
+        if s == "しか" and "ない" in surfaces[i + 1:]: found.add("shika_nai")
+        if s == "もう": found.add("mou")
+        if s == "まだ": found.add("mada")
+        if s == "また": found.add("mata")
+        if (s in {"て", "で"} and _s(tokens, i + 1) in {"いい", "よい", "良い"}) or s in {"ていい", "でいい"}: found.add("te_ii")
+        if s in {"ても", "でも"} and _s(tokens, i + 1) in {"いい", "よい", "良い"}: found.add("temo_ii")
+        if s in {"て", "で"} and _s(tokens, i + 1) == "も" and _s(tokens, i + 2) in {"いい", "よい", "良い"}: found.add("temo_ii")
+        if s in {"て", "で"} and _l(tokens, i + 1) in {"見る", "みる"}: found.add("te_miru")
+        if s == "っけ": found.add("kke")
+        if s == "かな": found.add("kana")
+        if s in {"かい", "だい"}: found.add("kai_dai")
+        if s == "じゃ" and _s(tokens, i + 1) == "ない": found.add("janai")
+        if "させ" in s or l in {"させる", "せる"}: found.add("causative_saseru")
+        if s == "なく" and _s(tokens, i + 1) == "て": found.add("nakute")
+        if s == "ない" and _s(tokens, i + 1) == "で": found.add("naide")
+        if s in {"ず", "ずに"} or (s == "ず" and _s(tokens, i + 1) == "に"): found.add("zu")
+        if s in {"て", "で"} and _l(tokens, i + 1) in {"仕舞う", "しまう"}: found.add("te_shimau")
+        if s in {"て", "で"} and _l(tokens, i + 1) in {"置く", "おく"}: found.add("te_oku")
+        if s == "だって": found.add("datte")
+        if s == "わけ": found.add("wake")
+        if s == "はず": found.add("hazu")
         if s == "べき":
             found.add("beki")
-            if _s(tokens, i + 1) == "だっ" and _s(tokens, i + 2) == "た":
-                found.add("beki_datta")
-        if s == "べし":
-            found.add("beshi")
-        if s == "もの" and _s(tokens, i + 1) == "だ":
-            found.add("mono_da")
-        if s == "かも" and _s(tokens, i + 1) == "しれ" and _s(tokens, i + 2) == "ない":
-            found.add("kamoshirenai")
-        elif s == "かも":
-            found.add("kamo")
-        if s == "ころ":
-            found.add("koro")
-        if s == "ごろ":
-            found.add("goro")
-        if s in {"くらい", "ぐらい"}:
-            found.add("kurai_gurai")
+            if _s(tokens, i + 1) == "だっ" and _s(tokens, i + 2) == "た": found.add("beki_datta")
+        if s == "べし": found.add("beshi")
+        if s == "もの" and _s(tokens, i + 1) == "だ": found.add("mono_da")
+        if s == "かも" and _s(tokens, i + 1) == "しれ" and _s(tokens, i + 2) == "ない": found.add("kamoshirenai")
+        elif s == "かも": found.add("kamo")
+        if s == "ころ": found.add("koro")
+        if s == "ごろ": found.add("goro")
+        if s in {"くらい", "ぐらい"}: found.add("kurai_gurai")
         if s == "まで":
             found.add("made")
-            if _s(tokens, i + 1) == "に":
-                found.add("made_ni")
-            if "から" in surfaces[:i]:
-                found.add("kara_made")
-        if s == "ほど":
-            found.add("hodo")
-        if l == "過ぎる" or s == "すぎる":
-            found.add("sugiru")
-
+            if _s(tokens, i + 1) == "に": found.add("made_ni")
+            if "から" in surfaces[:i]: found.add("kara_made")
+        if s == "ほど": found.add("hodo")
+        if l == "過ぎる" or s == "すぎる": found.add("sugiru")
     return found
-
-
 def extract_grammar_details(articles):
     details = []
     for article in articles:
@@ -734,14 +544,9 @@ def extract_grammar_details(articles):
                 rule_ids = sorted(detect_grammar_in_sentence(sentence))
                 if not rule_ids:
                     continue
-                entry["items"].append({
-                    "sentence": sentence,
-                    "grammar": [GRAMMAR_RULES_BY_ID[r]["label"] for r in rule_ids if r in GRAMMAR_RULES_BY_ID],
-                })
+                entry["items"].append({"sentence": sentence, "grammar": [GRAMMAR_RULES_BY_ID[r]["label"] for r in rule_ids if r in GRAMMAR_RULES_BY_ID]})
         details.append(entry)
     return details
-
-
 def extract_grammar_points(articles):
     found = {}
     for article in articles:
@@ -751,20 +556,10 @@ def extract_grammar_points(articles):
                     if rule_id not in found and rule_id in GRAMMAR_RULES_BY_ID:
                         rule = GRAMMAR_RULES_BY_ID[rule_id]
                         found[rule_id] = {"label": rule["label"], "explanation": rule["explanation"]}
-
-    ordered = []
-    for rule in GRAMMAR_RULES:
-        item = found.get(rule["id"])
-        if item:
-            ordered.append(item)
-    return ordered
-
-
+    return [found[rule["id"]] for rule in GRAMMAR_RULES if rule["id"] in found]
 def extract_ne_id(text: str) -> str:
     m = re.search(r"(ne\d{10,})", text or "")
     return m.group(1) if m else ""
-
-
 def get_nhkeasier_items():
     r = requests.get(NHKEASIER_FEED_URL, timeout=20)
     r.raise_for_status()
@@ -775,7 +570,6 @@ def get_nhkeasier_items():
         desc_raw = (item.description.get_text() if item.description else "").strip()
         desc_html = html_lib.unescape(desc_raw)
         desc_soup = BeautifulSoup(desc_html, "html.parser")
-
         audio_url = ""
         enclosure = item.find("enclosure")
         if enclosure and enclosure.get("url"):
@@ -784,7 +578,6 @@ def get_nhkeasier_items():
             audio_tag = desc_soup.select_one("audio[src], audio source[src]")
             if audio_tag:
                 audio_url = (audio_tag.get("src") or "").strip()
-
         image_url = ""
         itunes_img = item.find("itunes:image")
         if itunes_img and itunes_img.get("href"):
@@ -793,7 +586,6 @@ def get_nhkeasier_items():
             img_tag = desc_soup.select_one("img[src]")
             if img_tag:
                 image_url = (img_tag.get("src") or "").strip()
-
         blocks = []
         for b in get_article_blocks(desc_soup):
             t = b["text"].strip()
@@ -802,7 +594,6 @@ def get_nhkeasier_items():
             if t.lower() in {"original", "permalink"} or "Original" in t or "Permalink" in t:
                 continue
             blocks.append(b)
-
         ne_id = ""
         original_link = ""
         for a in desc_soup.select("a[href]"):
@@ -813,19 +604,9 @@ def get_nhkeasier_items():
                 break
         if not ne_id:
             ne_id = extract_ne_id(audio_url) or extract_ne_id(image_url) or extract_ne_id(desc_html)
-
         if ne_id:
-            items[ne_id] = {
-                "title": title,
-                "blocks": blocks,
-                "audio_url": audio_url,
-                "image_url": image_url,
-                "original_link": original_link,
-            }
-
+            items[ne_id] = {"title": title, "blocks": blocks, "audio_url": audio_url, "image_url": image_url, "original_link": original_link}
     return items
-
-
 def extract_easy_article_links_from_sitemap(n=4):
     r = requests.get(EASY_SITEMAP_URL, timeout=20)
     r.raise_for_status()
@@ -844,13 +625,10 @@ def extract_easy_article_links_from_sitemap(n=4):
         if len(links) >= n:
             break
     return links
-
-
 def parse_article_from_nhk_easy(link: str):
     page = requests.get(link, timeout=20)
     page.raise_for_status()
     psoup = BeautifulSoup(page.text, "html.parser")
-
     title_tag = psoup.select_one("h1")
     title = ""
     title_html = ""
@@ -865,7 +643,6 @@ def parse_article_from_nhk_easy(link: str):
         title = "NHK Easy Article"
     if not title_html:
         title_html = title
-
     image_url = ""
     for sel in ['meta[property="og:image"]', 'meta[name="og:image"]', "article img[src]", "main img[src]", "img[src]"]:
         el = psoup.select_one(sel)
@@ -875,7 +652,6 @@ def parse_article_from_nhk_easy(link: str):
         if candidate:
             image_url = urljoin(link, candidate)
             break
-
     audio_url = ""
     for sel in ["audio source[src]", "audio[src]", 'a[href$=".mp3"]', 'a[href*=".mp3"]']:
         el = psoup.select_one(sel)
@@ -885,26 +661,15 @@ def parse_article_from_nhk_easy(link: str):
         if candidate:
             audio_url = urljoin(link, candidate)
             break
-
     if not audio_url:
         mp3_match = re.search(r"https?://[^\"'\s]+\.mp3(?:\?[^\"'\s]*)?", page.text)
         if mp3_match:
             audio_url = mp3_match.group(0)
-
     if not audio_url:
         audio_field_match = re.search(r'"(?:audio|voice|sound|movie)Url"\s*:\s*"([^"]+)"', page.text, re.IGNORECASE)
         if audio_field_match:
             audio_url = urljoin(link, audio_field_match.group(1))
-
-    content = (
-        psoup.select_one(".article-main__body")
-        or psoup.select_one(".module--content")
-        or psoup.select_one("#js-article-body")
-        or psoup.select_one(".content--detail-body")
-        or psoup.select_one("article")
-        or psoup.select_one("main")
-    )
-
+    content = psoup.select_one(".article-main__body") or psoup.select_one(".module--content") or psoup.select_one("#js-article-body") or psoup.select_one(".content--detail-body") or psoup.select_one("article") or psoup.select_one("main")
     filtered_blocks = []
     if content is not None:
         for bad in content.select("script, style, nav, footer, header, aside, form"):
@@ -914,7 +679,6 @@ def parse_article_from_nhk_easy(link: str):
             if "share" in t.lower() or "follow us" in t.lower():
                 continue
             filtered_blocks.append(b)
-
     if not filtered_blocks:
         payload_texts = []
         for txt in re.findall(r'"children":"([^"]{10,}?)"', page.text):
@@ -933,31 +697,16 @@ def parse_article_from_nhk_easy(link: str):
             filtered_blocks.append({"html": t, "text": t})
             if len(filtered_blocks) >= 8:
                 break
-
     if not filtered_blocks:
         desc_meta = psoup.select_one('meta[name="description"]')
         desc = (desc_meta.get("content") or "").strip() if desc_meta else ""
         if desc:
             filtered_blocks.append({"html": desc, "text": desc})
-
     if not filtered_blocks:
         return None
-
     vocab = extract_vocab_from_blocks(filtered_blocks)
     translated_blocks = [{"html": b["html"], "text": b["text"], "translation": translate_text(b["text"], dest="bg")} for b in filtered_blocks]
-
-    return {
-        "title": title,
-        "title_html": title_html,
-        "title_translation": translate_text(title, dest="bg"),
-        "link": link,
-        "image_url": image_url,
-        "audio_url": audio_url,
-        "blocks": translated_blocks,
-        "vocab": vocab,
-    }
-
-
+    return {"title": title, "title_html": title_html, "title_translation": translate_text(title, dest="bg"), "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
@@ -965,7 +714,6 @@ def get_articles(n=4):
         nhkeasier_items = get_nhkeasier_items()
     except Exception as e:
         print(f"Could not load nhkeasier fallback feed: {e}")
-
     articles = []
     for link in links:
         try:
@@ -973,13 +721,7 @@ def get_articles(n=4):
             ne_id = extract_ne_id(link)
             fallback = nhkeasier_items.get(ne_id)
             if article and fallback and fallback.get("blocks"):
-                article["blocks"] = []
-                for b in fallback["blocks"]:
-                    article["blocks"].append({
-                        "html": b["html"],
-                        "text": b["text"],
-                        "translation": translate_text(b["text"], dest="bg"),
-                    })
+                article["blocks"] = [{"html": b["html"], "text": b["text"], "translation": translate_text(b["text"], dest="bg")} for b in fallback["blocks"]]
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
                     article["audio_url"] = fallback["audio_url"]
@@ -989,105 +731,81 @@ def get_articles(n=4):
                     if "<ruby" in b["html"]:
                         article["title_html"] = b["html"]
                         break
-
-            has_blocks = bool(article and article.get("blocks"))
-            has_vocab = bool(article and article.get("vocab"))
-            has_image = bool(article and article.get("image_url"))
-            has_audio = bool(article and article.get("audio_url"))
-            if article and has_blocks and has_vocab and has_image and has_audio:
+            if article and article.get("blocks") and article.get("vocab") and article.get("image_url") and article.get("audio_url"):
                 articles.append(article)
                 if len(articles) >= n:
                     break
         except Exception as e:
             print(f"Skipping article because of error: {e}")
             continue
-
     return articles[:n]
-
-
 def wrap_vocab_words_in_html(html_fragment, vocab_items):
     if not html_fragment:
         return html_fragment
-
     soup = BeautifulSoup(html_fragment, "html.parser")
-    sorted_vocab = sorted(
-        [item for item in (vocab_items or []) if (item.get("word") or "").strip()],
-        key=lambda x: len((x.get("word") or "")),
-        reverse=True,
-    )
-
+    sorted_vocab = sorted([item for item in (vocab_items or []) if (item.get("word") or "").strip()], key=lambda x: len((x.get("word") or "")), reverse=True)
     skip_tags = {"rt", "rp", "script", "style"}
-
     for text_node in list(soup.find_all(string=True)):
         parent = getattr(text_node, "parent", None)
         if parent is None or getattr(parent, "name", None) in skip_tags:
             continue
-
         original = str(text_node)
         if not original.strip():
             continue
-
-        replaced = original
-        changed = False
-
-        for item in sorted_vocab:
-            word = (item.get("word") or "").strip()
-            reading = html_lib.escape((item.get("reading") or "").strip(), quote=True)
-            meaning = html_lib.escape((item.get("meaning") or "").strip(), quote=True)
-            if not word or word not in replaced:
-                continue
-
-            escaped_word = html_lib.escape(word, quote=True)
-            span = (
-                f"<span class='dict-word' "
-                f"data-word=\"{escaped_word}\" "
-                f"data-reading=\"{reading}\" "
-                f"data-meaning=\"{meaning}\">{escaped_word}</span>"
-            )
-            replaced = replaced.replace(word, span)
-            changed = True
-
-        if changed:
-            frag = BeautifulSoup(replaced, "html.parser")
-            text_node.replace_with(frag)
-
+        container = BeautifulSoup("", "html.parser")
+        remaining = original
+        while remaining:
+            earliest = None
+            earliest_item = None
+            for item in sorted_vocab:
+                word = (item.get("word") or "").strip()
+                if not word:
+                    continue
+                idx = remaining.find(word)
+                if idx == -1:
+                    continue
+                if earliest is None or idx < earliest or (idx == earliest and len(word) > len((earliest_item or {}).get("word", ""))):
+                    earliest = idx
+                    earliest_item = item
+            if earliest is None or earliest_item is None:
+                container.append(NavigableString(remaining))
+                break
+            if earliest > 0:
+                container.append(NavigableString(remaining[:earliest]))
+            word = (earliest_item.get("word") or "").strip()
+            span = soup.new_tag("span")
+            span["class"] = "dict-word"
+            span["data-word"] = word
+            span["data-reading"] = (earliest_item.get("reading") or "").strip()
+            span["data-meaning"] = (earliest_item.get("meaning") or "").strip()
+            span.string = word
+            container.append(span)
+            remaining = remaining[earliest + len(word):]
+        text_node.replace_with(container)
     return "".join(str(x) for x in soup.contents)
-
 def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME, anki_apkg_filename=DEFAULT_ANKI_APKG_FILENAME, grammar_points=None):
     grammar_points = grammar_points or []
-    html = """
-<!doctype html>
+    html = """<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>最新ニュース</title>
 <style>
-:root{
-  --bg:#0f1115; --card:#171a21; --card2:#1d212b; --text:#e8ecf1; --muted:#aeb7c2; --accent:#8ab4ff;
-  --border:#2a3040; --jp-panel:#12151c; --trans-text:#d2dae3; --popup:#202532;
-  --jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;
-  --ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-}
-body.theme-light{
-  --bg:#f7f7f5; --card:#ffffff; --card2:#f2f2ee; --text:#1d232a; --muted:#596572; --accent:#275cc7;
-  --border:#d3d9e1; --jp-panel:#fcfcfb; --trans-text:#3c4652; --popup:#ffffff;
-}
-body.theme-sepia{
-  --bg:#f3eadb; --card:#fbf4e7; --card2:#f4ead9; --text:#3c2f22; --muted:#6e5d4b; --accent:#8a5a22;
-  --border:#d8c7b0; --jp-panel:#fffaf0; --trans-text:#4e3f31; --popup:#fffaf0;
-}
+:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
+body.theme-sepia{--bg:#f3eadb;--card:#fbf4e7;--card2:#f4ead9;--text:#3c2f22;--muted:#6e5d4b;--accent:#8a5a22;--border:#d8c7b0;--jp-panel:#fffaf0;--trans-text:#4e3f31;--popup:#fffaf0}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui-font);line-height:1.8}
 .wrap{max-width:980px;margin:0 auto;padding:26px 16px 40px}
 h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
-.article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:0 0 14px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
+.article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:10px 0 14px}
 .title-translation{display:none;color:var(--muted);margin:0 0 14px}
 .article-audio{width:100%;margin:0 0 10px}
 .section-title{margin:18px 0 10px;font-size:1.05rem;color:var(--accent);font-weight:700}
-.jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem;font-family:var(--jp-font)}
+.jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem;font-family:var(--jp-font);word-break:break-word;overflow-wrap:anywhere}
 .bg-block{color:var(--trans-text);padding:0 2px 8px 2px;margin-bottom:8px;border-bottom:1px dashed var(--border);display:none}
 .bg-block.is-visible{display:block}
 .grammar{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px}
@@ -1095,33 +813,15 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .grammar li{padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card2);margin-bottom:10px}
 .grammar-rule{font-weight:700;color:var(--accent);font-family:var(--jp-font);display:block;margin-bottom:4px}
 .downloads{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:22px 0}
-.download-btn{
-  display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid var(--border);
-  background:var(--card2);color:var(--text);text-decoration:none
-}
+.download-btn{display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card2);color:var(--text);text-decoration:none}
 .contacts{text-align:center;color:var(--muted);margin-top:10px}
-.bottom-controls{
-  margin-top:22px;padding:14px;border:1px solid var(--border);border-radius:16px;background:var(--card);
-}
+.bottom-controls{margin-top:22px;padding:14px;border:1px solid var(--border);border-radius:16px;background:var(--card)}
 .control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.control-grid select{
-  width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);
-  border-radius:12px;padding:10px 12px;font:inherit;
-}
+.control-grid select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font:inherit}
 .control-label{font-size:.92rem;color:var(--muted);margin-bottom:6px}
-.dict-word{
-  text-decoration: underline;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 3px;
-  cursor: pointer;
-  border-radius: 4px;
-}
+.dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
 .dict-word.is-active{background:rgba(138,180,255,.18)}
-.dict-popup{
-  position: fixed; z-index: 9999; display: none; max-width:min(92vw,320px);
-  background:var(--popup); color:var(--text); border:1px solid var(--border); border-radius:12px;
-  padding:10px 12px; box-shadow:0 12px 32px rgba(0,0,0,.28);
-}
+.dict-popup{position:fixed;z-index:9999;display:none;max-width:min(92vw,320px);background:var(--popup);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
 .dict-popup .dw{font-weight:700;font-size:1.08rem;font-family:var(--jp-font)}
 .dict-popup .dr{color:var(--accent);font-size:.95rem;margin-top:2px}
 .dict-popup .dm{color:var(--text);margin-top:4px}
@@ -1135,13 +835,12 @@ ruby rt{font-size:.68em;color:var(--muted)}
 """
     for article in articles:
         html += "<article>"
-        if article.get("image_url"):
-            html += f"<img class='article-image' src='{article['image_url']}' alt='{html_lib.escape(article['title'], quote=True)}' loading='lazy'/>"
         html += f"<h2 class='title-toggle'>{article.get('title_html', article['title'])}</h2>"
         html += f"<div class='title-translation'>{article.get('title_translation','')}</div>"
+        if article.get("image_url"):
+            html += f"<img class='article-image' src='{article['image_url']}' alt='{html_lib.escape(article['title'], quote=True)}' loading='lazy'/>"
         if article.get("audio_url"):
             html += f"<audio class='article-audio' controls preload='none' src='{article['audio_url']}'></audio>"
-
         html += "<div class='section-title'>Текст</div>"
         for block in article["blocks"]:
             wrapped_html = wrap_vocab_words_in_html(block["html"], article.get("vocab", []))
@@ -1149,139 +848,34 @@ ruby rt{font-size:.68em;color:var(--muted)}
             if block["translation"]:
                 html += f"<div class='bg-block'>{block['translation']}</div>"
         html += "</article>"
-
-    html += f"""
-<div class='downloads'>
-  <a class='download-btn' href='{anki_apkg_filename}' download>Свали Anki карти (.apkg)</a>
-  <a class='download-btn' href='{anki_filename}' download>Свали TSV backup</a>
-</div>
-"""
-
+    html += f"<div class='downloads'><a class='download-btn' href='{anki_apkg_filename}' download>Свали Anki карти (.apkg)</a><a class='download-btn' href='{anki_filename}' download>Свали TSV backup</a></div>"
     if grammar_points:
         html += "<section class='grammar'><div class='section-title'>Граматика в текстовете</div><ul>"
         for g in grammar_points:
             html += f"<li><span class='grammar-rule'>{g['label']}</span><span>{g['explanation']}</span></li>"
         html += "</ul></section>"
-
     html += """
 <div class='bottom-controls'>
   <div class='control-grid'>
-    <div>
-      <div class='control-label'>Тема</div>
-      <select id='theme-select' onchange='setTheme(this.value)'>
-        <option value='theme-dark'>Dark</option>
-        <option value='theme-sepia'>Sepia</option>
-        <option value='theme-light'>Light</option>
-      </select>
-    </div>
-    <div>
-      <div class='control-label'>Японски шрифт</div>
-      <select id='font-select' onchange='setJapaneseFont(this.value)'>
-        <option value='mincho'>Mincho</option>
-        <option value='gothic'>Gothic</option>
-      </select>
-    </div>
+    <div><div class='control-label'>Тема</div><select id='theme-select' onchange='setTheme(this.value)'><option value='theme-dark'>Dark</option><option value='theme-sepia'>Sepia</option><option value='theme-light'>Light</option></select></div>
+    <div><div class='control-label'>Японски шрифт</div><select id='font-select' onchange='setJapaneseFont(this.value)'><option value='mincho'>Mincho</option><option value='gothic'>Gothic</option></select></div>
   </div>
 </div>
-
 <div class='contacts'>vebaev.github.io</div>
 </div>
 <script>
-function loadPrefs(){
-  const theme = localStorage.getItem('nhk_theme') || 'theme-dark';
-  document.body.className = theme;
-  const themeSel = document.getElementById('theme-select');
-  if (themeSel) themeSel.value = theme;
-
-  const jpFont = localStorage.getItem('nhk_jp_font') || 'mincho';
-  applyJapaneseFont(jpFont);
-  const fontSel = document.getElementById('font-select');
-  if (fontSel) fontSel.value = jpFont;
-}
-function setTheme(theme){
-  document.body.className = theme;
-  localStorage.setItem('nhk_theme', theme);
-}
-function applyJapaneseFont(kind){
-  const font = kind === 'gothic'
-    ? '"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif'
-    : '"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif';
-  document.documentElement.style.setProperty('--jp-font', font);
-}
-function setJapaneseFont(kind){
-  localStorage.setItem('nhk_jp_font', kind);
-  applyJapaneseFont(kind);
-}
-function closeDictPopup(){
-  const popup = document.getElementById('dict-popup');
-  if (!popup) return;
-  popup.style.display = 'none';
-  popup.setAttribute('aria-hidden', 'true');
-  document.querySelectorAll('.dict-word.is-active').forEach(el => el.classList.remove('is-active'));
-}
-function positionPopupNear(el, popup){
-  const rect = el.getBoundingClientRect();
-  popup.style.display = 'block';
-  popup.setAttribute('aria-hidden', 'false');
-  const popupRect = popup.getBoundingClientRect();
-  let top = rect.bottom + 8;
-  let left = rect.left;
-  if (left + popupRect.width > window.innerWidth - 8) left = window.innerWidth - popupRect.width - 8;
-  if (left < 8) left = 8;
-  if (top + popupRect.height > window.innerHeight - 8) top = rect.top - popupRect.height - 8;
-  if (top < 8) top = 8;
-  popup.style.left = left + 'px';
-  popup.style.top = top + 'px';
-}
-function showDictPopup(el){
-  const popup = document.getElementById('dict-popup');
-  if (!popup) return;
-  const alreadyActive = el.classList.contains('is-active');
-  closeDictPopup();
-  if (alreadyActive) return;
-  const word = el.dataset.word || '';
-  const reading = el.dataset.reading || '';
-  const meaning = el.dataset.meaning || '';
-  popup.innerHTML =
-    '<div class="dw">' + word + '</div>' +
-    (reading ? '<div class="dr">' + reading + '</div>' : '') +
-    (meaning ? '<div class="dm">' + meaning + '</div>' : '');
-  el.classList.add('is-active');
-  positionPopupNear(el, popup);
-}
-document.addEventListener('DOMContentLoaded', function(){
-  loadPrefs();
-  document.querySelectorAll('.title-toggle').forEach(function(title){
-    title.addEventListener('click', function(){
-      const tr = title.nextElementSibling;
-      if (!tr || !tr.classList.contains('title-translation')) return;
-      tr.style.display = tr.style.display === 'block' ? 'none' : 'block';
-    });
-  });
-  document.querySelectorAll('.dict-word').forEach(function(el){
-    el.addEventListener('click', function(event){
-      event.stopPropagation();
-      showDictPopup(el);
-    });
-  });
-  document.addEventListener('click', function(){ closeDictPopup(); });
-  document.querySelectorAll('.jp-block + .bg-block').forEach(function(bgBlock){
-    const jpBlock = bgBlock.previousElementSibling;
-    if (!jpBlock) return;
-    jpBlock.style.cursor = 'pointer';
-    jpBlock.addEventListener('click', function(event){
-      if (event.target.closest('.dict-word')) return;
-      bgBlock.classList.toggle('is-visible');
-    });
-  });
-});
+function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;}
+function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk_theme',theme);}
+function applyJapaneseFont(kind){const font=kind==='gothic'?'"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif':'"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif';document.documentElement.style.setProperty('--jp-font',font);}
+function setJapaneseFont(kind){localStorage.setItem('nhk_jp_font',kind);applyJapaneseFont(kind);}
+function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
+function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const word=el.dataset.word||'';const reading=el.dataset.reading||'';const meaning=el.dataset.meaning||'';popup.innerHTML='<div class="dw">'+word+'</div>'+(reading?'<div class="dr">'+reading+'</div>':'')+(meaning?'<div class="dm">'+meaning+'</div>':'');el.classList.add('is-active');positionPopupNear(el,popup);}
+document.addEventListener('DOMContentLoaded',function(){loadPrefs();document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .bg-block').forEach(function(bgBlock){const jpBlock=bgBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;bgBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
-</html>
-"""
+</html>"""
     return html
-
-
 def main():
     global DEEPL_API_KEY
     parser = argparse.ArgumentParser()
@@ -1290,17 +884,13 @@ def main():
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
     args = parser.parse_args()
     DEEPL_API_KEY = (args.deepl_key or "").strip()
-
     articles = get_articles(args.count)
     if not articles:
         raise RuntimeError("No articles were extracted.")
-
     output_dir = os.path.dirname(args.output)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
-
     grammar_points = extract_grammar_points(articles)
-
     anki_filename = DEFAULT_ANKI_FILENAME
     anki_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
     anki_seen_words_filename = DEFAULT_ANKI_SEEN_WORDS_FILENAME
@@ -1312,18 +902,14 @@ def main():
         anki_path = anki_filename
         anki_apkg_path = anki_apkg_filename
         anki_seen_words_path = anki_seen_words_filename
-
     seen_words = load_seen_words(anki_seen_words_path)
     add_known_progress_to_articles(articles, seen_words)
     anki_cards, newly_added_words = build_anki_cards(articles, grammar_points=grammar_points, seen_items=seen_words)
     save_anki_tsv(anki_cards, anki_path)
     build_anki_apkg(anki_cards, anki_apkg_path)
     save_seen_words(anki_seen_words_path, seen_words | newly_added_words)
-
     html = build_html(articles, anki_filename=anki_filename, anki_apkg_filename=anki_apkg_filename, grammar_points=grammar_points)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
-
-
 if __name__ == "__main__":
     main()
