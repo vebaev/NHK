@@ -556,6 +556,21 @@ def extract_vocab_from_blocks(blocks):
     vocab.sort(key=lambda x: (-len(x["word"]), x["word"]))
     return vocab[:80]
 
+
+def contains_digit(word: str) -> bool:
+    return any(ch.isdigit() for ch in (word or ""))
+
+def is_all_katakana(word: str) -> bool:
+    w = (word or "").strip()
+    return bool(w) and all(("ァ" <= ch <= "ヶ") or ch == "ー" for ch in w)
+
+def normalize_vocab_group_key(word: str, reading: str = "") -> str:
+    base = lemmatize_japanese((word or "").strip())
+    entry = lookup_dictionary_entry(base, reading=reading) or lookup_dictionary_entry(word, reading=reading)
+    if entry and (entry.get("surface") or "").strip():
+        return (entry.get("surface") or "").strip()
+    return base or (word or "").strip()
+
 def is_single_kanji_word(word: str) -> bool:
     return bool(re.fullmatch(r"[一-龯]", (word or "").strip()))
 def is_known_vocab_item(word: str, known_items):
@@ -564,20 +579,30 @@ def is_valid_anki_vocab_item(item):
     word = (item.get("word") or "").strip()
     reading = (item.get("reading") or "").strip()
     meaning = (item.get("meaning") or "").strip()
+
     if not word or is_suspicious_vocab_word(word) or is_single_kanji_word(word):
         return None
+    if contains_digit(word) or contains_digit(reading):
+        return None
+    if is_all_katakana(word):
+        return None
 
-    entry = lookup_dictionary_entry(word, reading=reading)
+    base_word = lemmatize_japanese(word)
+    entry = lookup_dictionary_entry(base_word, reading=reading) or lookup_dictionary_entry(word, reading=reading)
     if entry and (entry.get("gloss") or "").strip():
-        canonical_word = (entry.get("surface") or word).strip() or word
+        canonical_word = (entry.get("surface") or base_word or word).strip() or word
         canonical_reading = (entry.get("reading") or reading).strip() or reading
         canonical_meaning = (entry.get("gloss") or meaning).strip()
     else:
-        canonical_word = word
+        canonical_word = base_word or word
         canonical_reading = reading
         canonical_meaning = meaning
 
     if not canonical_meaning:
+        return None
+    if contains_digit(canonical_word) or contains_digit(canonical_reading):
+        return None
+    if is_all_katakana(canonical_word):
         return None
     if is_suspicious_vocab_word(canonical_word) or is_single_kanji_word(canonical_word):
         return None
@@ -590,7 +615,7 @@ def is_valid_anki_vocab_item(item):
 
 def build_vocab_anki_cards(articles):
     cards = []
-    seen_words = set()
+    grouped = {}
 
     for article in articles:
         for item in article.get("vocab", []):
@@ -601,13 +626,29 @@ def build_vocab_anki_cards(articles):
             word = validated["word"]
             reading = validated["reading"]
             meaning = validated["meaning"]
+            group_key = normalize_vocab_group_key(word, reading=reading)
 
-            if word in seen_words:
-                continue
+            existing = grouped.get(group_key)
+            if existing is None:
+                grouped[group_key] = {
+                    "word": group_key or word,
+                    "reading": reading,
+                    "meanings": [meaning] if meaning else [],
+                }
+            else:
+                if reading and not existing["reading"]:
+                    existing["reading"] = reading
+                if meaning and meaning not in existing["meanings"]:
+                    existing["meanings"].append(meaning)
 
-            seen_words.add(word)
-            front = f"<ruby>{word}<rt>{reading}</rt></ruby>" if reading and reading != word else word
-            cards.append((front, meaning))
+    for item in grouped.values():
+        word = item["word"]
+        reading = item["reading"]
+        meaning = "; ".join(item["meanings"][:3]).strip()
+        if not meaning:
+            continue
+        front = f"<ruby>{word}<rt>{reading}</rt></ruby>" if reading and reading != word else word
+        cards.append((front, meaning))
 
     cards.sort(key=lambda x: x[0])
     return cards
