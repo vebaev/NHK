@@ -560,22 +560,32 @@ def is_single_kanji_word(word: str) -> bool:
     return bool(re.fullmatch(r"[一-龯]", (word or "").strip()))
 def is_known_vocab_item(word: str, known_items):
     return word in known_items or f"v:{word}" in known_items
-def is_valid_anki_vocab_item(word: str, reading: str = ""):
-    word = (word or "").strip()
-    reading = (reading or "").strip()
+def is_valid_anki_vocab_item(item):
+    word = (item.get("word") or "").strip()
+    reading = (item.get("reading") or "").strip()
+    meaning = (item.get("meaning") or "").strip()
     if not word or is_suspicious_vocab_word(word) or is_single_kanji_word(word):
         return None
+
     entry = lookup_dictionary_entry(word, reading=reading)
-    if not entry or not (entry.get("gloss") or "").strip():
+    if entry and (entry.get("gloss") or "").strip():
+        canonical_word = (entry.get("surface") or word).strip() or word
+        canonical_reading = (entry.get("reading") or reading).strip() or reading
+        canonical_meaning = (entry.get("gloss") or meaning).strip()
+    else:
+        canonical_word = word
+        canonical_reading = reading
+        canonical_meaning = meaning
+
+    if not canonical_meaning:
         return None
-    canonical_word = (entry.get("surface") or word).strip() or word
-    canonical_reading = (entry.get("reading") or reading).strip() or reading
     if is_suspicious_vocab_word(canonical_word) or is_single_kanji_word(canonical_word):
         return None
+
     return {
         "word": canonical_word,
         "reading": canonical_reading,
-        "meaning": (entry.get("gloss") or "").strip(),
+        "meaning": canonical_meaning,
     }
 
 def build_vocab_anki_cards(articles):
@@ -584,10 +594,7 @@ def build_vocab_anki_cards(articles):
 
     for article in articles:
         for item in article.get("vocab", []):
-            validated = is_valid_anki_vocab_item(
-                item.get("word", ""),
-                item.get("reading", ""),
-            )
+            validated = is_valid_anki_vocab_item(item)
             if not validated:
                 continue
 
