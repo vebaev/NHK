@@ -1,44 +1,19 @@
-1L	1л
-<ruby>10年<rt>ねん</rt></ruby>	10 години
-<ruby>10日<rt>とおか</rt></ruby>	10 дни
-<ruby>15年<rt>ねん</rt></ruby>	15 години
-<ruby>15年前<rt>ねんまえ</rt></ruby>	преди 15 години
-<ruby>1日から<rt>ついたちから</rt></ruby>	От 1ви
-<ruby>2月<rt>がつ</rt></ruby>	февруари
-<ruby>5000以上<rt>いじょう</rt></ruby>	5000 или повече
-<ruby>5年<rt>ねん</rt></ruby>	5 години
-<ruby>7000円<rt>えん</rt></ruby>	7000 йени
-<ruby>7月1<rt>がつ</rt></ruby>	1 юли
-<ruby>9000円<rt>えん</rt></ruby>	9000 йени
-<ruby>9日<rt>ここのか</rt></ruby>	9-ти ден
-<ruby>たばかる<rt>たばかり</rt></ruby>	Табакару
-<ruby>とき2<rt>とき</rt></ruby>	време 2
 <ruby>アメリカ-America<rt>あめりか</rt></ruby>	Америка-Америка
 <ruby>アルペン-Alpen<rt>あるぺん</rt></ruby>	Алпен-Алпен
-<ruby>アルペンスキー<rt>あるぺんすきー</rt></ruby>	алпийски ски
 <ruby>イスラエル-Israel<rt>いすらえる</rt></ruby>	Израел
 <ruby>イラン-Iran<rt>いらん</rt></ruby>	Иран-Иран
 <ruby>カーブ-curve<rt>かーぶ</rt></ruby>	крива-крива
 <ruby>クラス-class<rt>くらす</rt></ruby>	клас-клас
-<ruby>ケセンヌマ<rt>けせんぬま</rt></ruby>	Кесеннума
-<ruby>コルティナ<rt>こるてぃな</rt></ruby>	кортина
-<ruby>コルティナパラリンピック<rt>こるてぃなぱらりんぴっく</rt></ruby>	кортина параолимпийски игри
 <ruby>コース-course<rt>こーす</rt></ruby>	курс-курс
-<ruby>サトウ<rt>さとう</rt></ruby>	Сато
 <ruby>スキー-ski<rt>すきー</rt></ruby>	ски-ски
 <ruby>スピード-speed<rt>すぴーど</rt></ruby>	скорост-скорост
 <ruby>スーパー-super<rt>すーぱー</rt></ruby>	супер-супер
 <ruby>トランプ-trump<rt>とらんぷ</rt></ruby>	тръм-тръмп
 <ruby>トランプ大統領<rt>とらんぷだいとうりょう</rt></ruby>	президент Тръмп
 <ruby>パスポート-passport<rt>ぱすぽーと</rt></ruby>	паспорт-паспорт
-<ruby>パラリンピック<rt>ぱらりんぴっく</rt></ruby>	параолимпийски игри
 <ruby>ミサイル-missile<rt>みさいる</rt></ruby>	ракета-ракета
-<ruby>ミヤギ<rt>みやぎ</rt></ruby>	мияги
 <ruby>ミラノ-Milano<rt>みらの</rt></ruby>	Милано
-<ruby>ムラオカ<rt>むらおか</rt></ruby>	Мураока
 <ruby>メダル-medal<rt>めだる</rt></ruby>	медал-медал
-<ruby>モモカ<rt>ももか</rt></ruby>	Момока
-<ruby>ユウ<rt>ゆう</rt></ruby>	Юу
 <ruby>久の<rt>くの</rt></ruby>	Куно
 <ruby>予定<rt>よてい</rt></ruby>	график
 <ruby>人たちに<rt>ひとたちに</rt></ruby>	на хората
@@ -60,10 +35,9 @@
 <ruby>初めて<rt>はじめて</rt></ruby>	първи път
 <ruby>助ける<rt>たすける</rt></ruby>	помощ
 <ruby>勉強<rt>べんきょう</rt></ruby>	проучване
-<ruby>勉強したことを<rt>べんきょうしたことを</rt></ruby>	какво научих
+<ruby>勉強したことを<rt>べんきょうしたことを</rt></ruby>	каквото научих
 <ruby>原油<rt>げんゆ</rt></ruby>	суров
 <ruby>去年<rt>きょねん</rt></ruby>	миналата година
-<ruby>取り<rt>とり</rt></ruby>	Тори
 <ruby>取りまする<rt>とりまする</rt></ruby>	аз ще го взема
 <ruby>回転<rt>かいてん</rt></ruby>	завъртане
 <ruby>国会<rt>こっかい</rt></ruby>	конгрес
@@ -82,7 +56,7 @@
 <ruby>大回転<rt>だいかいてん</rt></ruby>	гигантски слалом
 <ruby>大統領<rt>だいとうりょう</rt></ruby>	президент
 <ruby>大震災<rt>だいしんさい</rt></ruby>	Голямо земетресение
-<ruby>奈さんは<rt>なさんは</rt></ruby>	На-сан е
+<ruby>奈さんは<rt>なさんは</rt></ruby>	Нана-сан
 <ruby>女子<rt>じょし</rt></ruby>	момичета
 <ruby>女子スーパー<rt>じょしすーぱー</rt></ruby>	женски супермаркет
 <ruby>始めてから<rt>はじめてから</rt></ruby>	Откакто започнах
@@ -99,8 +73,8 @@
 <ruby>必要<rt>ひつよう</rt></ruby>	нужда
 <ruby>怪我<rt>けが</rt></ruby>	нараняване
 <ruby>恣意<rt>しい</rt></ruby>	безсмислен
-<ruby>成る<rt>なっ</rt></ruby>	станете
-<ruby>戦いが<rt>たたかいが</rt></ruby>	Битката
+<ruby>成る<rt>なっ</rt></ruby>	станете; спаси
+<ruby>戦いが<rt>たたかいが</rt></ruby>	битката
 <ruby>戻ったばかりでする<rt>もどったばかりでする</rt></ruby>	Току що се върнах
 <ruby>払い<rt>はらい</rt></ruby>	плащане
 <ruby>払うお<rt>はらうお</rt></ruby>	аз ще платя
@@ -110,7 +84,6 @@
 <ruby>敷く<rt>しく</rt></ruby>	лежи
 <ruby>旅行<rt>りょこう</rt></ruby>	пътуване
 <ruby>日本<rt>にっぽん</rt></ruby>	Япония
-<ruby>旨い<rt>うまく</rt></ruby>	вкусно
 <ruby>早い<rt>はやい</rt></ruby>	рано
 <ruby>書きまする<rt>かきまする</rt></ruby>	аз ще пиша
 <ruby>有る<rt>ある</rt></ruby>	да
@@ -120,15 +93,17 @@
 <ruby>村岡選手<rt>むらおかせんしゅ</rt></ruby>	Мураока играч
 <ruby>来た<rt>くる</rt></ruby>	дойде
 <ruby>来る<rt>き</rt></ruby>	ела
+<ruby>東日本<rt>ひがしにっぽん</rt></ruby>	източна япония
 <ruby>東日本大震災<rt>ひがしにほんだいしんさい</rt></ruby>	Голямо земетресение в Източна Япония
-<ruby>止め<rt>とめ</rt></ruby>	спрете
 <ruby>止めたら<rt>とめたら</rt></ruby>	Ако го спра
+<ruby>止める<rt>とめ</rt></ruby>	спрете
 <ruby>歳だった<rt>さいだった</rt></ruby>	беше на годинка
 <ruby>残する<rt>のこする</rt></ruby>	напускам
 <ruby>気仙沼市<rt>けせんぬまし</rt></ruby>	Кесеннума Сити
 <ruby>気安い<rt>きやすく</rt></ruby>	Евтин
 <ruby>沢山<rt>たくさん</rt></ruby>	много
 <ruby>法律<rt>ほうりつ</rt></ruby>	закон
+<ruby>津波<rt>つなみ</rt></ruby>	цунами
 <ruby>滑りまする<rt>すべりまする</rt></ruby>	хлъзгав
 <ruby>滑る<rt>すべる</rt></ruby>	слайд
 <ruby>滑ることができてよ<rt>すべることができてよ</rt></ruby>	Мога да карам кънки
@@ -144,9 +119,8 @@
 <ruby>練習<rt>れんしゅう</rt></ruby>	практика
 <ruby>考え<rt>かんがえ</rt></ruby>	мисъл
 <ruby>考えていきたいです<rt>かんがえていきたいです</rt></ruby>	Искам да помисля за това
-<ruby>考えてう<rt>かんがえてう</rt></ruby>	Мисля си за това
-<ruby>聞き<rt>きき</rt></ruby>	слушайте
-<ruby>聞く<rt>きく</rt></ruby>	слушайте
+<ruby>考えてう<rt>かんがえてう</rt></ruby>	мисля за това
+<ruby>聞く<rt>きい</rt></ruby>	слушайте
 <ruby>自分<rt>じぶん</rt></ruby>	себе си
 <ruby>良い<rt>よかっ</rt></ruby>	добре
 <ruby>若し<rt>もし</rt></ruby>	млад
