@@ -1136,6 +1136,12 @@ def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME, anki_apkg_filename
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>最新ニュース</title>
+<meta name="theme-color" content="#0f1115">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
@@ -1143,7 +1149,8 @@ body.theme-sepia{--bg:#f3eadb;--card:#fbf4e7;--card2:#f4ead9;--text:#3c2f22;--mu
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui-font);line-height:1.8}
 .wrap{max-width:980px;margin:0 auto;padding:26px 16px 40px}
-h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center}
+h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-family:var(--jp-font)}
+.site-logo{display:block;width:100px;height:100px;object-fit:contain;margin:0 auto 14px auto}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:10px 0 14px}
@@ -1175,6 +1182,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 </head>
 <body class="theme-dark">
 <div class="wrap">
+<img class="site-logo" src="android-chrome-192x192.png" alt="NHK logo" loading="lazy">
 <h1>最新ニュース</h1>
 <div id="dict-popup" class="dict-popup" aria-hidden="true"></div>
 """
@@ -1217,17 +1225,40 @@ ruby rt{font-size:.68em;color:var(--muted)}
 </div>
 <script>
 function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;}
-function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk_theme',theme);}
+function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk_theme',theme);const meta=document.querySelector('meta[name="theme-color"]');if(meta){meta.setAttribute('content',theme==='theme-light'?'#f7f7f5':theme==='theme-sepia'?'#f3eadb':'#0f1115');}}
 function applyJapaneseFont(kind){const font=kind==='gothic'?'"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif':'"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif';document.documentElement.style.setProperty('--jp-font',font);}
 function setJapaneseFont(kind){localStorage.setItem('nhk_jp_font',kind);applyJapaneseFont(kind);}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
 function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const word=el.dataset.word||'';const reading=el.dataset.reading||'';const meaning=el.dataset.meaning||'';popup.innerHTML='<div class="dw">'+word+'</div>'+(reading?'<div class="dr">'+reading+'</div>':'')+(meaning?'<div class="dm">'+meaning+'</div>':'');el.classList.add('is-active');positionPopupNear(el,popup);}
-document.addEventListener('DOMContentLoaded',function(){loadPrefs();document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .bg-block').forEach(function(bgBlock){const jpBlock=bgBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;bgBlock.classList.toggle('is-visible');});});});
+document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(function(){});}document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .bg-block').forEach(function(bgBlock){const jpBlock=bgBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;bgBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
 </html>"""
     return html
+
+def write_pwa_files(output_dir):
+    if not output_dir:
+        return
+    manifest = {
+        "name": "NHK Easy News",
+        "short_name": "NHK Easy",
+        "start_url": "./index.html",
+        "display": "standalone",
+        "background_color": "#0f1115",
+        "theme_color": "#0f1115",
+        "icons": [
+            {"src": "android-chrome-192x192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "android-chrome-512x512.png", "sizes": "512x512", "type": "image/png"},
+            {"src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png"}
+        ]
+    }
+    with open(os.path.join(output_dir, "manifest.webmanifest"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+    sw_js = "self.addEventListener('install',e=>{self.skipWaiting();});\nself.addEventListener('activate',e=>{e.waitUntil(self.clients.claim());});\nself.addEventListener('fetch',e=>{if(e.request.method!==\'GET\')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});"
+    with open(os.path.join(output_dir, "sw.js"), "w", encoding="utf-8") as f:
+        f.write(sw_js)
+
 def main():
     global DEEPL_API_KEY
     parser = argparse.ArgumentParser()
@@ -1240,6 +1271,7 @@ def main():
     output_dir = os.path.dirname(args.output)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
+        write_pwa_files(output_dir)
 
     articles = get_articles(args.count)
     if not articles:
