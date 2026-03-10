@@ -1,7 +1,7 @@
 <p align="center">
 
-[![NHK Easy](docs/android-chrome-512x512.png)](https://vebaev.github.io/NHK/)
-最新ニュース
+[![NHK Easy](docs/android-chrome-192x192.png)](https://vebaev.github.io/NHK/)
+# 最新ニュース
 ![License](https://img.shields.io/badge/license-GPL--3.0-green)
 ![Platform](https://img.shields.io/badge/platform-Web-blue)
 ![PWA](https://img.shields.io/badge/PWA-supported-orange)
