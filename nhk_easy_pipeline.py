@@ -247,6 +247,10 @@ def build_mini_jmdict_db(db_path="jmdict_mini.db"):
         ("学生", "がくせい", "студент; ученик", 90),
         ("東京", "とうきょう", "Токио", 90),
         ("日本", "にほん", "Япония", 90),
+        ("一番", "いちばん", "най; номер едно; най-много", 100),
+        ("新しい", "あたらしい", "нов", 95),
+        ("トップ", "とっぷ", "връх; водещо място; топ", 80),
+        ("力", "ちから", "сила", 90),
     ]
     cur.executemany("INSERT INTO entries(surface, reading, gloss, priority) VALUES (?, ?, ?, ?)", seed)
     conn.commit()
@@ -448,6 +452,40 @@ def should_keep_token_for_vocab(token) -> bool:
         return True
     return False
 
+def is_suspicious_vocab_word(word: str) -> bool:
+    w = (word or "").strip()
+    if not w:
+        return True
+    if len(w) < 2:
+        return True
+    if re.match(r"^[ぁ-んー]+[ァ-ン一-龯]", w):
+        return True
+    if re.search(r"[<>{}=]", w):
+        return True
+    return False
+
+
+def ruby_base_text(ruby_tag) -> str:
+    text = ""
+    for child in ruby_tag.contents:
+        name = getattr(child, "name", None)
+        if name in {"rt", "rp"}:
+            continue
+        text += child.get_text("", strip=True) if hasattr(child, "get_text") else str(child)
+    return text.strip()
+
+
+def make_dict_span(soup, item, inner_html: str):
+    span = soup.new_tag("span")
+    span["class"] = "dict-word"
+    span["data-word"] = (item.get("word") or "").strip()
+    span["data-reading"] = (item.get("reading") or "").strip()
+    span["data-meaning"] = (item.get("meaning") or "").strip()
+    frag = BeautifulSoup(inner_html, "html.parser")
+    for node in list(frag.contents):
+        span.append(node)
+    return span
+
 def extract_vocab_from_blocks(blocks):
     vocab_map = {}
     for block in blocks:
@@ -477,7 +515,7 @@ def extract_vocab_from_blocks(blocks):
                 surface_reading = (rt_text + okurigana).strip()
                 word = lemmatize_japanese(surface_word)
                 reading = to_dictionary_form(surface_reading)
-            if word not in vocab_map:
+            if not is_suspicious_vocab_word(word) and word not in vocab_map:
                 vocab_map[word] = reading
     tagger = get_mecab_tagger()
     if tagger is not None:
@@ -496,20 +534,20 @@ def extract_vocab_from_blocks(blocks):
                 lemma = token_lemma(token).strip() or surface
                 reading = normalize_katakana_to_hiragana(feature_reading(token).strip())
                 word = lemma if re.search(r"[一-龯ぁ-んァ-ン]", lemma) else surface
-                if not word or len(word) < 2:
+                if not word or is_suspicious_vocab_word(word):
                     continue
                 if word not in vocab_map:
                     vocab_map[word] = reading
             for compound in merge_compound_nouns(tokens):
                 word = "".join(x[0] for x in compound).strip()
                 reading = "".join(x[1] for x in compound).strip()
-                if len(word) >= 2 and word not in vocab_map:
+                if not is_suspicious_vocab_word(word) and word not in vocab_map:
                     vocab_map[word] = reading
     vocab = []
     for word, reading in vocab_map.items():
         vocab.append({"word": word, "reading": reading, "meaning": translate_word(word, reading)})
     vocab.sort(key=lambda x: (-len(x["word"]), x["word"]))
-    return vocab[:60]
+    return vocab[:80]
 
 def is_single_kanji_word(word: str) -> bool:
     return bool(re.fullmatch(r"[一-龯]", (word or "").strip()))
@@ -892,46 +930,103 @@ def get_articles(n=4):
 def wrap_vocab_words_in_html(html_fragment, vocab_items):
     if not html_fragment:
         return html_fragment
+
     soup = BeautifulSoup(html_fragment, "html.parser")
-    sorted_vocab = sorted([item for item in (vocab_items or []) if (item.get("word") or "").strip()], key=lambda x: len((x.get("word") or "")), reverse=True)
+    vocab_lookup = {}
+    for item in vocab_items or []:
+        word = (item.get("word") or "").strip()
+        if word and not is_suspicious_vocab_word(word):
+            vocab_lookup[word] = item
+
+    if not vocab_lookup:
+        return html_fragment
+
+    # 1) Wrap ruby words first, so kanji + reading stay intact.
+    for ruby in list(soup.find_all("ruby")):
+        if ruby.find_parent(class_="dict-word"):
+            continue
+
+        base = ruby_base_text(ruby)
+        okurigana = extract_following_okurigana(ruby)
+        candidates = []
+        if base and okurigana:
+            surface = base + okurigana
+            candidates.extend([surface, lemmatize_japanese(surface)])
+        if base:
+            candidates.append(base)
+
+        item = None
+        for cand in candidates:
+            if cand in vocab_lookup:
+                item = vocab_lookup[cand]
+                break
+        if item is None:
+            continue
+
+        inner_html = str(ruby) + html_lib.escape(okurigana)
+        span = make_dict_span(soup, item, inner_html)
+        ruby.replace_with(span)
+
+        nxt = span.next_sibling
+        if isinstance(nxt, NavigableString) and okurigana and str(nxt).startswith(okurigana):
+            rest = str(nxt)[len(okurigana):]
+            nxt.replace_with(rest)
+
+    # 2) Wrap remaining plain text by MeCab token boundaries, not raw substring search.
+    tagger = get_mecab_tagger()
     skip_tags = {"rt", "rp", "script", "style"}
+
     for text_node in list(soup.find_all(string=True)):
         parent = getattr(text_node, "parent", None)
         if parent is None or getattr(parent, "name", None) in skip_tags:
             continue
+        if parent.get("class") and "dict-word" in parent.get("class", []):
+            continue
+
         original = str(text_node)
         if not original.strip():
             continue
-        container = BeautifulSoup("", "html.parser")
-        remaining = original
-        while remaining:
-            earliest = None
-            earliest_item = None
-            for item in sorted_vocab:
-                word = (item.get("word") or "").strip()
-                if not word:
-                    continue
-                idx = remaining.find(word)
-                if idx == -1:
-                    continue
-                if earliest is None or idx < earliest or (idx == earliest and len(word) > len((earliest_item or {}).get("word", ""))):
-                    earliest = idx
-                    earliest_item = item
-            if earliest is None or earliest_item is None:
-                container.append(NavigableString(remaining))
-                break
-            if earliest > 0:
-                container.append(NavigableString(remaining[:earliest]))
-            word = (earliest_item.get("word") or "").strip()
-            span = soup.new_tag("span")
-            span["class"] = "dict-word"
-            span["data-word"] = word
-            span["data-reading"] = (earliest_item.get("reading") or "").strip()
-            span["data-meaning"] = (earliest_item.get("meaning") or "").strip()
-            span.string = word
-            container.append(span)
-            remaining = remaining[earliest + len(word):]
-        text_node.replace_with(container)
+
+        if tagger is None:
+            continue
+
+        try:
+            tokens = list(tagger(original))
+        except Exception:
+            continue
+
+        surfaces = [token_surface(t) for t in tokens]
+        if not surfaces:
+            continue
+
+        # Only rewrite node if we actually match something.
+        matched_any = False
+        rebuilt = []
+        i = 0
+        while i < len(surfaces):
+            best = None
+            best_item = None
+            max_j = min(len(surfaces), i + 5)
+            for j in range(max_j, i, -1):
+                candidate = "".join(surfaces[i:j]).strip()
+                if candidate in vocab_lookup and not is_suspicious_vocab_word(candidate):
+                    best = candidate
+                    best_item = vocab_lookup[candidate]
+                    best_j = j
+                    break
+            if best is not None:
+                matched_any = True
+                rebuilt.append(make_dict_span(soup, best_item, html_lib.escape(best)))
+                i = best_j
+            else:
+                rebuilt.append(NavigableString(surfaces[i]))
+                i += 1
+
+        if matched_any:
+            for node in rebuilt[::-1]:
+                text_node.insert_after(node)
+            text_node.extract()
+
     return "".join(str(x) for x in soup.contents)
 def build_html(articles, anki_filename=DEFAULT_ANKI_FILENAME, anki_apkg_filename=DEFAULT_ANKI_APKG_FILENAME, grammar_points=None):
     grammar_points = grammar_points or []
@@ -1033,19 +1128,24 @@ def main():
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
     args = parser.parse_args()
+
     DEEPL_API_KEY = (args.deepl_key or "").strip()
+    output_dir = os.path.dirname(args.output)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
     if not get_jmdict_db_path():
         try:
             build_mini_jmdict_db(os.path.join(output_dir if output_dir else ".", "jmdict_mini.db"))
         except Exception:
             pass
+
     articles = get_articles(args.count)
     if not articles:
         raise RuntimeError("No articles were extracted.")
-    output_dir = os.path.dirname(args.output)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
+
     grammar_points = extract_grammar_points(articles)
+
     anki_filename = DEFAULT_ANKI_FILENAME
     anki_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
     anki_seen_words_filename = DEFAULT_ANKI_SEEN_WORDS_FILENAME
@@ -1057,14 +1157,17 @@ def main():
         anki_path = anki_filename
         anki_apkg_path = anki_apkg_filename
         anki_seen_words_path = anki_seen_words_filename
+
     seen_words = load_seen_words(anki_seen_words_path)
     add_known_progress_to_articles(articles, seen_words)
     anki_cards, newly_added_words = build_anki_cards(articles, grammar_points=grammar_points, seen_items=seen_words)
     save_anki_tsv(anki_cards, anki_path)
     build_anki_apkg(anki_cards, anki_apkg_path)
     save_seen_words(anki_seen_words_path, seen_words | newly_added_words)
+
     html = build_html(articles, anki_filename=anki_filename, anki_apkg_filename=anki_apkg_filename, grammar_points=grammar_points)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
+
 if __name__ == "__main__":
     main()
