@@ -1,4 +1,18 @@
-# NHK Easy Японски новини 最新ニュース
+<p align="center">
+
+# 最新ニュース
+
+[![NHK Easy](docs/android-chrome-512x512.png)](https://vebaev.github.io/NHK/)
+
+![License](https://img.shields.io/badge/license-GPL--3.0-green)
+![Platform](https://img.shields.io/badge/platform-Web-blue)
+![PWA](https://img.shields.io/badge/PWA-supported-orange)
+
+[Отвори приложението](https://vebaev.github.io/NHK/)
+
+</p>
+
+# NHK Easy Японски новини
 
 Уеб приложение за четене на **NHK Easy News** с помощни инструменти за изучаване на японски език.
 
