@@ -22,24 +22,43 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
       - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Ensure data directory exists
+        run: mkdir -p data
+
+      - name: Cache JMdict
+        uses: actions/cache@v4
+        with:
+          path: data/jmdict.db
+          key: jmdict-cache-v1
+
+      - name: Download dictionary if missing
         run: |
-          pip install -r requirements.txt
+          if [ ! -f data/jmdict.db ]; then
+            echo "Downloading JMdict..."
+            curl -L https://github.com/vebaev/NHK/releases/download/dict/jmdict.db -o data/jmdict.db
+          else
+            echo "Dictionary already exists."
+          fi
 
       - name: Ensure docs directory exists
-        run: |
-          mkdir -p docs
+        run: mkdir -p docs
 
       - name: Run generator
-        env:
-          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
-        run: |
-          python nhk_easy_pipeline.py --output docs/index.html --count 4
+        run: python nhk_easy_pipeline.py --output docs/index.html --count 4
 
       - name: Commit updated page
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-          git add docs/index.html docs/anki_cards.tsv docs/nhk_easy_vocab.apkg docs/anki_seen_words.json
+          git add docs/index.html docs/*.tsv docs/*.apkg docs/*.json || true
           git commit -m "update NHK easy page" || echo "no changes"
           git push
