@@ -11,6 +11,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup, NavigableString
 from googletrans import Translator
+import sqlite3
 
 try:
     import fugashi
@@ -35,6 +36,7 @@ _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _MECAB_TAGGER = None
 _WORD_GLOSSARY = None
+_JMDICT_DB = None
 
 PARTICLE_PREFIXES = ("が", "を", "に", "で", "は", "と", "へ", "や", "も", "の")
 GODAN_I_TO_U = {"い":"う","き":"く","ぎ":"ぐ","し":"す","ち":"つ","に":"ぬ","び":"ぶ","み":"む","り":"る"}
@@ -127,6 +129,150 @@ def load_word_glossary():
     _WORD_GLOSSARY = {}
     return _WORD_GLOSSARY
 
+def get_jmdict_db_path():
+    candidates = [
+        os.environ.get("JMDICT_DB", "").strip(),
+        "jmdict_mini.db",
+        os.path.join(os.path.dirname(__file__), "jmdict_mini.db"),
+    ]
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+    return ""
+
+
+def get_jmdict_connection():
+    global _JMDICT_DB
+    if _JMDICT_DB is not None:
+        return _JMDICT_DB
+    db_path = get_jmdict_db_path()
+    if not db_path:
+        return None
+    try:
+        _JMDICT_DB = sqlite3.connect(db_path)
+        _JMDICT_DB.row_factory = sqlite3.Row
+        return _JMDICT_DB
+    except Exception:
+        _JMDICT_DB = None
+        return None
+
+
+def lookup_dictionary_meaning(word: str, reading: str = "") -> str:
+    glossary = load_word_glossary()
+    if word in glossary:
+        return glossary[word]
+    if reading and reading in glossary:
+        return glossary[reading]
+
+    conn = get_jmdict_connection()
+    if conn is None:
+        return ""
+
+    queries = []
+    if word:
+        queries.append(("surface", word))
+        lemma = to_dictionary_form(word)
+        if lemma and lemma != word:
+            queries.append(("surface", lemma))
+    if reading:
+        queries.append(("reading", reading))
+
+    seen = set()
+    for mode, value in queries:
+        if not value or (mode, value) in seen:
+            continue
+        seen.add((mode, value))
+        try:
+            if mode == "surface":
+                rows = conn.execute(
+                    "SELECT gloss FROM entries WHERE surface = ? ORDER BY priority DESC, length(surface) DESC LIMIT 3",
+                    (value,)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT gloss FROM entries WHERE reading = ? ORDER BY priority DESC LIMIT 3",
+                    (value,)
+                ).fetchall()
+            if rows:
+                glosses = []
+                for row in rows:
+                    gloss = (row["gloss"] or "").strip()
+                    if gloss and gloss not in glosses:
+                        glosses.append(gloss)
+                if glosses:
+                    return "; ".join(glosses[:2])
+        except Exception:
+            continue
+    return ""
+
+
+def build_mini_jmdict_db(db_path="jmdict_mini.db"):
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("DROP TABLE IF EXISTS entries")
+    cur.execute("CREATE TABLE entries (surface TEXT, reading TEXT, gloss TEXT, priority INTEGER DEFAULT 0)")
+    seed = [
+        ("株式市場", "かぶしきしじょう", "фондов пазар", 100),
+        ("株", "かぶ", "акция", 100),
+        ("物価", "ぶっか", "цени; ценово равнище", 95),
+        ("経済", "けいざい", "икономика", 95),
+        ("世界経済", "せかいけいざい", "световна икономика", 100),
+        ("石油", "せきゆ", "петрол", 95),
+        ("石油価格", "せきゆかかく", "цена на петрола", 100),
+        ("価格", "かかく", "цена", 95),
+        ("平均", "へいきん", "средна стойност; средно", 90),
+        ("心配", "しんぱい", "безпокойство; тревога", 90),
+        ("影響", "えいきょう", "влияние; ефект", 90),
+        ("地震", "じしん", "земетресение", 95),
+        ("政府", "せいふ", "правителство", 95),
+        ("会社", "かいしゃ", "компания", 95),
+        ("企業", "きぎょう", "предприятие; компания", 90),
+        ("発表", "はっぴょう", "обявяване; съобщение", 90),
+        ("続く", "つづく", "продължавам; продължава", 90),
+        ("売る", "うる", "продавам", 90),
+        ("買う", "かう", "купувам", 90),
+        ("増える", "ふえる", "увеличавам се", 90),
+        ("減る", "へる", "намалявам", 90),
+        ("上がる", "あがる", "покачвам се", 90),
+        ("下がる", "さがる", "спадам; понижавам се", 90),
+        ("必要", "ひつよう", "необходим", 90),
+        ("安全", "あんぜん", "безопасност; безопасен", 90),
+        ("問題", "もんだい", "проблем; въпрос", 90),
+        ("原因", "げんいん", "причина", 90),
+        ("結果", "けっか", "резултат", 90),
+        ("対策", "たいさく", "мярка; противодействие", 90),
+        ("病院", "びょういん", "болница", 90),
+        ("学校", "がっこう", "училище", 90),
+        ("大学", "だいがく", "университет", 90),
+        ("学生", "がくせい", "студент; ученик", 90),
+        ("東京", "とうきょう", "Токио", 90),
+        ("日本", "にほん", "Япония", 90),
+    ]
+    cur.executemany("INSERT INTO entries(surface, reading, gloss, priority) VALUES (?, ?, ?, ?)", seed)
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+def merge_compound_nouns(tokens):
+    compounds = []
+    current = []
+    for token in tokens:
+        feat = token_feature(token)
+        pos1 = getattr(feat, "pos1", "") if feat is not None else ""
+        pos2 = getattr(feat, "pos2", "") if feat is not None else ""
+        surface = token_surface(token).strip()
+        reading = normalize_katakana_to_hiragana(feature_reading(token).strip())
+        if pos1 == "名詞" and pos2 not in {"代名詞", "非自立"} and surface:
+            current.append((surface, reading))
+        else:
+            if len(current) >= 2:
+                compounds.append(current[:])
+            current = []
+    if len(current) >= 2:
+        compounds.append(current[:])
+    return compounds
+
 def translate_text(text: str, dest: str = "bg") -> str:
     text = (text or "").strip()
     if not text:
@@ -162,14 +308,13 @@ def translate_word(word: str, reading: str = "") -> str:
     word = (word or "").strip()
     if not word:
         return ""
-    glossary = load_word_glossary()
-    if word in glossary:
-        return glossary[word]
-    if reading and reading in glossary:
-        return glossary[reading]
     cache_key = ("word", word, reading)
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
+    dict_result = lookup_dictionary_meaning(word, reading=reading)
+    if dict_result:
+        _TRANSLATION_CACHE[cache_key] = dict_result
+        return dict_result
     result = translate_text(word, dest="bg")
     _TRANSLATION_CACHE[cache_key] = result
     return result
@@ -354,6 +499,11 @@ def extract_vocab_from_blocks(blocks):
                 if not word or len(word) < 2:
                     continue
                 if word not in vocab_map:
+                    vocab_map[word] = reading
+            for compound in merge_compound_nouns(tokens):
+                word = "".join(x[0] for x in compound).strip()
+                reading = "".join(x[1] for x in compound).strip()
+                if len(word) >= 2 and word not in vocab_map:
                     vocab_map[word] = reading
     vocab = []
     for word, reading in vocab_map.items():
@@ -884,6 +1034,11 @@ def main():
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
     args = parser.parse_args()
     DEEPL_API_KEY = (args.deepl_key or "").strip()
+    if not get_jmdict_db_path():
+        try:
+            build_mini_jmdict_db(os.path.join(output_dir if output_dir else ".", "jmdict_mini.db"))
+        except Exception:
+            pass
     articles = get_articles(args.count)
     if not articles:
         raise RuntimeError("No articles were extracted.")
