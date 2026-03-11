@@ -401,25 +401,9 @@ def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: s
         out = (out or "").strip()
         return bool(out and out != src)
 
-    def passiveish_bg(base):
-        base = (base or "").strip()
-        if not base:
-            return ""
-        if base.startswith("се "):
-            return base
-        return "се " + base
-
-    def passiveish_en(base):
-        base = (base or "").strip()
-        if not base:
-            return ""
-        if base.startswith("to "):
-            base = base[3:]
-        return base
-
     if form_label_bg == "учтива отрицателна форма на 〜ている":
-        bg = "не е " + passiveish_bg(base_bg) if base_bg else ""
-        en = "has not been " + passiveish_en(base_en) if base_en else ""
+        bg = "не е " + base_bg if base_bg and not base_bg.startswith("не ") else (base_bg or "")
+        en = "has not been " + base_en if base_en else ""
         if not bg:
             bg = direct_bg if usable_direct(surface, direct_bg) else "не е намерено"
         if not en:
@@ -427,13 +411,9 @@ def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: s
         return {"bg": bg, "en": en}
 
     if form_label_bg == "учтива форма на 〜ている" and base_bg:
-        return {"bg": "е " + passiveish_bg(base_bg), "en": ("is " + passiveish_en(base_en)) if base_en else direct_en}
+        return {"bg": "е " + base_bg, "en": ("is " + base_en) if base_en else direct_en}
     if form_label_bg == "минала форма на 〜ている" and base_bg:
-        return {"bg": "беше " + passiveish_bg(base_bg), "en": ("was " + passiveish_en(base_en)) if base_en else direct_en}
-    if form_label_bg == "учтива минала форма на 〜ている" and base_bg:
-        return {"bg": "беше " + passiveish_bg(base_bg), "en": ("was " + passiveish_en(base_en)) if base_en else direct_en}
-    if form_label_bg == "отрицателна форма на 〜ている" and base_bg:
-        return {"bg": "не е " + passiveish_bg(base_bg), "en": ("is not " + passiveish_en(base_en)) if base_en else direct_en}
+        return {"bg": "беше " + base_bg, "en": ("was " + base_en) if base_en else direct_en}
 
     return {
         "bg": direct_bg if usable_direct(surface, direct_bg) else base_bg,
@@ -490,6 +470,27 @@ def normalize_katakana_to_hiragana(text: str) -> str:
         code = ord(ch)
         result.append(chr(code - 0x60) if 0x30A1 <= code <= 0x30F6 else ch)
     return "".join(result)
+
+
+def get_reading_for_word(word: str, fallback: str = "") -> str:
+    word = (word or "").strip()
+    fallback = normalize_katakana_to_hiragana((fallback or "").strip())
+    if not word:
+        return fallback
+    entry = lookup_dictionary_entry(word)
+    if entry and (entry.get("reading") or "").strip():
+        return normalize_katakana_to_hiragana((entry.get("reading") or "").strip())
+    tagger = get_mecab_tagger()
+    if tagger is not None:
+        try:
+            tokens = list(tagger(word))
+            if tokens:
+                reading = normalize_katakana_to_hiragana("".join(feature_reading(t).strip() for t in tokens))
+                if reading:
+                    return reading
+        except Exception:
+            pass
+    return fallback
 
 def unique_keep_order(values):
     seen = set()
@@ -595,7 +596,7 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
                 if len(tokens) == 1:
                     tok = tokens[0]
                     feat = token_feature(tok)
-                    lemma = normalize_lemma(token_lemma(tok).strip() or to_dictionary_form(surface) or lemma_hint or surface)
+                    lemma = token_lemma(tok).strip() or to_dictionary_form(surface) or lemma_hint or surface
                     reading_surface = normalize_katakana_to_hiragana(feature_reading(tok).strip() or reading_hint)
                     info["lemma"] = lemma
                     info["reading_surface"] = reading_surface
@@ -609,9 +610,9 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
                     derived = to_dictionary_form(surface)
                     non_aux_lemmas = [x for x in token_lemmas if x not in {"て", "で", "いる", "居る", "ます", "です", "ん", "ない"}]
                     if derived and derived != surface:
-                        info["lemma"] = normalize_lemma(derived)
+                        info["lemma"] = derived
                     elif non_aux_lemmas:
-                        info["lemma"] = normalize_lemma(non_aux_lemmas[0])
+                        info["lemma"] = non_aux_lemmas[0]
                     elif lemma_hint:
                         info["lemma"] = lemma_hint
                     else:
@@ -620,12 +621,14 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
         except Exception:
             pass
     if not info["lemma"] or info["lemma"] == surface:
-        info["lemma"] = normalize_lemma(to_dictionary_form(surface) or lemma_hint or surface)
+        info["lemma"] = to_dictionary_form(surface) or lemma_hint or surface
     if not info["reading_surface"]:
         info["reading_surface"] = reading_hint
     if not info["reading_lemma"]:
-        lemma_entry = lookup_dictionary_entry(info["lemma"]) or lookup_dictionary_entry(info["lemma"], reading=info["reading_surface"])
-        info["reading_lemma"] = normalize_katakana_to_hiragana((lemma_entry or {}).get("reading","").strip()) or info["reading_surface"]
+        if info["lemma"] == info["surface"]:
+            info["reading_lemma"] = info["reading_surface"]
+        else:
+            info["reading_lemma"] = get_reading_for_word(info["lemma"], fallback="")
     form_labels = classify_japanese_form(info["surface"], info["lemma"], info["pos1"], info["pos2"], info["ctype"], info["cform"])
     info["form_bg"] = form_labels["bg"]
     info["form_en"] = form_labels["en"]
@@ -749,35 +752,6 @@ def to_dictionary_form(word: str) -> str:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
     return w
-
-
-def normalize_lemma(lemma: str) -> str:
-    lemma = (lemma or "").strip()
-    if not lemma:
-        return lemma
-
-    if lemma.endswith("させられる") and len(lemma) > len("させられる"):
-        stem = lemma[:-len("させられる")]
-        return stem + "る"
-    if lemma.endswith("される") and len(lemma) > len("される"):
-        stem = lemma[:-len("される")]
-        if stem:
-            return stem + "する"
-    if lemma.endswith("られる") and len(lemma) > len("られる"):
-        stem = lemma[:-len("られる")]
-        if stem:
-            return stem + "る"
-    if lemma.endswith("れる") and len(lemma) > len("れる"):
-        stem = lemma[:-len("れる")]
-        if stem.endswith("わ"):
-            return stem[:-1] + "う"
-        if stem.endswith(("ら", "り")):
-            return stem[:-1] + "る"
-        return stem + "る"
-    if lemma.endswith("せる") and len(lemma) > len("せる"):
-        stem = lemma[:-len("せる")]
-        return stem + "る"
-    return lemma
     for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
         if w.endswith(suffix):
             return w[:-len(suffix)] + "する"
@@ -848,7 +822,9 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     surface = (analysis.get("surface") or item.get("word") or "").strip()
     lemma = (analysis.get("lemma") or item.get("word") or surface).strip()
     reading_surface = normalize_katakana_to_hiragana((analysis.get("reading_surface") or item.get("reading") or "").strip())
-    reading_lemma = normalize_katakana_to_hiragana((analysis.get("reading_lemma") or item.get("reading") or reading_surface).strip())
+    reading_lemma = normalize_katakana_to_hiragana((analysis.get("reading_lemma") or "").strip())
+    if not reading_lemma:
+        reading_lemma = reading_surface if lemma == surface else get_reading_for_word(lemma, fallback="")
     form_bg = (analysis.get("form_bg") or "форма в текста").strip()
     form_en = (analysis.get("form_en") or "form in context").strip()
 
@@ -1647,10 +1623,7 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
 .dict-word.is-active{background:rgba(138,180,255,.18)}
 .dict-popup{position:fixed;z-index:9999;display:none;max-width:min(96vw,440px);background:var(--popup);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
-.dict-popup .dw{font-weight:700;font-size:1.08rem;font-family:var(--jp-font);line-height:1.55;white-space:normal;word-break:break-word}
-.dict-popup .dt{color:#6dd17c;margin-top:6px;font-weight:600;line-height:1.6;white-space:normal;word-break:break-word}
-.dict-popup .dg{color:var(--muted);margin-top:8px;font-size:.94rem;line-height:1.6}
-.dict-popup .dl{color:var(--accent);margin-top:10px;font-weight:700;font-family:var(--jp-font);line-height:1.55;white-space:normal;word-break:break-word}
+.dict-popup .dw{font-weight:700;font-size:1.08rem;font-family:var(--jp-font);line-height:1.6;white-space:normal;word-break:break-word}
 .dict-popup .dr{color:var(--accent);font-size:.95rem;margin-top:2px}
 .dict-popup .dm{color:var(--text);margin-top:6px;line-height:1.65;white-space:normal;word-break:break-word}
 ruby rt{font-size:.68em;color:var(--muted)}
@@ -1720,7 +1693,7 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=el.dataset.surface||'';const lemma=el.dataset.lemma||surface;const rs=el.dataset.readingSurface||'';const rl=el.dataset.readingLemma||rs;const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||ms;const labelForm=(lang==='en'?'Form':'Форма');const surfaceLine=surface+(rs?' ['+rs+']':'');const lemmaLine=lemma+(rl?' ['+rl+']':'');popup.innerHTML='<div class="dw">'+surfaceLine+'</div><div class="dt">'+ms+'</div><div class="dg">'+labelForm+': '+form+'</div><div class="dl">'+lemmaLine+'</div><div class="dm">'+ml+'</div>';el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=el.dataset.surface||'';const lemma=el.dataset.lemma||surface;const rs=el.dataset.readingSurface||'';const rl=el.dataset.readingLemma||rs;const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||ms;const labelForm=(lang==='en'?'Form':'Форма');const line1=surface+(rs?' ['+rs+']':'')+' - '+ms;const line2=labelForm+': '+form;const line3=lemma+(rl?' ['+rl+']':'')+' - '+ml;popup.innerHTML='<div class="dw">'+line1+'</div><div class="dm">'+line2+'</div><div class="dm">'+line3+'</div>';el.classList.add('is-active');positionPopupNear(el,popup);}
 
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
 document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
