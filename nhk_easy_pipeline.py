@@ -776,6 +776,25 @@ def to_dictionary_form(word: str) -> str:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
     return w
+def is_matchable_token_span(tokens_slice) -> bool:
+    if not tokens_slice:
+        return False
+    if len(tokens_slice) == 1:
+        return True
+    pos1s = []
+    for t in tokens_slice:
+        feat = token_feature(t)
+        pos1s.append(getattr(feat, "pos1", "") if feat is not None else "")
+    if any(p in {"記号", "補助記号"} for p in pos1s):
+        return False
+    if all(p == "名詞" for p in pos1s):
+        return True
+    first = pos1s[0]
+    if first in {"動詞", "形容詞"}:
+        allowed_tail = {"助動詞", "助詞", "動詞", "形容詞", "接尾辞", "接尾", "非自立"}
+        return all((p in allowed_tail or p == "") for p in pos1s[1:])
+    return False
+
 def should_keep_token_for_vocab(token) -> bool:
     surface = token_surface(token).strip()
     if not surface:
@@ -1537,6 +1556,8 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             best_analysis = None
             max_j = min(len(surfaces), i + 5)
             for j in range(max_j, i, -1):
+                if not is_matchable_token_span(tokens[i:j]):
+                    continue
                 candidate = "".join(surfaces[i:j]).strip()
                 candidate_reading = normalize_katakana_to_hiragana("".join(feature_reading(t).strip() for t in tokens[i:j]))
                 lemma_joined = "".join((token_lemma(t).strip() or token_surface(t).strip()) for t in tokens[i:j]).strip()
