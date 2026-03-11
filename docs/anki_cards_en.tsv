@@ -1,13 +1,9 @@
-<ruby>たばかる<rt>たばかり</rt></ruby>	Tabakaru
 <ruby>アメリカ-America<rt>あめりか</rt></ruby>	America-America
 <ruby>アルペン-Alpen<rt>あるぺん</rt></ruby>	Alpen-Alpen
 <ruby>イスラエル-Israel<rt>いすらえる</rt></ruby>	Israel
 <ruby>イラン-Iran<rt>いらん</rt></ruby>	Iran-Iran
 <ruby>カーブ-curve<rt>かーぶ</rt></ruby>	curve-curve
-<ruby>クラス-class<rt>くらす</rt></ruby>	class-class
-<ruby>コース-course<rt>こーす</rt></ruby>	course-course
 <ruby>スキー-ski<rt>すきー</rt></ruby>	ski-ski
-<ruby>スピード-speed<rt>すぴーど</rt></ruby>	speed-speed
 <ruby>スーパー-super<rt>すーぱー</rt></ruby>	super-super
 <ruby>トランプ-trump<rt>とらんぷ</rt></ruby>	trump-trump
 <ruby>トランプ大統領<rt>とらんぷだいとうりょう</rt></ruby>	president trump
@@ -18,7 +14,7 @@
 <ruby>久の<rt>くの</rt></ruby>	Kuno
 <ruby>予定<rt>よてい</rt></ruby>	schedule
 <ruby>人たちに<rt>ひとたちに</rt></ruby>	to people
-<ruby>今までにたくさんの<rt>いままでにたくさんの</rt></ruby>	so far many
+<ruby>今までにたくさんの<rt>いままでにたくさんの</rt></ruby>	so far so many
 <ruby>今までより<rt>いままでより</rt></ruby>	than before
 <ruby>今より<rt>いまより</rt></ruby>	From now on
 <ruby>仕事<rt>しごと</rt></ruby>	work
@@ -31,7 +27,6 @@
 <ruby>円-助数詞<rt>えん</rt></ruby>	circle-counterpart
 <ruby>円ぐらいにするつも<rt>えんぐらいにするつも</rt></ruby>	I'm planning on making it around yen.
 <ruby>出まする<rt>でまする</rt></ruby>	come out
-<ruby>出る<rt>で</rt></ruby>	come out
 <ruby>出来る<rt>でき</rt></ruby>	I can do it
 <ruby>初めて<rt>はじめて</rt></ruby>	first time
 <ruby>助ける<rt>たすける</rt></ruby>	help
@@ -40,8 +35,6 @@
 <ruby>原油<rt>げんゆ</rt></ruby>	crude
 <ruby>去年<rt>きょねん</rt></ruby>	last year
 <ruby>取りまする<rt>とりまする</rt></ruby>	I'll take it
-<ruby>取る<rt>とり</rt></ruby>	Tori
-<ruby>回転<rt>かいてん</rt></ruby>	rotate
 <ruby>国会<rt>こっかい</rt></ruby>	congress
 <ruby>地震<rt>じしん</rt></ruby>	earthquake
 <ruby>場合<rt>ばあい</rt></ruby>	case
@@ -73,10 +66,8 @@
 <ruby>座って<rt>すわって</rt></ruby>	sit down
 <ruby>建物<rt>たてもの</rt></ruby>	building
 <ruby>必要<rt>ひつよう</rt></ruby>	need
-<ruby>怪我<rt>けが</rt></ruby>	injury
-<ruby>恣意<rt>しい</rt></ruby>	wanton
 <ruby>成る<rt>なっ</rt></ruby>	become; save
-<ruby>戦いが<rt>たたかいが</rt></ruby>	The battle
+<ruby>戦いが<rt>たたかいが</rt></ruby>	the battle
 <ruby>戻ったばかりでする<rt>もどったばかりでする</rt></ruby>	I just got back
 <ruby>払い<rt>はらい</rt></ruby>	payment
 <ruby>払うお<rt>はらうお</rt></ruby>	I'll pay
@@ -110,7 +101,7 @@
 <ruby>滑りまする<rt>すべりまする</rt></ruby>	slippery
 <ruby>滑る<rt>すべる</rt></ruby>	slide
 <ruby>滑ることができてよ<rt>すべることができてよ</rt></ruby>	I can skate
-<ruby>無事<rt>ぶじ</rt></ruby>	Safely
+<ruby>無事<rt>ぶじ</rt></ruby>	Безопасно
 <ruby>狙い<rt>ねらい</rt></ruby>	the aim
 <ruby>狙った<rt>ねらった</rt></ruby>	aimed
 <ruby>男性<rt>だんせい</rt></ruby>	male
@@ -125,7 +116,6 @@
 <ruby>考えてう<rt>かんがえてう</rt></ruby>	I'm thinking about it
 <ruby>聞く<rt>きい</rt></ruby>	listen
 <ruby>自分<rt>じぶん</rt></ruby>	myself
-<ruby>良い<rt>よかっ</rt></ruby>	good
 <ruby>若し<rt>もし</rt></ruby>	young
 <ruby>行きやすくしたいと<rt>いきやすくしたいと</rt></ruby>	I want to make it easier to go
 <ruby>行く<rt>いき</rt></ruby>	go
@@ -145,10 +135,8 @@
 <ruby>運ぶことができる<rt>はこぶことができる</rt></ruby>	can be carried
 <ruby>過ぎまする<rt>すぎまする</rt></ruby>	It will pass
 <ruby>選手<rt>せんしゅ</rt></ruby>	player
-<ruby>銀メダル<rt>ぎんめだる</rt></ruby>	silver medal
 <ruby>関係<rt>かんけい</rt></ruby>	relationship
 <ruby>難しい<rt>むずかしい</rt></ruby>	difficult
-<ruby>難しいコース<rt>なんしいこーす</rt></ruby>	difficult course
 <ruby>難しくなってう<rt>むずかしくなってう</rt></ruby>	It's getting difficult
 <ruby>震災<rt>しんさい</rt></ruby>	Earthquake
 <ruby>高校<rt>こうこう</rt></ruby>	high school

@@ -1,13 +1,9 @@
-<ruby>たばかる<rt>たばかり</rt></ruby>	Табакару
 <ruby>アメリカ-America<rt>あめりか</rt></ruby>	Америка-Америка
 <ruby>アルペン-Alpen<rt>あるぺん</rt></ruby>	Алпен-Алпен
 <ruby>イスラエル-Israel<rt>いすらえる</rt></ruby>	Израел
 <ruby>イラン-Iran<rt>いらん</rt></ruby>	Иран-Иран
-<ruby>カーブ-curve<rt>かーぶ</rt></ruby>	крива-крива
-<ruby>クラス-class<rt>くらす</rt></ruby>	клас-клас
-<ruby>コース-course<rt>こーす</rt></ruby>	курс-курс
+<ruby>カーブ-curve<rt>かーぶ</rt></ruby>	curve-curve
 <ruby>スキー-ski<rt>すきー</rt></ruby>	ски-ски
-<ruby>スピード-speed<rt>すぴーど</rt></ruby>	скорост-скорост
 <ruby>スーパー-super<rt>すーぱー</rt></ruby>	супер-супер
 <ruby>トランプ-trump<rt>とらんぷ</rt></ruby>	тръм-тръмп
 <ruby>トランプ大統領<rt>とらんぷだいとうりょう</rt></ruby>	президент Тръмп
@@ -18,7 +14,7 @@
 <ruby>久の<rt>くの</rt></ruby>	Куно
 <ruby>予定<rt>よてい</rt></ruby>	график
 <ruby>人たちに<rt>ひとたちに</rt></ruby>	на хората
-<ruby>今までにたくさんの<rt>いままでにたくさんの</rt></ruby>	досега много
+<ruby>今までにたくさんの<rt>いままでにたくさんの</rt></ruby>	толкова много досега
 <ruby>今までより<rt>いままでより</rt></ruby>	отколкото преди
 <ruby>今より<rt>いまより</rt></ruby>	Отсега нататък
 <ruby>仕事<rt>しごと</rt></ruby>	работа
@@ -30,8 +26,7 @@
 <ruby>使うことができるも<rt>つかうことができるも</rt></ruby>	също може да се използва
 <ruby>円-助数詞<rt>えん</rt></ruby>	кръг-двойник
 <ruby>円ぐらいにするつも<rt>えんぐらいにするつも</rt></ruby>	Планирам да го направя около йени.
-<ruby>出まする<rt>でまする</rt></ruby>	излезте
-<ruby>出る<rt>で</rt></ruby>	излезте
+<ruby>出まする<rt>でまする</rt></ruby>	come out
 <ruby>出来る<rt>でき</rt></ruby>	Мога да го направя
 <ruby>初めて<rt>はじめて</rt></ruby>	първи път
 <ruby>助ける<rt>たすける</rt></ruby>	помощ
@@ -40,8 +35,6 @@
 <ruby>原油<rt>げんゆ</rt></ruby>	суров
 <ruby>去年<rt>きょねん</rt></ruby>	миналата година
 <ruby>取りまする<rt>とりまする</rt></ruby>	аз ще го взема
-<ruby>取る<rt>とり</rt></ruby>	Тори
-<ruby>回転<rt>かいてん</rt></ruby>	завъртане
 <ruby>国会<rt>こっかい</rt></ruby>	конгрес
 <ruby>地震<rt>じしん</rt></ruby>	земетресение
 <ruby>場合<rt>ばあい</rt></ruby>	случай
@@ -52,13 +45,13 @@
 <ruby>変わると<rt>かわると</rt></ruby>	Когато се промени
 <ruby>外国<rt>がいこく</rt></ruby>	чужда страна
 <ruby>大きい<rt>おおきい</rt></ruby>	голям
-<ruby>大きなけがをする<rt>おおきなけがをする</rt></ruby>	причини сериозно нараняване
+<ruby>大きなけがをする<rt>おおきなけがをする</rt></ruby>	cause serious injury
 <ruby>大切<rt>たいせつ</rt></ruby>	важно
 <ruby>大切さを<rt>たいせつさを</rt></ruby>	важност
 <ruby>大回転<rt>だいかいてん</rt></ruby>	гигантски слалом
 <ruby>大統領<rt>だいとうりょう</rt></ruby>	президент
 <ruby>大震災<rt>だいしんさい</rt></ruby>	Голямо земетресение
-<ruby>奈さんは<rt>なさんは</rt></ruby>	На-сан е
+<ruby>奈さんは<rt>なさんは</rt></ruby>	Нана-сан
 <ruby>女子<rt>じょし</rt></ruby>	момичета
 <ruby>女子スーパー<rt>じょしすーぱー</rt></ruby>	женски супермаркет
 <ruby>始めてから<rt>はじめてから</rt></ruby>	Откакто започнах
@@ -66,17 +59,15 @@
 <ruby>安い<rt>やすい</rt></ruby>	евтино
 <ruby>安くしたいと<rt>やすくしたいと</rt></ruby>	Искам да е евтино
 <ruby>安くする<rt>やすくする</rt></ruby>	направи го по-евтино
-<ruby>安くなる<rt>やすくなる</rt></ruby>	по-евтино
+<ruby>安くなる<rt>やすくなる</rt></ruby>	става по-евтино
 <ruby>宮城県気仙沼市<rt>みやぎけんけせんぬまし</rt></ruby>	Град Кесеннума, префектура Мияги
 <ruby>家族<rt>かぞく</rt></ruby>	семейство
 <ruby>家族から<rt>かぞくから</rt></ruby>	от семейството
 <ruby>座って<rt>すわって</rt></ruby>	седнете
 <ruby>建物<rt>たてもの</rt></ruby>	сграда
 <ruby>必要<rt>ひつよう</rt></ruby>	нужда
-<ruby>怪我<rt>けが</rt></ruby>	нараняване
-<ruby>恣意<rt>しい</rt></ruby>	безсмислен
 <ruby>成る<rt>なっ</rt></ruby>	станете; спаси
-<ruby>戦いが<rt>たたかいが</rt></ruby>	Битката
+<ruby>戦いが<rt>たたかいが</rt></ruby>	битката
 <ruby>戻ったばかりでする<rt>もどったばかりでする</rt></ruby>	Току що се върнах
 <ruby>払い<rt>はらい</rt></ruby>	плащане
 <ruby>払うお<rt>はらうお</rt></ruby>	аз ще платя
@@ -118,19 +109,18 @@
 <ruby>直ぐ<rt>すぐ</rt></ruby>	веднага
 <ruby>積り<rt>つもり</rt></ruby>	натрупване
 <ruby>競技<rt>きょうぎ</rt></ruby>	състезание
-<ruby>続いてう<rt>つづいてう</rt></ruby>	следващ...
+<ruby>続いてう<rt>つづいてう</rt></ruby>	Следваща
 <ruby>練習<rt>れんしゅう</rt></ruby>	практика
 <ruby>考え<rt>かんがえ</rt></ruby>	мисъл
 <ruby>考えていきたいです<rt>かんがえていきたいです</rt></ruby>	Искам да помисля за това
-<ruby>考えてう<rt>かんがえてう</rt></ruby>	Мисля си за това
+<ruby>考えてう<rt>かんがえてう</rt></ruby>	мисля за това
 <ruby>聞く<rt>きい</rt></ruby>	слушайте
 <ruby>自分<rt>じぶん</rt></ruby>	себе си
-<ruby>良い<rt>よかっ</rt></ruby>	добре
 <ruby>若し<rt>もし</rt></ruby>	млад
 <ruby>行きやすくしたいと<rt>いきやすくしたいと</rt></ruby>	Искам да го направя по-лесно
 <ruby>行く<rt>いき</rt></ruby>	върви
 <ruby>行く時<rt>ぎょうくじ</rt></ruby>	кога да отида
-<ruby>褒めたい<rt>ほめたい</rt></ruby>	Искам да похваля
+<ruby>褒めたい<rt>ほめたい</rt></ruby>	I want to praise
 <ruby>見る<rt>み</rt></ruby>	погледнете
 <ruby>言いまする<rt>いいまする</rt></ruby>	аз казвам
 <ruby>言ってう<rt>いってう</rt></ruby>	кажи го
@@ -145,10 +135,8 @@
 <ruby>運ぶことができる<rt>はこぶことができる</rt></ruby>	може да се носи
 <ruby>過ぎまする<rt>すぎまする</rt></ruby>	Ще мине
 <ruby>選手<rt>せんしゅ</rt></ruby>	играч
-<ruby>銀メダル<rt>ぎんめだる</rt></ruby>	сребърен медал
 <ruby>関係<rt>かんけい</rt></ruby>	връзка
-<ruby>難しい<rt>むずかしい</rt></ruby>	трудно
-<ruby>難しいコース<rt>なんしいこーす</rt></ruby>	труден курс
+<ruby>難しい<rt>むずかしい</rt></ruby>	difficult
 <ruby>難しくなってう<rt>むずかしくなってう</rt></ruby>	Става трудно
 <ruby>震災<rt>しんさい</rt></ruby>	Земетресение
 <ruby>高校<rt>こうこう</rt></ruby>	гимназия
