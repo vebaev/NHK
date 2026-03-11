@@ -1,20 +1,23 @@
+<ruby>たばかる<rt>たばかり</rt></ruby>	Tabakaru
 <ruby>アメリカ-America<rt>あめりか</rt></ruby>	America-America
 <ruby>アルペン-Alpen<rt>あるぺん</rt></ruby>	Alpen-Alpen
 <ruby>イスラエル-Israel<rt>いすらえる</rt></ruby>	Israel
 <ruby>イラン-Iran<rt>いらん</rt></ruby>	Iran-Iran
 <ruby>カーブ-curve<rt>かーぶ</rt></ruby>	curve-curve
-<ruby>スキー-ski<rt>すきー</rt></ruby>	ski-ski
+<ruby>クラス-class<rt>くらす</rt></ruby>	class-class
+<ruby>コース-course<rt>こーす</rt></ruby>	course-course
+<ruby>スピード-speed<rt>すぴーど</rt></ruby>	speed-speed
 <ruby>スーパー-super<rt>すーぱー</rt></ruby>	super-super
 <ruby>トランプ-trump<rt>とらんぷ</rt></ruby>	trump-trump
 <ruby>トランプ大統領<rt>とらんぷだいとうりょう</rt></ruby>	president trump
 <ruby>パスポート-passport<rt>ぱすぽーと</rt></ruby>	passport-passport
 <ruby>ミサイル-missile<rt>みさいる</rt></ruby>	missile-missile
-<ruby>ミラノ-Milano<rt>みらの</rt></ruby>	Milano
+<ruby>ミラノ-Milano<rt>みらの</rt></ruby>	Milan
 <ruby>メダル-medal<rt>めだる</rt></ruby>	medal-medal
 <ruby>久の<rt>くの</rt></ruby>	Kuno
 <ruby>予定<rt>よてい</rt></ruby>	schedule
 <ruby>人たちに<rt>ひとたちに</rt></ruby>	to people
-<ruby>今までにたくさんの<rt>いままでにたくさんの</rt></ruby>	so far so many
+<ruby>今までにたくさんの<rt>いままでにたくさんの</rt></ruby>	so far many
 <ruby>今までより<rt>いままでより</rt></ruby>	than before
 <ruby>今より<rt>いまより</rt></ruby>	From now on
 <ruby>仕事<rt>しごと</rt></ruby>	work
@@ -24,9 +27,9 @@
 <ruby>佐藤憂奈<rt>さとうゆうな</rt></ruby>	Yuna Sato
 <ruby>作る<rt>つくる</rt></ruby>	make
 <ruby>使うことができるも<rt>つかうことができるも</rt></ruby>	can also be used
-<ruby>円-助数詞<rt>えん</rt></ruby>	circle-counterpart
 <ruby>円ぐらいにするつも<rt>えんぐらいにするつも</rt></ruby>	I'm planning on making it around yen.
 <ruby>出まする<rt>でまする</rt></ruby>	come out
+<ruby>出る<rt>で</rt></ruby>	come out
 <ruby>出来る<rt>でき</rt></ruby>	I can do it
 <ruby>初めて<rt>はじめて</rt></ruby>	first time
 <ruby>助ける<rt>たすける</rt></ruby>	help
@@ -35,6 +38,8 @@
 <ruby>原油<rt>げんゆ</rt></ruby>	crude
 <ruby>去年<rt>きょねん</rt></ruby>	last year
 <ruby>取りまする<rt>とりまする</rt></ruby>	I'll take it
+<ruby>取る<rt>とり</rt></ruby>	Tori
+<ruby>回転<rt>かいてん</rt></ruby>	rotate
 <ruby>国会<rt>こっかい</rt></ruby>	congress
 <ruby>地震<rt>じしん</rt></ruby>	earthquake
 <ruby>場合<rt>ばあい</rt></ruby>	case
@@ -51,7 +56,7 @@
 <ruby>大回転<rt>だいかいてん</rt></ruby>	giant slalom
 <ruby>大統領<rt>だいとうりょう</rt></ruby>	president
 <ruby>大震災<rt>だいしんさい</rt></ruby>	Great earthquake
-<ruby>奈さんは<rt>なさんは</rt></ruby>	Nana-san
+<ruby>奈さんは<rt>なさんは</rt></ruby>	Na-san is
 <ruby>女子<rt>じょし</rt></ruby>	girls
 <ruby>女子スーパー<rt>じょしすーぱー</rt></ruby>	women's supermarket
 <ruby>始めてから<rt>はじめてから</rt></ruby>	Since I started
@@ -59,13 +64,15 @@
 <ruby>安い<rt>やすい</rt></ruby>	cheap
 <ruby>安くしたいと<rt>やすくしたいと</rt></ruby>	I want it to be cheap
 <ruby>安くする<rt>やすくする</rt></ruby>	make it cheaper
-<ruby>安くなる<rt>やすくなる</rt></ruby>	becomes cheaper
+<ruby>安くなる<rt>やすくなる</rt></ruby>	it gets cheaper
 <ruby>宮城県気仙沼市<rt>みやぎけんけせんぬまし</rt></ruby>	Kesennuma City, Miyagi Prefecture
 <ruby>家族<rt>かぞく</rt></ruby>	family
 <ruby>家族から<rt>かぞくから</rt></ruby>	from family
 <ruby>座って<rt>すわって</rt></ruby>	sit down
 <ruby>建物<rt>たてもの</rt></ruby>	building
 <ruby>必要<rt>ひつよう</rt></ruby>	need
+<ruby>怪我<rt>けが</rt></ruby>	injury
+<ruby>恣意<rt>しい</rt></ruby>	wanton
 <ruby>成る<rt>なっ</rt></ruby>	become; save
 <ruby>戦いが<rt>たたかいが</rt></ruby>	the battle
 <ruby>戻ったばかりでする<rt>もどったばかりでする</rt></ruby>	I just got back
@@ -83,7 +90,6 @@
 <ruby>有る<rt>ある</rt></ruby>	Yes
 <ruby>村岡<rt>むらおか</rt></ruby>	Muraoka
 <ruby>村岡桃佳<rt>むらおかももか</rt></ruby>	Momoka Muraoka
-<ruby>村岡桃佳選手<rt>むらおかももかせんしゅ</rt></ruby>	Momoka Muraoka
 <ruby>村岡選手<rt>むらおかせんしゅ</rt></ruby>	Muraoka player
 <ruby>来た<rt>くる</rt></ruby>	came
 <ruby>来る<rt>き</rt></ruby>	come
@@ -101,21 +107,21 @@
 <ruby>滑りまする<rt>すべりまする</rt></ruby>	slippery
 <ruby>滑る<rt>すべる</rt></ruby>	slide
 <ruby>滑ることができてよ<rt>すべることができてよ</rt></ruby>	I can skate
-<ruby>無事<rt>ぶじ</rt></ruby>	Безопасно
+<ruby>無事<rt>ぶじ</rt></ruby>	Safely
 <ruby>狙い<rt>ねらい</rt></ruby>	the aim
 <ruby>狙った<rt>ねらった</rt></ruby>	aimed
 <ruby>男性<rt>だんせい</rt></ruby>	male
 <ruby>目標<rt>もくひょう</rt></ruby>	Target
 <ruby>直ぐ<rt>すぐ</rt></ruby>	immediately
-<ruby>積り<rt>つもり</rt></ruby>	accumulation
 <ruby>競技<rt>きょうぎ</rt></ruby>	competition
-<ruby>続いてう<rt>つづいてう</rt></ruby>	Next
+<ruby>続いてう<rt>つづいてう</rt></ruby>	Next...
 <ruby>練習<rt>れんしゅう</rt></ruby>	practice
 <ruby>考え<rt>かんがえ</rt></ruby>	thought
 <ruby>考えていきたいです<rt>かんがえていきたいです</rt></ruby>	I want to think about it
 <ruby>考えてう<rt>かんがえてう</rt></ruby>	I'm thinking about it
 <ruby>聞く<rt>きい</rt></ruby>	listen
 <ruby>自分<rt>じぶん</rt></ruby>	myself
+<ruby>良い<rt>よかっ</rt></ruby>	good
 <ruby>若し<rt>もし</rt></ruby>	young
 <ruby>行きやすくしたいと<rt>いきやすくしたいと</rt></ruby>	I want to make it easier to go
 <ruby>行く<rt>いき</rt></ruby>	go
@@ -134,9 +140,10 @@
 <ruby>運ぶ<rt>はこぶ</rt></ruby>	carry
 <ruby>運ぶことができる<rt>はこぶことができる</rt></ruby>	can be carried
 <ruby>過ぎまする<rt>すぎまする</rt></ruby>	It will pass
-<ruby>選手<rt>せんしゅ</rt></ruby>	player
+<ruby>銀メダル<rt>ぎんめだる</rt></ruby>	silver medal
 <ruby>関係<rt>かんけい</rt></ruby>	relationship
 <ruby>難しい<rt>むずかしい</rt></ruby>	difficult
+<ruby>難しいコース<rt>なんしいこーす</rt></ruby>	difficult course
 <ruby>難しくなってう<rt>むずかしくなってう</rt></ruby>	It's getting difficult
 <ruby>震災<rt>しんさい</rt></ruby>	Earthquake
 <ruby>高校<rt>こうこう</rt></ruby>	high school
