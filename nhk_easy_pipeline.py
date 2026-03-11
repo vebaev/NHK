@@ -5,6 +5,7 @@ import argparse
 import html as html_lib
 import hashlib
 import json
+import time
 import uuid
 from urllib.parse import urljoin, urlparse
 
@@ -1190,20 +1191,25 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
-def build_html(articles, grammar_points=None):
+def build_html(articles, grammar_points=None, build_version=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
 <html lang=\"ja\">
 <head>
 <meta charset=\"UTF-8\">
 <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+<meta http-equiv=\"Cache-Control\" content=\"no-cache, no-store, must-revalidate\">
+<meta http-equiv=\"Pragma\" content=\"no-cache\">
+<meta http-equiv=\"Expires\" content=\"0\">
+<meta http-equiv=\"refresh\" content=\"7200\">
 <title>最新ニュース</title>
 <meta name=\"theme-color\" content=\"#0f1115\">
-<link rel=\"manifest\" href=\"manifest.webmanifest\">
-<link rel=\"icon\" type=\"image/x-icon\" href=\"favicon.ico\">
-<link rel=\"icon\" type=\"image/png\" sizes=\"16x16\" href=\"favicon-16x16.png\">
-<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"favicon-32x32.png\">
-<link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png\">
+<meta name=\"app-version\" content=\"{build_version}\">
+<link rel=\"manifest\" href=\"manifest.webmanifest?v={build_version}\">
+<link rel=\"icon\" type=\"image/x-icon\" href=\"favicon.ico?v={build_version}\">
+<link rel=\"icon\" type=\"image/png\" sizes=\"16x16\" href=\"favicon-16x16.png?v={build_version}\">
+<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"favicon-32x32.png?v={build_version}\">
+<link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png?v={build_version}\">
 <style>
 :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
@@ -1216,6 +1222,9 @@ h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-fam
 .lang-top{max-width:260px;margin:0 auto 18px auto}
 .lang-top select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font:inherit}
 .lang-top .control-label{text-align:center}
+.lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
+.update-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
+.author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.6}
 .lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .update-hint{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
@@ -1249,7 +1258,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 </head>
 <body class=\"theme-dark\">
 <div class=\"wrap\">
-<img class=\"site-logo\" src=\"android-chrome-192x192.png\" alt=\"NHK logo\" loading=\"lazy\">
+<img class=\"site-logo\" src=\"android-chrome-192x192.png?v={build_version}\" alt=\"NHK logo\" loading=\"lazy\">
 <h1>最新ニュース</h1>
 <div class=\"lang-top\">
   <div class=\"control-label\" data-ui=\"translation_language\"></div>
@@ -1260,6 +1269,9 @@ ruby rt{font-size:.68em;color:var(--muted)}
 </div>
 <div class=\"lang-hint\" data-ui=\"help_hint\"></div>
 <div class=\"update-hint\" data-ui=\"update_hint\"></div>
+<div class=\"lang-hint\" data-ui=\"help_hint\"></div>
+<div class=\"update-hint\" data-ui=\"update_hint\"></div>
+<div class=\"author-info\">Създадено от Веселин Баев<br>GitHub: vebaev<br>Email: vebaev@gmail.com</div>
 <div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
 """
     for idx, article in enumerate(articles, start=1):
@@ -1311,19 +1323,22 @@ function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEa
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
 function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const word=el.dataset.word||'';const reading=el.dataset.reading||'';const meaning=(lang==='en'?el.dataset.meaningEn:el.dataset.meaningBg)||el.dataset.meaningBg||el.dataset.meaningEn||(lang==='en'?'No translation found':'Няма намерен превод');popup.innerHTML='<div class="dw">'+word+'</div>'+(reading?'<div class="dr">'+reading+'</div>':'')+(meaning?'<div class="dm">'+meaning+'</div>':'');el.classList.add('is-active');positionPopupNear(el,popup);}
-document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(function(){});}document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
+
+function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
+document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
 </html>"""
     return html
 
-def write_pwa_files(output_dir):
+def write_pwa_files(output_dir, build_version=""):
     if not output_dir:
         return
     manifest = {
         "name": "NHK Easy News",
+        "id": f"./?v={build_version}",
         "short_name": "NHK Easy",
-        "start_url": "./index.html",
+        "start_url": f"./index.html?v={build_version}",
         "display": "standalone",
         "background_color": "#0f1115",
         "theme_color": "#0f1115",
@@ -1335,7 +1350,7 @@ def write_pwa_files(output_dir):
     }
     with open(os.path.join(output_dir, "manifest.webmanifest"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
-    sw_js = "self.addEventListener('install',e=>{self.skipWaiting();});\nself.addEventListener('activate',e=>{e.waitUntil(self.clients.claim());});\nself.addEventListener('fetch',e=>{if(e.request.method!==\'GET\')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});"
+    sw_js = "const CACHE_NAME='nhk-easy-'+(%r||Date.now());\nself.addEventListener('install',e=>{self.skipWaiting();});\nself.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});\nself.addEventListener('fetch',e=>{if(e.request.method!==\'GET\')return;e.respondWith(fetch(e.request,{cache:\'no-store\'}).catch(()=>caches.match(e.request)));});" % build_version
     with open(os.path.join(output_dir, "sw.js"), "w", encoding="utf-8") as f:
         f.write(sw_js)
 
@@ -1348,10 +1363,11 @@ def main():
     args = parser.parse_args()
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
+    build_version = str(int(time.time()))
     output_dir = os.path.dirname(args.output)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
-        write_pwa_files(output_dir)
+        write_pwa_files(output_dir, build_version=build_version)
 
     ensure_grammar_bilingual()
     articles = get_articles(args.count)
@@ -1411,7 +1427,7 @@ def main():
 
     save_seen_words(anki_seen_words_path, seen_words)
 
-    html = build_html(articles, grammar_points=grammar_points)
+    html = build_html(articles, grammar_points=grammar_points, build_version=build_version)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
