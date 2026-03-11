@@ -1249,6 +1249,13 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class=\"wrap\">
 <img class=\"site-logo\" src=\"android-chrome-192x192.png\" alt=\"NHK logo\" loading=\"lazy\">
 <h1>最新ニュース</h1>
+<div class=\"lang-top\">
+  <div class=\"control-label\" data-ui=\"translation_language\"></div>
+  <select id=\"lang-select\" onchange=\"setContentLanguage(this.value)\">
+    <option value=\"bg\">🇧🇬 Български</option>
+    <option value=\"en\">🇬🇧 English</option>
+  </select>
+</div>
 <div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
 """
     for article in articles:
