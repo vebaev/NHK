@@ -446,6 +446,9 @@ def token_feature(token):
     return getattr(token, "feature", None)
 def token_surface(token) -> str:
     return getattr(token, "surface", "") or ""
+def token_pos1(token) -> str:
+    feat = token_feature(token)
+    return getattr(feat, "pos1", "") if feat is not None else ""
 def token_lemma(token) -> str:
     feat = token_feature(token)
     if feat is None:
@@ -640,6 +643,54 @@ def build_lookup_candidates(surface: str, reading: str = "", lemma: str = ""):
     lemma = (lemma or "").strip()
     candidates = [surface, lemma, lemmatize_japanese(surface), to_dictionary_form(surface), reading]
     return unique_keep_order(candidates)
+
+def dictionary_hit_for_span(surface: str, reading: str = "", lemma: str = ""):
+    for cand in build_lookup_candidates(surface, reading=reading, lemma=lemma):
+        entry = lookup_dictionary_entry(cand)
+        if entry and (entry.get("surface") or "").strip():
+            return entry
+    return None
+
+def choose_best_span(tokens, start_idx: int, max_len: int = 6):
+    best = None
+    best_score = -1
+    end_limit = min(len(tokens), start_idx + max_len)
+
+    for j in range(end_limit, start_idx, -1):
+        span = tokens[start_idx:j]
+        if not is_matchable_token_span(span):
+            continue
+
+        surface = "".join(token_surface(t) for t in span).strip()
+        reading = normalize_katakana_to_hiragana("".join(feature_reading(t).strip() for t in span))
+        lemma_joined = "".join((token_lemma(t).strip() or token_surface(t).strip()) for t in span).strip()
+
+        if not surface or is_suspicious_vocab_word(surface):
+            continue
+
+        entry = dictionary_hit_for_span(surface, reading=reading, lemma=lemma_joined)
+        if not entry:
+            continue
+
+        pos1s = [token_pos1(t) for t in span]
+        score = len(surface) * 10
+        if all(p == "名詞" for p in pos1s):
+            score += 50
+        if surface == (entry.get("surface") or "").strip():
+            score += 30
+        if lemma_joined == (entry.get("surface") or "").strip():
+            score += 20
+
+        if score > best_score:
+            best_score = score
+            best = {
+                "end": j,
+                "surface": surface,
+                "reading": reading,
+                "lemma_joined": lemma_joined,
+                "entry": entry,
+            }
+    return best
 
 def register_vocab_item(vocab_lookup, item, extra_keys=None):
     extra_keys = extra_keys or []
@@ -1550,35 +1601,31 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
         matched_any = False
         rebuilt = []
         i = 0
-        while i < len(surfaces):
-            best = None
-            best_item = None
-            best_analysis = None
-            max_j = min(len(surfaces), i + 5)
-            for j in range(max_j, i, -1):
-                if not is_matchable_token_span(tokens[i:j]):
-                    continue
-                candidate = "".join(surfaces[i:j]).strip()
-                candidate_reading = normalize_katakana_to_hiragana("".join(feature_reading(t).strip() for t in tokens[i:j]))
-                lemma_joined = "".join((token_lemma(t).strip() or token_surface(t).strip()) for t in tokens[i:j]).strip()
-                key_candidates = build_lookup_candidates(candidate, reading=candidate_reading, lemma=lemma_joined)
-                matched_key = None
-                for key in key_candidates:
-                    if key in vocab_lookup and not is_suspicious_vocab_word(candidate):
-                        matched_key = key
-                        break
-                if matched_key:
-                    best = candidate
-                    best_item = vocab_lookup[matched_key]
-                    best_analysis = analyze_japanese_word(candidate, reading_hint=candidate_reading, lemma_hint=(best_item.get("word") or lemma_joined or candidate))
-                    best_j = j
-                    break
-            if best is not None:
+        while i < len(tokens):
+            chosen = choose_best_span(tokens, i, max_len=6)
+
+            if chosen:
                 matched_any = True
-                rebuilt.append(make_dict_span(soup, best_item, html_lib.escape(best), analysis=best_analysis))
-                i = best_j
+                surface = chosen["surface"]
+                entry = chosen["entry"]
+
+                best_item = {
+                    "word": (entry.get("surface") or surface).strip(),
+                    "reading": normalize_katakana_to_hiragana((entry.get("reading") or "").strip()),
+                    "meaning_bg": translate_text((entry.get("gloss") or "").strip(), dest="bg") or (entry.get("gloss") or "").strip(),
+                    "meaning_en": (entry.get("gloss") or "").strip(),
+                }
+
+                analysis = analyze_japanese_word(
+                    surface,
+                    reading_hint=chosen["reading"],
+                    lemma_hint=best_item["word"],
+                )
+
+                rebuilt.append(make_dict_span(soup, best_item, html_lib.escape(surface), analysis=analysis))
+                i = chosen["end"]
             else:
-                rebuilt.append(NavigableString(surfaces[i]))
+                rebuilt.append(NavigableString(token_surface(tokens[i])))
                 i += 1
 
         if matched_any:
