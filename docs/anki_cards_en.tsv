@@ -12,13 +12,13 @@
 <ruby>今月<rt>こんげつ</rt></ruby>	this month
 <ruby>仕事<rt>しごと</rt></ruby>	work
 <ruby>会社<rt>かいしゃ</rt></ruby>	company
-<ruby>作っていまする<rt>つくっていまする</rt></ruby>	I'm making it
+<ruby>作る<rt>つくる</rt></ruby>	make
 <ruby>使う<rt>つかっ</rt></ruby>	use
 <ruby>保育<rt>ほいく</rt></ruby>	Childcare
 <ruby>保育所<rt>ほいくしょ</rt></ruby>	nursery school
 <ruby>働く<rt>はたらく</rt></ruby>	work
-<ruby>入ってう<rt>はいってう</rt></ruby>	Come in
 <ruby>入り<rt>いり</rt></ruby>	Enter
+<ruby>入る<rt>はいる</rt></ruby>	enter
 <ruby>全部<rt>ぜんぶ</rt></ruby>	all
 <ruby>出しているので<rt>だしているので</rt></ruby>	Because it's out
 <ruby>出すことができたの<rt>だすことができたの</rt></ruby>	I was able to get it out.
@@ -40,8 +40,7 @@
 <ruby>因る<rt>よる</rt></ruby>	due to
 <ruby>地方<rt>ちほう</rt></ruby>	place
 <ruby>地震<rt>じしん</rt></ruby>	earthquake
-<ruby>増えてう<rt>ふえてう</rt></ruby>	It's increasing
-<ruby>増える<rt>ふえ</rt></ruby>	increase
+<ruby>増える<rt>ふえる</rt></ruby>	increase
 <ruby>売る<rt>うり</rt></ruby>	sell
 <ruby>売ると<rt>うると</rt></ruby>	If you sell
 <ruby>大きい<rt>おおきい</rt></ruby>	big
@@ -53,12 +52,11 @@
 <ruby>安い<rt>やすい</rt></ruby>	cheap
 <ruby>宮城県名取市<rt>みやぎけんなとりし</rt></ruby>	Natori City, Miyagi Prefecture
 <ruby>少なくする<rt>すくなくする</rt></ruby>	reduce
-<ruby>少なくなってう<rt>すくなくなってう</rt></ruby>	It's getting less
+<ruby>少なくなる<rt>すくなくなる</rt></ruby>	becomes less
 <ruby>少なくなるかもしれ<rt>すくなくなるかもしれ</rt></ruby>	It may become less
 <ruby>少る<rt>すくな</rt></ruby>	few
 <ruby>居る<rt>いる</rt></ruby>	be there
-<ruby>届けてう<rt>とどけてう</rt></ruby>	I'll deliver it
-<ruby>届ける<rt>とどけ</rt></ruby>	Delivery
+<ruby>届ける<rt>とどける</rt></ruby>	deliver; Delivery
 <ruby>岩手県宮古市<rt>いわてけんみやこし</rt></ruby>	Miyako City, Iwate Prefecture
 <ruby>年までに<rt>ねんまでに</rt></ruby>	by year
 <ruby>年生<rt>ねんせい</rt></ruby>	grade
@@ -67,13 +65,13 @@
 <ruby>強い<rt>つよい</rt></ruby>	strong
 <ruby>御数<rt>おかず</rt></ruby>	Gokazu
 <ruby>息子<rt>むすこ</rt></ruby>	son
-<ruby>感じてう<rt>かんじてう</rt></ruby>	I can feel it
+<ruby>感ずる<rt>かんじる</rt></ruby>	feel
 <ruby>懲りる<rt>こり</rt></ruby>	punish
 <ruby>成る<rt>なっ</rt></ruby>	become; save
 <ruby>払い<rt>はらい</rt></ruby>	payment
 <ruby>払うお<rt>はらうお</rt></ruby>	I'll pay
 <ruby>扱き<rt>こき</rt></ruby>	handling
-<ruby>扱っている<rt>あつかっている</rt></ruby>	handling
+<ruby>扱る<rt>あつかる</rt></ruby>	treat
 <ruby>掛かる<rt>かかり</rt></ruby>	It takes
 <ruby>放射<rt>ほうしゃ</rt></ruby>	radiation
 <ruby>放射線<rt>ほうしゃせん</rt></ruby>	radiation
@@ -102,6 +100,7 @@
 <ruby>溶けた<rt>とけた</rt></ruby>	melted
 <ruby>溶けた燃料<rt>けたねんりょう</rt></ruby>	melted fuel
 <ruby>無い<rt>なく</rt></ruby>	None
+<ruby>無くなる<rt>なくなる</rt></ruby>	disappear
 <ruby>燃料<rt>ねんりょう</rt></ruby>	fuel
 <ruby>片付けたいと<rt>かたづけたいと</rt></ruby>	I want to clean up
 <ruby>片付けたりきれいにし<rt>かたづけたりきれいにし</rt></ruby>	tidy up or clean
@@ -109,12 +108,13 @@
 <ruby>生活する<rt>せいかつする</rt></ruby>	live
 <ruby>発電<rt>はつでん</rt></ruby>	power generation
 <ruby>発電所<rt>はつでんしょ</rt></ruby>	power plant
-<ruby>祈りまする<rt>いのりまする</rt></ruby>	I pray
+<ruby>知れる<rt>しれ</rt></ruby>	know
+<ruby>祈りまする<rt>いのりまする</rt></ruby>	I'll pray
 <ruby>福島第一<rt>ふくしまだいいち</rt></ruby>	Fukushima Daiichi
 <ruby>終わり<rt>おわり</rt></ruby>	end
 <ruby>終わる<rt>おわりわる</rt></ruby>	end
 <ruby>終わるか<rt>おわるか</rt></ruby>	Will it end?
-<ruby>続けてう<rt>つづけてう</rt></ruby>	Continue
+<ruby>続ける<rt>つづける</rt></ruby>	continue
 <ruby>練習<rt>れんしゅう</rt></ruby>	practice
 <ruby>聞く<rt>きい</rt></ruby>	listen
 <ruby>自動<rt>じどう</rt></ruby>	automatic
@@ -122,10 +122,10 @@
 <ruby>行う<rt>おこなっ</rt></ruby>	conduct
 <ruby>行く<rt>いく</rt></ruby>	go
 <ruby>被害<rt>ひがい</rt></ruby>	damage
-<ruby>見つかっていません<rt>みつかっていません</rt></ruby>	not found
 <ruby>見る<rt>み</rt></ruby>	look
+<ruby>見付かる<rt>みつかる</rt></ruby>	found
 <ruby>言いまする<rt>いいまする</rt></ruby>	I say
-<ruby>言ってう<rt>いってう</rt></ruby>	Say it
+<ruby>言る<rt>いる</rt></ruby>	say
 <ruby>警察<rt>けいさつ</rt></ruby>	police
 <ruby>警察庁<rt>けいさつちょう</rt></ruby>	National Police Agency
 <ruby>販売<rt>はんばい</rt></ruby>	sale
@@ -146,5 +146,5 @@
 <ruby>駿さんのお<rt>しゅんさんのお</rt></ruby>	Shun's birthday
 <ruby>駿さんのために<rt>しゅんさんのために</rt></ruby>	For Shun-san
 <ruby>駿さんは<rt>しゅんさんは</rt></ruby>	Mr. Shun
-<ruby>高くなってう<rt>たかくなってう</rt></ruby>	It's getting expensive
+<ruby>高くなる<rt>たかくなる</rt></ruby>	get expensive
 もっと	more
