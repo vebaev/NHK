@@ -350,14 +350,35 @@ def translate_word_lang(word: str, reading: str = "", dest: str = "bg") -> str:
     cache_key = ("word_lang", word, reading, dest)
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
+
     entry = lookup_dictionary_entry(word, reading=reading)
     if entry and entry.get("gloss"):
-        result = entry["gloss"] if dest == "en" else (translate_text(entry["gloss"], dest=dest) or entry["gloss"])
+        gloss = entry["gloss"].strip()
+        result = gloss if dest == "en" else (translate_text(gloss, dest=dest) or gloss)
         _TRANSLATION_CACHE[cache_key] = result
         return result
-    result = translate_text(word, dest=dest)
-    _TRANSLATION_CACHE[cache_key] = result
-    return result
+
+    # Fallback path for words missing from JMdict:
+    # JP -> EN is often more reliable than JP -> BG, so bridge through EN for BG.
+    direct = translate_text(word, dest=dest)
+    if direct and direct.strip() != word:
+        _TRANSLATION_CACHE[cache_key] = direct.strip()
+        return direct.strip()
+
+    en_guess = translate_text(word, dest="en")
+    if en_guess and en_guess.strip() != word:
+        if dest == "en":
+            _TRANSLATION_CACHE[cache_key] = en_guess.strip()
+            return en_guess.strip()
+        bridged = translate_text(en_guess, dest=dest)
+        if bridged and bridged.strip() != en_guess:
+            _TRANSLATION_CACHE[cache_key] = bridged.strip()
+            return bridged.strip()
+        _TRANSLATION_CACHE[cache_key] = en_guess.strip()
+        return en_guess.strip()
+
+    _TRANSLATION_CACHE[cache_key] = ""
+    return ""
 
 
 def get_article_blocks(content):
@@ -583,8 +604,8 @@ def extract_vocab_from_blocks(blocks):
                     vocab_map[word] = reading
     vocab = []
     for word, reading in vocab_map.items():
-        meaning_bg = translate_word_lang(word, reading, dest="bg") or word
-        meaning_en = translate_word_lang(word, reading, dest="en") or word
+        meaning_bg = translate_word_lang(word, reading, dest="bg")
+        meaning_en = translate_word_lang(word, reading, dest="en")
         vocab.append({"word": word, "reading": reading, "meaning_bg": meaning_bg, "meaning_en": meaning_en, "meaning": meaning_bg})
     vocab.sort(key=lambda x: (-len(x["word"]), x["word"]))
     return vocab[:80]
@@ -631,8 +652,8 @@ def is_valid_anki_vocab_item(item):
     else:
         canonical_word = base_word or word
         canonical_reading = reading
-        canonical_meaning_bg = meaning_bg or word
-        canonical_meaning_en = meaning_en or (translate_text(meaning_bg, dest="en") if meaning_bg else "") or word
+        canonical_meaning_bg = meaning_bg or ""
+        canonical_meaning_en = meaning_en or (translate_text(meaning_bg, dest="en") if meaning_bg else "") or ""
 
     if not canonical_meaning_bg and not canonical_meaning_en:
         return None
@@ -1192,6 +1213,9 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui-font);
 .wrap{max-width:980px;margin:0 auto;padding:26px 16px 40px}
 h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-family:var(--jp-font)}
 .site-logo{display:block;width:100px;height:100px;object-fit:contain;margin:0 auto 14px auto}
+.lang-top{max-width:260px;margin:0 auto 18px auto}
+.lang-top select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font:inherit}
+.lang-top .control-label{text-align:center}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:10px 0 14px}
@@ -1273,7 +1297,7 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const word=el.dataset.word||'';const reading=el.dataset.reading||'';const meaning=(lang==='en'?el.dataset.meaningEn:el.dataset.meaningBg)||el.dataset.meaningBg||el.dataset.meaningEn||word;popup.innerHTML='<div class="dw">'+word+'</div>'+(reading?'<div class="dr">'+reading+'</div>':'')+(meaning?'<div class="dm">'+meaning+'</div>':'');el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const word=el.dataset.word||'';const reading=el.dataset.reading||'';const meaning=(lang==='en'?el.dataset.meaningEn:el.dataset.meaningBg)||el.dataset.meaningBg||el.dataset.meaningEn||(lang==='en'?'No translation found':'Няма намерен превод');popup.innerHTML='<div class="dw">'+word+'</div>'+(reading?'<div class="dr">'+reading+'</div>':'')+(meaning?'<div class="dm">'+meaning+'</div>':'');el.classList.add('is-active');positionPopupNear(el,popup);}
 document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(function(){});}document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
