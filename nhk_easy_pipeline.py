@@ -1224,7 +1224,7 @@ h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-fam
 .lang-top .control-label{text-align:center}
 .lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .update-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
-.author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.6}
+.author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.7;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;white-space:pre-line}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:10px 0 14px}
@@ -1267,7 +1267,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 </div>
 <div class=\"lang-hint\" data-ui=\"help_hint\"></div>
 <div class=\"update-hint\" data-ui=\"update_hint\"></div>
-<div class=\"author-info\">Създадено от Веселин Баев<br>GitHub: vebaev<br>Email: vebaev@gmail.com</div>
+<div class=\"author-info\" data-bg=\"Създадено от Веселин Баев&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\" data-en=\"Created by Veselin Baev&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\"></div>
 <div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
 """
     for idx, article in enumerate(articles, start=1):
@@ -1315,7 +1315,7 @@ function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk
 function applyJapaneseFont(kind){const font=kind==='gothic'?'"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif':'"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif';document.documentElement.style.setProperty('--jp-font',font);}
 function setJapaneseFont(kind){localStorage.setItem('nhk_jp_font',kind);applyJapaneseFont(kind);}
 function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);applyContentLanguage(lang);closeDictPopup();}
-function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
+function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
 function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const word=el.dataset.word||'';const reading=el.dataset.reading||'';const meaning=(lang==='en'?el.dataset.meaningEn:el.dataset.meaningBg)||el.dataset.meaningBg||el.dataset.meaningEn||(lang==='en'?'No translation found':'Няма намерен превод');popup.innerHTML='<div class="dw">'+word+'</div>'+(reading?'<div class="dr">'+reading+'</div>':'')+(meaning?'<div class="dm">'+meaning+'</div>':'');el.classList.add('is-active');positionPopupNear(el,popup);}
