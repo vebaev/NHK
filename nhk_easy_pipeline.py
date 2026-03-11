@@ -1225,8 +1225,6 @@ h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-fam
 .lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .update-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.6}
-.lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
-.update-hint{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:10px 0 14px}
@@ -1267,8 +1265,6 @@ ruby rt{font-size:.68em;color:var(--muted)}
     <option value=\"en\">🇬🇧 English</option>
   </select>
 </div>
-<div class=\"lang-hint\" data-ui=\"help_hint\"></div>
-<div class=\"update-hint\" data-ui=\"update_hint\"></div>
 <div class=\"lang-hint\" data-ui=\"help_hint\"></div>
 <div class=\"update-hint\" data-ui=\"update_hint\"></div>
 <div class=\"author-info\">Създадено от Веселин Баев<br>GitHub: vebaev<br>Email: vebaev@gmail.com</div>
