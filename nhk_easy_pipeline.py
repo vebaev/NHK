@@ -382,6 +382,45 @@ def translate_word_lang(word: str, reading: str = "", dest: str = "bg") -> str:
     return ""
 
 
+def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: str = "", reading_lemma: str = "", form_label_bg: str = "", form_label_en: str = ""):
+    surface = (surface or "").strip()
+    lemma = (lemma or "").strip()
+    reading_surface = normalize_katakana_to_hiragana((reading_surface or "").strip())
+    reading_lemma = normalize_katakana_to_hiragana((reading_lemma or "").strip())
+    form_label_bg = (form_label_bg or "").strip()
+    form_label_en = (form_label_en or "").strip()
+
+    base_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg") or ""
+    base_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en") or ""
+
+    direct_bg = translate_text(surface, dest="bg") or ""
+    direct_en = translate_text(surface, dest="en") or ""
+
+    def usable_direct(src, out):
+        src = (src or "").strip()
+        out = (out or "").strip()
+        return bool(out and out != src)
+
+    if form_label_bg == "учтива отрицателна форма на 〜ている":
+        bg = "не е " + base_bg if base_bg and not base_bg.startswith("не ") else (base_bg or "")
+        en = "has not been " + base_en if base_en else ""
+        if not bg:
+            bg = direct_bg if usable_direct(surface, direct_bg) else "не е намерено"
+        if not en:
+            en = direct_en if usable_direct(surface, direct_en) else "has not been found"
+        return {"bg": bg, "en": en}
+
+    if form_label_bg == "учтива форма на 〜ている" and base_bg:
+        return {"bg": "е " + base_bg, "en": ("is " + base_en) if base_en else direct_en}
+    if form_label_bg == "минала форма на 〜ている" and base_bg:
+        return {"bg": "беше " + base_bg, "en": ("was " + base_en) if base_en else direct_en}
+
+    return {
+        "bg": direct_bg if usable_direct(surface, direct_bg) else base_bg,
+        "en": direct_en if usable_direct(surface, direct_en) else base_en,
+    }
+
+
 def get_article_blocks(content):
     blocks = []
     for el in content.find_all(["p", "h2", "h3", "li"], recursive=True):
@@ -458,6 +497,18 @@ def classify_japanese_form(surface: str, lemma: str = "", pos1: str = "", pos2: 
 
     if s and l and s == l:
         return {"bg": "речникова форма", "en": "dictionary form"}
+    if s.endswith(("ていません", "でいません")):
+        return {"bg": "учтива отрицателна форма на 〜ている", "en": "polite negative 〜te iru form"}
+    if s.endswith(("ていました", "でいました")):
+        return {"bg": "учтива минала форма на 〜ている", "en": "polite past 〜te iru form"}
+    if s.endswith(("ています", "でいます")):
+        return {"bg": "учтива форма на 〜ている", "en": "polite 〜te iru form"}
+    if s.endswith(("ていない", "でいない")):
+        return {"bg": "отрицателна форма на 〜ている", "en": "negative 〜te iru form"}
+    if s.endswith(("ていた", "でいた")):
+        return {"bg": "минала форма на 〜ている", "en": "past 〜te iru form"}
+    if s.endswith(("ている", "でいる")):
+        return {"bg": "форма на 〜ている", "en": "〜te iru form"}
     if s.endswith("なかった"):
         return {"bg": "отрицателна минала форма", "en": "past negative form"}
     if s.endswith("なくて"):
@@ -470,14 +521,14 @@ def classify_japanese_form(surface: str, lemma: str = "", pos1: str = "", pos2: 
         if "polite" in low or s.endswith("ました"):
             return {"bg": "учтива минала форма", "en": "polite past form"}
         return {"bg": "минало време", "en": "past tense"}
+    if s.endswith("ません"):
+        return {"bg": "учтива отрицателна форма", "en": "polite negative form"}
     if s.endswith(("ない","ぬ","ん")) and s != l:
         return {"bg": "отрицателна форма", "en": "negative form"}
     if s.endswith(("て","で")) and s != l:
         return {"bg": "て-форма", "en": "te-form"}
     if s.endswith(("ます","です")) and s != l:
         return {"bg": "учтива форма", "en": "polite form"}
-    if s.endswith("ません"):
-        return {"bg": "учтива отрицателна форма", "en": "polite negative form"}
     if s.endswith("ましょう"):
         return {"bg": "учтива волева форма", "en": "polite volitional form"}
     if s.endswith(("よう","おう")) and s != l:
@@ -506,7 +557,7 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
     lemma_hint = (lemma_hint or "").strip()
     info = {
         "surface": surface,
-        "lemma": lemma_hint or surface,
+        "lemma": surface,
         "reading_surface": reading_hint,
         "reading_lemma": "",
         "pos1": "",
@@ -524,7 +575,7 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
                 if len(tokens) == 1:
                     tok = tokens[0]
                     feat = token_feature(tok)
-                    lemma = token_lemma(tok).strip() or lemma_hint or surface
+                    lemma = token_lemma(tok).strip() or to_dictionary_form(surface) or lemma_hint or surface
                     reading_surface = normalize_katakana_to_hiragana(feature_reading(tok).strip() or reading_hint)
                     info["lemma"] = lemma
                     info["reading_surface"] = reading_surface
@@ -534,13 +585,22 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
                     info["ctype"] = safe_feature_value(feat, "cType", "ctype", "conjType", "inflectionType")
                     info["cform"] = safe_feature_value(feat, "cForm", "cform", "conjForm", "inflectionForm")
                 else:
-                    lemmas = [token_lemma(t).strip() or token_surface(t).strip() for t in tokens]
-                    info["lemma"] = lemma_hint or "".join(lemmas).strip() or to_dictionary_form(surface)
+                    token_lemmas = [token_lemma(t).strip() or token_surface(t).strip() for t in tokens]
+                    derived = to_dictionary_form(surface)
+                    non_aux_lemmas = [x for x in token_lemmas if x not in {"て", "で", "いる", "居る", "ます", "です", "ん", "ない"}]
+                    if derived and derived != surface:
+                        info["lemma"] = derived
+                    elif non_aux_lemmas:
+                        info["lemma"] = non_aux_lemmas[0]
+                    elif lemma_hint:
+                        info["lemma"] = lemma_hint
+                    else:
+                        info["lemma"] = "".join(token_lemmas).strip() or surface
                     info["reading_surface"] = normalize_katakana_to_hiragana("".join(feature_reading(t).strip() for t in tokens) or reading_hint)
         except Exception:
             pass
-    if not info["lemma"]:
-        info["lemma"] = lemma_hint or to_dictionary_form(surface) or surface
+    if not info["lemma"] or info["lemma"] == surface:
+        info["lemma"] = to_dictionary_form(surface) or lemma_hint or surface
     if not info["reading_surface"]:
         info["reading_surface"] = reading_hint
     if not info["reading_lemma"]:
@@ -607,6 +667,68 @@ def to_dictionary_form(word: str) -> str:
     w = (word or "").strip()
     if not w:
         return w
+
+    def te_base_to_dictionary(stem: str) -> str:
+        stem = (stem or "").strip()
+        if not stem:
+            return stem
+        if stem.endswith("っ"):
+            return stem[:-1] + "る"
+        if stem.endswith("ん"):
+            return stem[:-1] + "む"
+        if stem.endswith("し"):
+            return stem[:-1] + "す"
+        if stem.endswith("い"):
+            return stem[:-1] + "く"
+        if stem.endswith("ち"):
+            return stem[:-1] + "つ"
+        if stem.endswith("り"):
+            return stem[:-1] + "る"
+        if stem.endswith("び"):
+            return stem[:-1] + "ぶ"
+        if stem.endswith("み"):
+            return stem[:-1] + "む"
+        if stem.endswith("ぎ"):
+            return stem[:-1] + "ぐ"
+        return stem + "る"
+
+    te_iru_suffixes = [
+        "ていませんでした", "でいませんでした",
+        "ていました", "でいました",
+        "ていません", "でいません",
+        "ていない", "でいない",
+        "ています", "でいます",
+        "ていた", "でいた",
+        "ている", "でいる",
+    ]
+    for suffix in te_iru_suffixes:
+        if w.endswith(suffix) and len(w) > len(suffix):
+            return te_base_to_dictionary(w[:-len(suffix)])
+
+    for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
+        if w.endswith(suffix):
+            return w[:-len(suffix)] + "する"
+    for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
+        if w.endswith(suffix):
+            return w[:-len(suffix)] + "くる"
+    for suffix in ["ました", "ます"]:
+        if w.endswith(suffix):
+            stem = w[:-len(suffix)]
+            if not stem:
+                return w
+            mapped = GODAN_I_TO_U.get(stem[-1])
+            return stem[:-1] + mapped if mapped else stem + "る"
+    if w.endswith("ない") and len(w) > 2:
+        stem = w[:-2]
+        mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
+        return stem[:-1] + mapped if mapped else stem + "る"
+    for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
+        if w.endswith(src) and len(w) > len(src):
+            return w[:-len(src)] + dst
+    for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
+        if w.endswith(src) and len(w) > len(src):
+            return w[:-len(src)] + dst
+    return w
     for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
         if w.endswith(suffix):
             return w[:-len(suffix)] + "する"
@@ -681,10 +803,19 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     form_bg = (analysis.get("form_bg") or "форма в текста").strip()
     form_en = (analysis.get("form_en") or "form in context").strip()
 
-    surface_meaning_bg = translate_text(surface, dest="bg") or (item.get("meaning_bg") or item.get("meaning") or "").strip()
-    surface_meaning_en = translate_text(surface, dest="en") or (item.get("meaning_en") or item.get("meaning") or "").strip()
     lemma_meaning_bg = (item.get("meaning_bg") or item.get("meaning") or translate_word_lang(lemma, reading_lemma, dest="bg") or "").strip()
     lemma_meaning_en = (item.get("meaning_en") or translate_word_lang(lemma, reading_lemma, dest="en") or "").strip()
+
+    contextual = contextual_surface_meaning(
+        surface=surface,
+        lemma=lemma,
+        reading_surface=reading_surface,
+        reading_lemma=reading_lemma,
+        form_label_bg=form_bg,
+        form_label_en=form_en,
+    )
+    surface_meaning_bg = (contextual.get("bg") or "").strip() or lemma_meaning_bg
+    surface_meaning_en = (contextual.get("en") or "").strip() or lemma_meaning_en
 
     span["data-surface"] = surface
     span["data-lemma"] = lemma
@@ -1456,9 +1587,9 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
 .dict-word.is-active{background:rgba(138,180,255,.18)}
 .dict-popup{position:fixed;z-index:9999;display:none;max-width:min(96vw,440px);background:var(--popup);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
-.dict-popup .dw{font-weight:700;font-size:1.08rem;font-family:var(--jp-font)}
+.dict-popup .dw{font-weight:700;font-size:1.08rem;font-family:var(--jp-font);line-height:1.6;white-space:normal;word-break:break-word}
 .dict-popup .dr{color:var(--accent);font-size:.95rem;margin-top:2px}
-.dict-popup .dm{color:var(--text);margin-top:4px}
+.dict-popup .dm{color:var(--text);margin-top:6px;line-height:1.65;white-space:normal;word-break:break-word}
 ruby rt{font-size:.68em;color:var(--muted)}
 </style>
 </head>
