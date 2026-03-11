@@ -583,7 +583,9 @@ def extract_vocab_from_blocks(blocks):
                     vocab_map[word] = reading
     vocab = []
     for word, reading in vocab_map.items():
-        vocab.append({"word": word, "reading": reading, "meaning_bg": translate_word_lang(word, reading, dest="bg"), "meaning_en": translate_word_lang(word, reading, dest="en"), "meaning": translate_word_lang(word, reading, dest="bg")})
+        meaning_bg = translate_word_lang(word, reading, dest="bg") or word
+        meaning_en = translate_word_lang(word, reading, dest="en") or word
+        vocab.append({"word": word, "reading": reading, "meaning_bg": meaning_bg, "meaning_en": meaning_en, "meaning": meaning_bg})
     vocab.sort(key=lambda x: (-len(x["word"]), x["word"]))
     return vocab[:80]
 
@@ -629,8 +631,8 @@ def is_valid_anki_vocab_item(item):
     else:
         canonical_word = base_word or word
         canonical_reading = reading
-        canonical_meaning_bg = meaning_bg
-        canonical_meaning_en = meaning_en or (translate_text(meaning_bg, dest="en") if meaning_bg else "")
+        canonical_meaning_bg = meaning_bg or word
+        canonical_meaning_en = meaning_en or (translate_text(meaning_bg, dest="en") if meaning_bg else "") or word
 
     if not canonical_meaning_bg and not canonical_meaning_en:
         return None
@@ -1024,8 +1026,12 @@ def parse_article_from_nhk_easy(link: str):
     if not filtered_blocks:
         return None
     vocab = extract_vocab_from_blocks(filtered_blocks)
-    translated_blocks = [{"html": b["html"], "text": b["text"], "translation_bg": translate_text(b["text"], dest="bg"), "translation_en": translate_text(b["text"], dest="en")} for b in filtered_blocks]
-    return {"title": title, "title_html": title_html, "title_translation_bg": translate_text(title, dest="bg"), "title_translation_en": translate_text(title, dest="en"), "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
+    translated_blocks = []
+    for b in filtered_blocks:
+        bg_tr = translate_text(b["text"], dest="bg") or b["text"]
+        en_tr = translate_text(b["text"], dest="en") or b["text"]
+        translated_blocks.append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
+    return {"title": title, "title_html": title_html, "title_translation_bg": (translate_text(title, dest="bg") or title), "title_translation_en": (translate_text(title, dest="en") or title), "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
@@ -1040,7 +1046,11 @@ def get_articles(n=4):
             ne_id = extract_ne_id(link)
             fallback = nhkeasier_items.get(ne_id)
             if article and fallback and fallback.get("blocks"):
-                article["blocks"] = [{"html": b["html"], "text": b["text"], "translation_bg": translate_text(b["text"], dest="bg"), "translation_en": translate_text(b["text"], dest="en")} for b in fallback["blocks"]]
+                article["blocks"] = []
+                for b in fallback["blocks"]:
+                    bg_tr = translate_text(b["text"], dest="bg") or b["text"]
+                    en_tr = translate_text(b["text"], dest="en") or b["text"]
+                    article["blocks"].append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
                     article["audio_url"] = fallback["audio_url"]
@@ -1199,7 +1209,7 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .download-btn{display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card2);color:var(--text);text-decoration:none}
 .contacts{text-align:center;color:var(--muted);margin-top:10px}
 .bottom-controls{margin-top:22px;padding:14px;border:1px solid var(--border);border-radius:16px;background:var(--card)}
-.control-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .control-grid select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font:inherit}
 .control-label{font-size:.92rem;color:var(--muted);margin-bottom:6px}
 .dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
@@ -1247,7 +1257,6 @@ ruby rt{font-size:.68em;color:var(--muted)}
   <div class='control-grid'>
     <div><div class='control-label' data-ui='theme'></div><select id='theme-select' onchange='setTheme(this.value)'><option value='theme-dark'>Dark</option><option value='theme-sepia'>Sepia</option><option value='theme-light'>Light</option></select></div>
     <div><div class='control-label' data-ui='japanese_font'></div><select id='font-select' onchange='setJapaneseFont(this.value)'><option value='mincho'>Mincho</option><option value='gothic'>Gothic</option></select></div>
-    <div><div class='control-label' data-ui='translation_language'></div><select id='lang-select' onchange='setContentLanguage(this.value)'><option value='bg'>Български</option><option value='en'>English</option></select></div>
   </div>
 </div>
 <div class='contacts'>vebaev.github.io</div>
@@ -1264,7 +1273,7 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const word=el.dataset.word||'';const reading=el.dataset.reading||'';const meaning=(lang==='en'?el.dataset.meaningEn:el.dataset.meaningBg)||el.dataset.meaningBg||el.dataset.meaningEn||'';popup.innerHTML='<div class="dw">'+word+'</div>'+(reading?'<div class="dr">'+reading+'</div>':'')+(meaning?'<div class="dm">'+meaning+'</div>':'');el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const word=el.dataset.word||'';const reading=el.dataset.reading||'';const meaning=(lang==='en'?el.dataset.meaningEn:el.dataset.meaningBg)||el.dataset.meaningBg||el.dataset.meaningEn||word;popup.innerHTML='<div class="dw">'+word+'</div>'+(reading?'<div class="dr">'+reading+'</div>':'')+(meaning?'<div class="dm">'+meaning+'</div>':'');el.classList.add('is-active');positionPopupNear(el,popup);}
 document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(function(){});}document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
