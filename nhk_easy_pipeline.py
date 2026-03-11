@@ -1305,6 +1305,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             continue
 
         base = ruby_base_text(ruby)
+        ruby_reading = "".join(rt.get_text("", strip=True) for rt in ruby.find_all("rt"))
         okurigana = extract_following_okurigana(ruby)
         candidates = []
         if base and okurigana:
@@ -1315,10 +1316,10 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
 
         item = None
         analysis = None
-        for cand in unique_keep_order(candidates + build_lookup_candidates(base + okurigana if okurigana else base, reading=rt_text)):
+        for cand in unique_keep_order(candidates + build_lookup_candidates(base + okurigana if okurigana else base, reading=ruby_reading)):
             if cand in vocab_lookup:
                 item = vocab_lookup[cand]
-                analysis = analyze_japanese_word(base + okurigana if okurigana else base, reading_hint=(rt_text + okurigana).strip() if okurigana else rt_text, lemma_hint=(item.get("word") or "").strip())
+                analysis = analyze_japanese_word(base + okurigana if okurigana else base, reading_hint=(ruby_reading + okurigana).strip() if okurigana else ruby_reading, lemma_hint=(item.get("word") or "").strip())
                 break
         if item is None:
             continue
