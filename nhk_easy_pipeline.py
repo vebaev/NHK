@@ -776,6 +776,25 @@ def to_dictionary_form(word: str) -> str:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
     return w
+def is_person_name_span(tokens_slice) -> bool:
+    if not tokens_slice:
+        return False
+    pos1s = []
+    pos2s = []
+    surfaces = []
+    for t in tokens_slice:
+        feat = token_feature(t)
+        pos1s.append(getattr(feat, "pos1", "") if feat is not None else "")
+        pos2s.append(getattr(feat, "pos2", "") if feat is not None else "")
+        surfaces.append(token_surface(t).strip())
+    if any(p1 != "名詞" for p1 in pos1s):
+        return False
+    joined = "".join(surfaces)
+    if joined.endswith(("さん", "君", "くん", "ちゃん", "氏")):
+        return True
+    markers = ("人名", "姓", "名")
+    return any(any(m in (p2 or "") for m in markers) for p2 in pos2s)
+
 def is_matchable_token_span(tokens_slice) -> bool:
     if not tokens_slice:
         return False
@@ -862,9 +881,10 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     lemma_meaning_en = lemma_gloss_en
     lemma_meaning_bg = (translate_text(lemma_gloss_en, dest="bg") if lemma_gloss_en else "").strip()
 
-    if not lemma_meaning_bg and (item.get("meaning_bg") or "").strip() and lemma == (item.get("word") or "").strip():
+    exact_item_match = lemma == (item.get("word") or "").strip() == surface
+    if not lemma_meaning_bg and exact_item_match and (item.get("meaning_bg") or "").strip():
         lemma_meaning_bg = (item.get("meaning_bg") or "").strip()
-    if not lemma_meaning_en and (item.get("meaning_en") or "").strip() and lemma == (item.get("word") or "").strip():
+    if not lemma_meaning_en and exact_item_match and (item.get("meaning_en") or "").strip():
         lemma_meaning_en = (item.get("meaning_en") or "").strip()
     if not lemma_meaning_bg:
         lemma_meaning_bg = lemma_meaning_en
@@ -881,6 +901,11 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     )
     surface_meaning_bg = (contextual.get("bg") or "").strip() or lemma_meaning_bg
     surface_meaning_en = (contextual.get("en") or "").strip() or lemma_meaning_en
+
+    if lemma == surface:
+        reading_lemma = ""
+        lemma_meaning_bg = ""
+        lemma_meaning_en = ""
 
     span["data-surface"] = surface
     span["data-lemma"] = lemma
