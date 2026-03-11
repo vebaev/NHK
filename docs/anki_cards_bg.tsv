@@ -6,6 +6,7 @@
 <ruby>カーブ-curve<rt>かーぶ</rt></ruby>	крива-крива
 <ruby>クラス-class<rt>くらす</rt></ruby>	клас-клас
 <ruby>コース-course<rt>こーす</rt></ruby>	курс-курс
+<ruby>スキー-ski<rt>すきー</rt></ruby>	ски-ски
 <ruby>スピード-speed<rt>すぴーど</rt></ruby>	скорост-скорост
 <ruby>スーパー-super<rt>すーぱー</rt></ruby>	супер-супер
 <ruby>トランプ-trump<rt>とらんぷ</rt></ruby>	тръм-тръмп
@@ -13,7 +14,7 @@
 <ruby>パスポート-passport<rt>ぱすぽーと</rt></ruby>	паспорт-паспорт
 <ruby>ミサイル-missile<rt>みさいる</rt></ruby>	ракета-ракета
 <ruby>ミラノ-Milano<rt>みらの</rt></ruby>	Милано
-<ruby>メダル-medal<rt>めだる</rt></ruby>	medal-medal
+<ruby>メダル-medal<rt>めだる</rt></ruby>	медал-медал
 <ruby>久の<rt>くの</rt></ruby>	Куно
 <ruby>予定<rt>よてい</rt></ruby>	график
 <ruby>人たちに<rt>ひとたちに</rt></ruby>	на хората
@@ -27,11 +28,12 @@
 <ruby>佐藤憂奈<rt>さとうゆうな</rt></ruby>	Юна Сато
 <ruby>作る<rt>つくる</rt></ruby>	направи
 <ruby>使うことができるも<rt>つかうことができるも</rt></ruby>	също може да се използва
+<ruby>円-助数詞<rt>えん</rt></ruby>	кръг-двойник
 <ruby>円ぐらいにするつも<rt>えんぐらいにするつも</rt></ruby>	Планирам да го направя около йени.
 <ruby>出まする<rt>でまする</rt></ruby>	излезте
 <ruby>出る<rt>で</rt></ruby>	излезте
 <ruby>出来る<rt>でき</rt></ruby>	Мога да го направя
-<ruby>初めて<rt>はじめて</rt></ruby>	first time
+<ruby>初めて<rt>はじめて</rt></ruby>	първи път
 <ruby>助ける<rt>たすける</rt></ruby>	помощ
 <ruby>勉強<rt>べんきょう</rt></ruby>	проучване
 <ruby>勉強したことを<rt>べんきょうしたことを</rt></ruby>	какво научих
@@ -74,10 +76,10 @@
 <ruby>怪我<rt>けが</rt></ruby>	нараняване
 <ruby>恣意<rt>しい</rt></ruby>	безсмислен
 <ruby>成る<rt>なっ</rt></ruby>	станете; спаси
-<ruby>戦いが<rt>たたかいが</rt></ruby>	битката
+<ruby>戦いが<rt>たたかいが</rt></ruby>	Битката
 <ruby>戻ったばかりでする<rt>もどったばかりでする</rt></ruby>	Току що се върнах
 <ruby>払い<rt>はらい</rt></ruby>	плащане
-<ruby>払うお<rt>はらうお</rt></ruby>	I'll pay
+<ruby>払うお<rt>はらうお</rt></ruby>	аз ще платя
 <ruby>攻撃<rt>こうげき</rt></ruby>	атака
 <ruby>攻撃する<rt>こうげきする</rt></ruby>	атака
 <ruby>政府<rt>せいふ</rt></ruby>	правителство
@@ -85,12 +87,13 @@
 <ruby>旅行<rt>りょこう</rt></ruby>	пътуване
 <ruby>日本<rt>にっぽん</rt></ruby>	Япония
 <ruby>旨い<rt>うまく</rt></ruby>	вкусно
-<ruby>早い<rt>はやい</rt></ruby>	early
+<ruby>早い<rt>はやい</rt></ruby>	рано
 <ruby>書きまする<rt>かきまする</rt></ruby>	аз ще пиша
 <ruby>有る<rt>ある</rt></ruby>	да
 <ruby>村岡<rt>むらおか</rt></ruby>	Мураока
-<ruby>村岡桃佳<rt>むらおかももか</rt></ruby>	Momoka Muraoka
-<ruby>村岡選手<rt>むらおかせんしゅ</rt></ruby>	Muraoka player
+<ruby>村岡桃佳<rt>むらおかももか</rt></ruby>	Момока Мураока
+<ruby>村岡桃佳選手<rt>むらおかももかせんしゅ</rt></ruby>	Момока Мураока
+<ruby>村岡選手<rt>むらおかせんしゅ</rt></ruby>	Мураока играч
 <ruby>来た<rt>くる</rt></ruby>	дойде
 <ruby>来る<rt>き</rt></ruby>	ела
 <ruby>東日本<rt>ひがしにっぽん</rt></ruby>	източна япония
@@ -100,7 +103,7 @@
 <ruby>歳だった<rt>さいだった</rt></ruby>	беше на годинка
 <ruby>残する<rt>のこする</rt></ruby>	напускам
 <ruby>気仙沼市<rt>けせんぬまし</rt></ruby>	Кесеннума Сити
-<ruby>気安い<rt>きやすく</rt></ruby>	Cheap
+<ruby>気安い<rt>きやすく</rt></ruby>	Евтин
 <ruby>沢山<rt>たくさん</rt></ruby>	много
 <ruby>法律<rt>ほうりつ</rt></ruby>	закон
 <ruby>津波<rt>つなみ</rt></ruby>	цунами
@@ -113,9 +116,10 @@
 <ruby>男性<rt>だんせい</rt></ruby>	мъжки
 <ruby>目標<rt>もくひょう</rt></ruby>	Цел
 <ruby>直ぐ<rt>すぐ</rt></ruby>	веднага
+<ruby>積り<rt>つもり</rt></ruby>	натрупване
 <ruby>競技<rt>きょうぎ</rt></ruby>	състезание
-<ruby>続いてう<rt>つづいてう</rt></ruby>	следващ...
-<ruby>練習<rt>れんしゅう</rt></ruby>	practice
+<ruby>続いてう<rt>つづいてう</rt></ruby>	Следваща
+<ruby>練習<rt>れんしゅう</rt></ruby>	практика
 <ruby>考え<rt>かんがえ</rt></ruby>	мисъл
 <ruby>考えていきたいです<rt>かんがえていきたいです</rt></ruby>	Искам да помисля за това
 <ruby>考えてう<rt>かんがえてう</rt></ruby>	Мисля си за това
@@ -125,7 +129,7 @@
 <ruby>若し<rt>もし</rt></ruby>	млад
 <ruby>行きやすくしたいと<rt>いきやすくしたいと</rt></ruby>	Искам да го направя по-лесно
 <ruby>行く<rt>いき</rt></ruby>	върви
-<ruby>行く時<rt>ぎょうくじ</rt></ruby>	when to go
+<ruby>行く時<rt>ぎょうくじ</rt></ruby>	кога да отида
 <ruby>褒めたい<rt>ほめたい</rt></ruby>	Искам да похваля
 <ruby>見る<rt>み</rt></ruby>	погледнете
 <ruby>言いまする<rt>いいまする</rt></ruby>	аз казвам
@@ -140,10 +144,10 @@
 <ruby>運ぶ<rt>はこぶ</rt></ruby>	носят
 <ruby>運ぶことができる<rt>はこぶことができる</rt></ruby>	може да се носи
 <ruby>過ぎまする<rt>すぎまする</rt></ruby>	Ще мине
+<ruby>選手<rt>せんしゅ</rt></ruby>	играч
 <ruby>銀メダル<rt>ぎんめだる</rt></ruby>	сребърен медал
 <ruby>関係<rt>かんけい</rt></ruby>	връзка
 <ruby>難しい<rt>むずかしい</rt></ruby>	трудно
-<ruby>難しいコース<rt>なんしいこーす</rt></ruby>	труден курс
 <ruby>難しくなってう<rt>むずかしくなってう</rt></ruby>	Става трудно
 <ruby>震災<rt>しんさい</rt></ruby>	Земетресение
 <ruby>高校<rt>こうこう</rt></ruby>	гимназия

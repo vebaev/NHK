@@ -6,13 +6,14 @@
 <ruby>カーブ-curve<rt>かーぶ</rt></ruby>	curve-curve
 <ruby>クラス-class<rt>くらす</rt></ruby>	class-class
 <ruby>コース-course<rt>こーす</rt></ruby>	course-course
+<ruby>スキー-ski<rt>すきー</rt></ruby>	ski-ski
 <ruby>スピード-speed<rt>すぴーど</rt></ruby>	speed-speed
 <ruby>スーパー-super<rt>すーぱー</rt></ruby>	super-super
 <ruby>トランプ-trump<rt>とらんぷ</rt></ruby>	trump-trump
 <ruby>トランプ大統領<rt>とらんぷだいとうりょう</rt></ruby>	president trump
 <ruby>パスポート-passport<rt>ぱすぽーと</rt></ruby>	passport-passport
 <ruby>ミサイル-missile<rt>みさいる</rt></ruby>	missile-missile
-<ruby>ミラノ-Milano<rt>みらの</rt></ruby>	Milan
+<ruby>ミラノ-Milano<rt>みらの</rt></ruby>	Milano
 <ruby>メダル-medal<rt>めだる</rt></ruby>	medal-medal
 <ruby>久の<rt>くの</rt></ruby>	Kuno
 <ruby>予定<rt>よてい</rt></ruby>	schedule
@@ -27,6 +28,7 @@
 <ruby>佐藤憂奈<rt>さとうゆうな</rt></ruby>	Yuna Sato
 <ruby>作る<rt>つくる</rt></ruby>	make
 <ruby>使うことができるも<rt>つかうことができるも</rt></ruby>	can also be used
+<ruby>円-助数詞<rt>えん</rt></ruby>	circle-counterpart
 <ruby>円ぐらいにするつも<rt>えんぐらいにするつも</rt></ruby>	I'm planning on making it around yen.
 <ruby>出まする<rt>でまする</rt></ruby>	come out
 <ruby>出る<rt>で</rt></ruby>	come out
@@ -64,7 +66,7 @@
 <ruby>安い<rt>やすい</rt></ruby>	cheap
 <ruby>安くしたいと<rt>やすくしたいと</rt></ruby>	I want it to be cheap
 <ruby>安くする<rt>やすくする</rt></ruby>	make it cheaper
-<ruby>安くなる<rt>やすくなる</rt></ruby>	it gets cheaper
+<ruby>安くなる<rt>やすくなる</rt></ruby>	becomes cheaper
 <ruby>宮城県気仙沼市<rt>みやぎけんけせんぬまし</rt></ruby>	Kesennuma City, Miyagi Prefecture
 <ruby>家族<rt>かぞく</rt></ruby>	family
 <ruby>家族から<rt>かぞくから</rt></ruby>	from family
@@ -74,7 +76,7 @@
 <ruby>怪我<rt>けが</rt></ruby>	injury
 <ruby>恣意<rt>しい</rt></ruby>	wanton
 <ruby>成る<rt>なっ</rt></ruby>	become; save
-<ruby>戦いが<rt>たたかいが</rt></ruby>	the battle
+<ruby>戦いが<rt>たたかいが</rt></ruby>	The battle
 <ruby>戻ったばかりでする<rt>もどったばかりでする</rt></ruby>	I just got back
 <ruby>払い<rt>はらい</rt></ruby>	payment
 <ruby>払うお<rt>はらうお</rt></ruby>	I'll pay
@@ -90,6 +92,7 @@
 <ruby>有る<rt>ある</rt></ruby>	Yes
 <ruby>村岡<rt>むらおか</rt></ruby>	Muraoka
 <ruby>村岡桃佳<rt>むらおかももか</rt></ruby>	Momoka Muraoka
+<ruby>村岡桃佳選手<rt>むらおかももかせんしゅ</rt></ruby>	Momoka Muraoka
 <ruby>村岡選手<rt>むらおかせんしゅ</rt></ruby>	Muraoka player
 <ruby>来た<rt>くる</rt></ruby>	came
 <ruby>来る<rt>き</rt></ruby>	come
@@ -113,8 +116,9 @@
 <ruby>男性<rt>だんせい</rt></ruby>	male
 <ruby>目標<rt>もくひょう</rt></ruby>	Target
 <ruby>直ぐ<rt>すぐ</rt></ruby>	immediately
+<ruby>積り<rt>つもり</rt></ruby>	accumulation
 <ruby>競技<rt>きょうぎ</rt></ruby>	competition
-<ruby>続いてう<rt>つづいてう</rt></ruby>	Next...
+<ruby>続いてう<rt>つづいてう</rt></ruby>	Next
 <ruby>練習<rt>れんしゅう</rt></ruby>	practice
 <ruby>考え<rt>かんがえ</rt></ruby>	thought
 <ruby>考えていきたいです<rt>かんがえていきたいです</rt></ruby>	I want to think about it
@@ -140,10 +144,10 @@
 <ruby>運ぶ<rt>はこぶ</rt></ruby>	carry
 <ruby>運ぶことができる<rt>はこぶことができる</rt></ruby>	can be carried
 <ruby>過ぎまする<rt>すぎまする</rt></ruby>	It will pass
+<ruby>選手<rt>せんしゅ</rt></ruby>	player
 <ruby>銀メダル<rt>ぎんめだる</rt></ruby>	silver medal
 <ruby>関係<rt>かんけい</rt></ruby>	relationship
 <ruby>難しい<rt>むずかしい</rt></ruby>	difficult
-<ruby>難しいコース<rt>なんしいこーす</rt></ruby>	difficult course
 <ruby>難しくなってう<rt>むずかしくなってう</rt></ruby>	It's getting difficult
 <ruby>震災<rt>しんさい</rt></ruby>	Earthquake
 <ruby>高校<rt>こうこう</rt></ruby>	high school
