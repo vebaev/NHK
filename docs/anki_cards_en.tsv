@@ -5,7 +5,7 @@
 <ruby>イラン-Iran<rt>いらん</rt></ruby>	Iran-Iran
 <ruby>カーブ-curve<rt>かーぶ</rt></ruby>	curve-curve
 <ruby>クラス-class<rt>くらす</rt></ruby>	class-class
-<ruby>コース-course<rt>こーす</rt></ruby>	course-course
+<ruby>コース-course<rt>こーす</rt></ruby>	курс-курс
 <ruby>スキー-ski<rt>すきー</rt></ruby>	ski-ski
 <ruby>スピード-speed<rt>すぴーど</rt></ruby>	speed-speed
 <ruby>スーパー-super<rt>すーぱー</rt></ruby>	super-super
@@ -31,7 +31,7 @@
 <ruby>円-助数詞<rt>えん</rt></ruby>	circle-counterpart
 <ruby>円ぐらいにするつも<rt>えんぐらいにするつも</rt></ruby>	I'm planning on making it around yen.
 <ruby>出まする<rt>でまする</rt></ruby>	come out
-<ruby>出る<rt>で</rt></ruby>	come out
+<ruby>出る<rt>で</rt></ruby>	излезте
 <ruby>出来る<rt>でき</rt></ruby>	I can do it
 <ruby>初めて<rt>はじめて</rt></ruby>	first time
 <ruby>助ける<rt>たすける</rt></ruby>	help
@@ -52,7 +52,7 @@
 <ruby>変わると<rt>かわると</rt></ruby>	When it changes
 <ruby>外国<rt>がいこく</rt></ruby>	foreign country
 <ruby>大きい<rt>おおきい</rt></ruby>	big
-<ruby>大きなけがをする<rt>おおきなけがをする</rt></ruby>	cause serious injury
+<ruby>大きなけがをする<rt>おおきなけがをする</rt></ruby>	причини сериозно нараняване
 <ruby>大切<rt>たいせつ</rt></ruby>	important
 <ruby>大切さを<rt>たいせつさを</rt></ruby>	importance
 <ruby>大回転<rt>だいかいてん</rt></ruby>	giant slalom
@@ -77,7 +77,7 @@
 <ruby>恣意<rt>しい</rt></ruby>	wanton
 <ruby>成る<rt>なっ</rt></ruby>	become; save
 <ruby>戦いが<rt>たたかいが</rt></ruby>	The battle
-<ruby>戻ったばかりでする<rt>もどったばかりでする</rt></ruby>	I just got back
+<ruby>戻ったばかりでする<rt>もどったばかりでする</rt></ruby>	Току що се върнах
 <ruby>払い<rt>はらい</rt></ruby>	payment
 <ruby>払うお<rt>はらうお</rt></ruby>	I'll pay
 <ruby>攻撃<rt>こうげき</rt></ruby>	attack
@@ -125,14 +125,13 @@
 <ruby>考えてう<rt>かんがえてう</rt></ruby>	I'm thinking about it
 <ruby>聞く<rt>きい</rt></ruby>	listen
 <ruby>自分<rt>じぶん</rt></ruby>	myself
-<ruby>良い<rt>よかっ</rt></ruby>	good
 <ruby>若し<rt>もし</rt></ruby>	young
 <ruby>行きやすくしたいと<rt>いきやすくしたいと</rt></ruby>	I want to make it easier to go
 <ruby>行く<rt>いき</rt></ruby>	go
 <ruby>行く時<rt>ぎょうくじ</rt></ruby>	when to go
-<ruby>褒めたい<rt>ほめたい</rt></ruby>	I want to praise
+<ruby>褒めたい<rt>ほめたい</rt></ruby>	Искам да похваля
 <ruby>見る<rt>み</rt></ruby>	look
-<ruby>言いまする<rt>いいまする</rt></ruby>	I say
+<ruby>言いまする<rt>いいまする</rt></ruby>	say
 <ruby>言ってう<rt>いってう</rt></ruby>	Say it
 <ruby>話する<rt>はなする</rt></ruby>	speak
 <ruby>起きてから<rt>おきてから</rt></ruby>	After waking up
@@ -145,7 +144,6 @@
 <ruby>運ぶことができる<rt>はこぶことができる</rt></ruby>	can be carried
 <ruby>過ぎまする<rt>すぎまする</rt></ruby>	It will pass
 <ruby>選手<rt>せんしゅ</rt></ruby>	player
-<ruby>銀メダル<rt>ぎんめだる</rt></ruby>	silver medal
 <ruby>関係<rt>かんけい</rt></ruby>	relationship
 <ruby>難しい<rt>むずかしい</rt></ruby>	difficult
 <ruby>難しくなってう<rt>むずかしくなってう</rt></ruby>	It's getting difficult

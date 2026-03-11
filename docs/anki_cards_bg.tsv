@@ -3,11 +3,11 @@
 <ruby>アルペン-Alpen<rt>あるぺん</rt></ruby>	Алпен-Алпен
 <ruby>イスラエル-Israel<rt>いすらえる</rt></ruby>	Израел
 <ruby>イラン-Iran<rt>いらん</rt></ruby>	Иран-Иран
-<ruby>カーブ-curve<rt>かーぶ</rt></ruby>	крива-крива
-<ruby>クラス-class<rt>くらす</rt></ruby>	клас-клас
+<ruby>カーブ-curve<rt>かーぶ</rt></ruby>	curve-curve
+<ruby>クラス-class<rt>くらす</rt></ruby>	class-class
 <ruby>コース-course<rt>こーす</rt></ruby>	курс-курс
 <ruby>スキー-ski<rt>すきー</rt></ruby>	ски-ски
-<ruby>スピード-speed<rt>すぴーど</rt></ruby>	скорост-скорост
+<ruby>スピード-speed<rt>すぴーど</rt></ruby>	speed-speed
 <ruby>スーパー-super<rt>すーぱー</rt></ruby>	супер-супер
 <ruby>トランプ-trump<rt>とらんぷ</rt></ruby>	тръм-тръмп
 <ruby>トランプ大統領<rt>とらんぷだいとうりょう</rt></ruby>	президент Тръмп
@@ -38,7 +38,7 @@
 <ruby>勉強<rt>べんきょう</rt></ruby>	проучване
 <ruby>勉強したことを<rt>べんきょうしたことを</rt></ruby>	какво научих
 <ruby>原油<rt>げんゆ</rt></ruby>	суров
-<ruby>去年<rt>きょねん</rt></ruby>	миналата година
+<ruby>去年<rt>きょねん</rt></ruby>	last year
 <ruby>取りまする<rt>とりまする</rt></ruby>	аз ще го взема
 <ruby>取る<rt>とり</rt></ruby>	Тори
 <ruby>回転<rt>かいてん</rt></ruby>	завъртане
@@ -74,7 +74,7 @@
 <ruby>建物<rt>たてもの</rt></ruby>	сграда
 <ruby>必要<rt>ひつよう</rt></ruby>	нужда
 <ruby>怪我<rt>けが</rt></ruby>	нараняване
-<ruby>恣意<rt>しい</rt></ruby>	безсмислен
+<ruby>恣意<rt>しい</rt></ruby>	wanton
 <ruby>成る<rt>なっ</rt></ruby>	станете; спаси
 <ruby>戦いが<rt>たたかいが</rt></ruby>	Битката
 <ruby>戻ったばかりでする<rt>もどったばかりでする</rt></ruby>	Току що се върнах
@@ -107,7 +107,7 @@
 <ruby>沢山<rt>たくさん</rt></ruby>	много
 <ruby>法律<rt>ほうりつ</rt></ruby>	закон
 <ruby>津波<rt>つなみ</rt></ruby>	цунами
-<ruby>滑りまする<rt>すべりまする</rt></ruby>	хлъзгав
+<ruby>滑りまする<rt>すべりまする</rt></ruby>	slippery
 <ruby>滑る<rt>すべる</rt></ruby>	слайд
 <ruby>滑ることができてよ<rt>すべることができてよ</rt></ruby>	Мога да карам кънки
 <ruby>無事<rt>ぶじ</rt></ruby>	Безопасно
@@ -125,7 +125,6 @@
 <ruby>考えてう<rt>かんがえてう</rt></ruby>	Мисля си за това
 <ruby>聞く<rt>きい</rt></ruby>	слушайте
 <ruby>自分<rt>じぶん</rt></ruby>	себе си
-<ruby>良い<rt>よかっ</rt></ruby>	добре
 <ruby>若し<rt>もし</rt></ruby>	млад
 <ruby>行きやすくしたいと<rt>いきやすくしたいと</rt></ruby>	Искам да го направя по-лесно
 <ruby>行く<rt>いき</rt></ruby>	върви
@@ -145,7 +144,6 @@
 <ruby>運ぶことができる<rt>はこぶことができる</rt></ruby>	може да се носи
 <ruby>過ぎまする<rt>すぎまする</rt></ruby>	Ще мине
 <ruby>選手<rt>せんしゅ</rt></ruby>	играч
-<ruby>銀メダル<rt>ぎんめだる</rt></ruby>	сребърен медал
 <ruby>関係<rt>かんけい</rt></ruby>	връзка
 <ruby>難しい<rt>むずかしい</rt></ruby>	трудно
 <ruby>難しくなってう<rt>むずかしくなってう</rt></ruby>	Става трудно
