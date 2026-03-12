@@ -2,6 +2,7 @@
 <ruby>中東<rt>ちゅうとう</rt></ruby>	middle East
 <ruby>久の<rt>くの</rt></ruby>	Kuno
 <ruby>予定<rt>よてい</rt></ruby>	schedule
+<ruby>五稜<rt>ごりょう</rt></ruby>	Goryo
 <ruby>五稜郭<rt>ごりょうかく</rt></ruby>	Goryokaku
 <ruby>亡くなる<rt>なくなり</rt></ruby>	die
 <ruby>人ぐらいが<rt>にんぐらいが</rt></ruby>	About a person
@@ -32,22 +33,27 @@
 <ruby>出回る<rt>でまわる</rt></ruby>	circulating
 <ruby>出来る<rt>でき</rt></ruby>	I can do it
 <ruby>函館<rt>はこだて</rt></ruby>	hakodate
-<ruby>分かったと<rt>わかったと</rt></ruby>	разбирам
+<ruby>函館市<rt>はこだてし</rt></ruby>	hakodate city
+<ruby>分かったと<rt>わかったと</rt></ruby>	I understand
 <ruby>割れる<rt>われる</rt></ruby>	break
 <ruby>動いたりできる<rt>うごいたりできない</rt></ruby>	I can't move
+<ruby>北海道<rt>ほっかいどう</rt></ruby>	Hokkaido
+<ruby>北海道函館市<rt>ほっかいどうはこだてし</rt></ruby>	Hakodate City, Hokkaido
 <ruby>医療<rt>いりょう</rt></ruby>	medical care
 <ruby>原油<rt>げんゆ</rt></ruby>	crude
 <ruby>去年<rt>きょねん</rt></ruby>	last year
-<ruby>古いようです<rt>ふるいようです</rt></ruby>	Изглежда старо
+<ruby>古い<rt>ふる</rt></ruby>	old
+<ruby>古いようです<rt>ふるいようです</rt></ruby>	Seems old
 <ruby>呼びかけまする<rt>よびかけまする</rt></ruby>	I'll call out to you
 <ruby>因る<rt>よる</rt></ruby>	due to
 <ruby>国などが<rt>くになどが</rt></ruby>	country etc.
+<ruby>地震<rt>じしん</rt></ruby>	earthquake
 <ruby>埼玉<rt>さいたま</rt></ruby>	Saitama
 <ruby>埼玉県立小児医療センター<rt>さいたまけんりつしょうにいりょうせんたー</rt></ruby>	Saitama Prefectural Children's Medical Center
 <ruby>墓だと<rt>はかだと</rt></ruby>	If it's a grave
 <ruby>外国<rt>がいこく</rt></ruby>	foreign country
 <ruby>多い<rt>おおい</rt></ruby>	many
-<ruby>子どもの<rt>こどもの</rt></ruby>	child's
+<ruby>子どもの<rt>こどもの</rt></ruby>	children's
 <ruby>安全<rt>あんぜん</rt></ruby>	Safety
 <ruby>小児<rt>しょうに</rt></ruby>	pediatric
 <ruby>少なくなる<rt>すくなくなる</rt></ruby>	becomes less
@@ -64,7 +70,7 @@
 <ruby>攻撃<rt>こうげき</rt></ruby>	attack
 <ruby>政府<rt>せいふ</rt></ruby>	government
 <ruby>敷く<rt>しく</rt></ruby>	lay
-<ruby>文化<rt>ぶんか</rt></ruby>	култура
+<ruby>文化<rt>ぶんか</rt></ruby>	culture
 <ruby>文化財<rt>ぶんかざい</rt></ruby>	cultural property
 <ruby>文明<rt>ぶんめい</rt></ruby>	civilization
 <ruby>方法<rt>ほうほう</rt></ruby>	method
@@ -77,7 +83,11 @@
 <ruby>月までのあいだに<rt>がつまでのあいだに</rt></ruby>	Until the moon
 <ruby>有る<rt>あり</rt></ruby>	Yes
 <ruby>来たのかを<rt>きたのかを</rt></ruby>	Did you come?
+<ruby>来る<rt>き</rt></ruby>	come
 <ruby>東京<rt>とうきょう</rt></ruby>	Tokyo
+<ruby>東京文化<rt>とうきょうぶんか</rt></ruby>	Tokyo culture
+<ruby>東日本<rt>ひがしにっぽん</rt></ruby>	eastern japan
+<ruby>東日本大震災から<rt>ひがしにほんだいしんさいから</rt></ruby>	From the Great East Japan Earthquake
 <ruby>枸杞<rt>くこ</rt></ruby>	wolfberry
 <ruby>楽しむことができま<rt>たのしむことができま</rt></ruby>	you can enjoy
 <ruby>歩くこ<rt>ふくこ</rt></ruby>	Walking
@@ -98,12 +108,13 @@
 <ruby>直す<rt>なおす</rt></ruby>	fix
 <ruby>県立<rt>けんりつ</rt></ruby>	Prefectural
 <ruby>石油<rt>せきゆ</rt></ruby>	oil
-<ruby>研究<rt>けんきゅう</rt></ruby>	Проучване
+<ruby>研究<rt>けんきゅう</rt></ruby>	Research
 <ruby>研究所などの<rt>けんきゅうしょなどの</rt></ruby>	research institutes etc.
 <ruby>確認<rt>かくにん</rt></ruby>	confirmation
-<ruby>確認する<rt>かくにんする</rt></ruby>	confirm
+<ruby>確認する<rt>かくにんする</rt></ruby>	потвърди
 <ruby>続く<rt>つづく</rt></ruby>	Continue
 <ruby>考え<rt>かんがえ</rt></ruby>	thought
+<ruby>考えて<rt>かんがえて</rt></ruby>	think
 <ruby>考える<rt>かんがえる</rt></ruby>	think
 <ruby>英語<rt>えいご</rt></ruby>	English
 <ruby>行った<rt>おこなった</rt></ruby>	went
@@ -115,14 +126,17 @@
 <ruby>見る<rt>み</rt></ruby>	look
 <ruby>言う<rt>いう</rt></ruby>	say
 <ruby>言る<rt>いる</rt></ruby>	say
+<ruby>訓練<rt>くんれん</rt></ruby>	train
 <ruby>記録<rt>きろく</rt></ruby>	record
 <ruby>話したり<rt>はなしたり</rt></ruby>	talking
 <ruby>詳しい<rt>くわしく</rt></ruby>	be familiar with
 <ruby>調べ<rt>しらべ</rt></ruby>	Investigation
 <ruby>調べたり<rt>しらべたり</rt></ruby>	Investigate
+<ruby>調べたりしたいと<rt>しらべたりしたいと</rt></ruby>	I want to find out
 <ruby>調べる<rt>しらべる</rt></ruby>	investigate
 <ruby>調べると<rt>しらべると</rt></ruby>	When I look into it
 <ruby>警察<rt>けいさつ</rt></ruby>	police
+<ruby>買う<rt>かっ</rt></ruby>	buy
 <ruby>起こったと<rt>おこったと</rt></ruby>	that it happened
 <ruby>起こったのでしょう<rt>おこったのでしょう</rt></ruby>	I guess it happened
 <ruby>輸入<rt>ゆにゅう</rt></ruby>	enter
@@ -134,8 +148,12 @@
 <ruby>連絡する<rt>れんらくする</rt></ruby>	contact
 <ruby>運ぶ<rt>はこぶ</rt></ruby>	carry
 <ruby>遺跡<rt>いせき</rt></ruby>	ruins
+<ruby>避難<rt>ひなん</rt></ruby>	evacuation
 <ruby>避難する<rt>ひなんする</rt></ruby>	evacuate
 <ruby>階段<rt>かいだん</rt></ruby>	stage
 <ruby>難しくなる<rt>むずかしくなる</rt></ruby>	becomes difficult
+<ruby>震災<rt>しんさい</rt></ruby>	Earthquake
 <ruby>骨などから<rt>ほねなどから</rt></ruby>	from bones etc.
+<ruby>高い<rt>たか</rt></ruby>	скъпо
 <ruby>高さが<rt>たかさが</rt></ruby>	The height is
+べたり	sticky
