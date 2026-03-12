@@ -1762,7 +1762,7 @@ document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceW
 </script>
 </body>
 </html>"""
-    html = html.format(build_version=build_version, build_code=build_code, generated_at=generated_at)
+    html = html.replace("{build_version}", str(build_version)).replace("{build_code}", str(build_code)).replace("{generated_at}", str(generated_at))
     return html
 
 def write_pwa_files(output_dir, build_version=""):
