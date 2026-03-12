@@ -1,11 +1,10 @@
 <ruby>一番<rt>いちばん</rt></ruby>	номер едно
-<ruby>中東<rt>ちゅうとう</rt></ruby>	Близък изток
 <ruby>久の<rt>くの</rt></ruby>	Куно
 <ruby>予定<rt>よてい</rt></ruby>	график
+<ruby>五稜<rt>ごりょう</rt></ruby>	Той гореше
 <ruby>五稜郭<rt>ごりょうかく</rt></ruby>	Горьокаку
 <ruby>亡くなる<rt>なくなり</rt></ruby>	умирам
 <ruby>人ぐらいが<rt>にんぐらいが</rt></ruby>	За човек
-<ruby>人たちが<rt>ひとたちが</rt></ruby>	хората
 <ruby>人たちにも<rt>ひとたちにも</rt></ruby>	На хората също
 <ruby>人気<rt>にんき</rt></ruby>	Популярност
 <ruby>今まででいちばん<rt>いままででいちばん</rt></ruby>	Най-добрият досега
@@ -24,7 +23,7 @@
 <ruby>値段<rt>ねだん</rt></ruby>	цена
 <ruby>全部<rt>ぜんぶ</rt></ruby>	всички
 <ruby>円-助数詞<rt>えん</rt></ruby>	кръг-двойник
-<ruby>円ぐらいにするため<rt>えんぐらいにするため</rt></ruby>	За да го направи около йени
+<ruby>円ぐらいにするため<rt>えんぐらいにするため</rt></ruby>	За да стане около йени
 <ruby>凝る<rt>こっ</rt></ruby>	изчерпателно
 <ruby>出したいと<rt>だしたいと</rt></ruby>	Искам да го изгася
 <ruby>出する<rt>だする</rt></ruby>	раздавам
@@ -37,9 +36,11 @@
 <ruby>割れる<rt>われる</rt></ruby>	прекъсвам
 <ruby>動いたりできる<rt>うごいたりできない</rt></ruby>	не мога да мръдна
 <ruby>北海道<rt>ほっかいどう</rt></ruby>	Хокайдо
+<ruby>北海道函館市<rt>ほっかいどうはこだてし</rt></ruby>	Град Хакодате, Хокайдо
 <ruby>医療<rt>いりょう</rt></ruby>	медицинско обслужване
 <ruby>原油<rt>げんゆ</rt></ruby>	суров
 <ruby>去年<rt>きょねん</rt></ruby>	миналата година
+<ruby>古い<rt>ふる</rt></ruby>	old
 <ruby>古いようです<rt>ふるいようです</rt></ruby>	Изглежда старо
 <ruby>呼びかけまする<rt>よびかけまする</rt></ruby>	Ще ти се обадя
 <ruby>因る<rt>よる</rt></ruby>	поради
@@ -56,16 +57,16 @@
 <ruby>少る<rt>すくな</rt></ruby>	малко
 <ruby>居る<rt>いる</rt></ruby>	бъди там
 <ruby>市場<rt>しじょう</rt></ruby>	пазар
-<ruby>形から<rt>かたちから</rt></ruby>	От формата
 <ruby>心配<rt>しんぱい</rt></ruby>	безпокойство
 <ruby>意識<rt>いしき</rt></ruby>	съзнание
 <ruby>成る<rt>なっ</rt></ruby>	станете; спаси
 <ruby>持つ<rt>もち</rt></ruby>	имат
 <ruby>持る<rt>もる</rt></ruby>	имат
-<ruby>掛ける<rt>かけ</rt></ruby>	виси
+<ruby>掛ける<rt>かけ</rt></ruby>	hang
 <ruby>攻撃<rt>こうげき</rt></ruby>	атака
 <ruby>政府<rt>せいふ</rt></ruby>	правителство
 <ruby>敷く<rt>しく</rt></ruby>	лежи
+<ruby>文化<rt>ぶんか</rt></ruby>	culture
 <ruby>文化財<rt>ぶんかざい</rt></ruby>	културни ценности
 <ruby>文明<rt>ぶんめい</rt></ruby>	цивилизация
 <ruby>方法<rt>ほうほう</rt></ruby>	метод
@@ -77,16 +78,19 @@
 <ruby>月から<rt>がつから</rt></ruby>	от луната
 <ruby>月までのあいだに<rt>がつまでのあいだに</rt></ruby>	До луната
 <ruby>有る<rt>あり</rt></ruby>	да
-<ruby>来る<rt>くる</rt></ruby>	ела
+<ruby>来たのかを<rt>きたのかを</rt></ruby>	дойде ли
+<ruby>来る<rt>き</rt></ruby>	ела
 <ruby>東京<rt>とうきょう</rt></ruby>	Токио
+<ruby>東京文化<rt>とうきょうぶんか</rt></ruby>	Токийска култура
 <ruby>東日本<rt>ひがしにっぽん</rt></ruby>	източна япония
 <ruby>東日本大震災から<rt>ひがしにほんだいしんさいから</rt></ruby>	От Голямото земетресение в Източна Япония
 <ruby>枸杞<rt>くこ</rt></ruby>	вълче грозде
+<ruby>楽しむことができま<rt>たのしむことができま</rt></ruby>	можете да се насладите
 <ruby>歩くこ<rt>ふくこ</rt></ruby>	ходене
 <ruby>歩くことができなく<rt>あるくことができなく</rt></ruby>	неспособен да ходи
 <ruby>沢山<rt>たくさん</rt></ruby>	много
-<ruby>治療<rt>ちりょう</rt></ruby>	лекувам
-<ruby>注意<rt>ちゅうい</rt></ruby>	Забележете
+<ruby>治療<rt>ちりょう</rt></ruby>	лечение
+<ruby>注意<rt>ちゅうい</rt></ruby>	Notice
 <ruby>浸かる<rt>つかり</rt></ruby>	накисвам
 <ruby>無い<rt>なく</rt></ruby>	Няма
 <ruby>王様<rt>おうさま</rt></ruby>	крал
@@ -100,8 +104,9 @@
 <ruby>直す<rt>なおす</rt></ruby>	поправя
 <ruby>県立<rt>けんりつ</rt></ruby>	Префектура
 <ruby>石油<rt>せきゆ</rt></ruby>	масло
-<ruby>研究所などの<rt>けんきゅうしょなどの</rt></ruby>	изследователски институти и др.
-<ruby>確認<rt>かくにん</rt></ruby>	потвърждение
+<ruby>研究<rt>けんきゅう</rt></ruby>	Проучване
+<ruby>研究所などの<rt>けんきゅうしょなどの</rt></ruby>	research institutes etc.
+<ruby>確認<rt>かくにん</rt></ruby>	confirmation
 <ruby>確認する<rt>かくにんする</rt></ruby>	потвърди
 <ruby>続く<rt>つづく</rt></ruby>	Продължи
 <ruby>考え<rt>かんがえ</rt></ruby>	мисъл
@@ -111,20 +116,21 @@
 <ruby>行った<rt>おこなった</rt></ruby>	отиде
 <ruby>補助<rt>ほじょ</rt></ruby>	спомагателни
 <ruby>見せながら<rt>みせながら</rt></ruby>	Докато показва
-<ruby>見つい<rt>みつい</rt></ruby>	намерени
 <ruby>見つかりまする<rt>みつかりまする</rt></ruby>	Мога да го намеря
-<ruby>見つけたのは<rt>みつけたのは</rt></ruby>	Това, което открих беше
 <ruby>見る<rt>み</rt></ruby>	погледнете
 <ruby>言う<rt>いう</rt></ruby>	кажи
-<ruby>言る<rt>いる</rt></ruby>	кажи
+<ruby>言る<rt>いる</rt></ruby>	say
 <ruby>訓練<rt>くんれん</rt></ruby>	влак
 <ruby>記録<rt>きろく</rt></ruby>	запис
 <ruby>話したり<rt>はなしたり</rt></ruby>	говорене
 <ruby>詳しい<rt>くわしく</rt></ruby>	бъдете запознати с
 <ruby>調べ<rt>しらべ</rt></ruby>	Разследване
+<ruby>調べたり<rt>しらべたり</rt></ruby>	Investigate
+<ruby>調べたりしたいと<rt>しらべたりしたいと</rt></ruby>	Искам да разбера
 <ruby>調べる<rt>しらべる</rt></ruby>	разследвам
 <ruby>調べると<rt>しらべると</rt></ruby>	Когато се вгледам в него
 <ruby>警察<rt>けいさつ</rt></ruby>	полиция
+<ruby>買う<rt>かっ</rt></ruby>	купувам
 <ruby>起こったと<rt>おこったと</rt></ruby>	че се е случило
 <ruby>起こったのでしょう<rt>おこったのでしょう</rt></ruby>	Предполагам, че се е случило
 <ruby>輸入<rt>ゆにゅう</rt></ruby>	влизам
@@ -136,10 +142,10 @@
 <ruby>連絡する<rt>れんらくする</rt></ruby>	контакт
 <ruby>運ぶ<rt>はこぶ</rt></ruby>	носят
 <ruby>遺跡<rt>いせき</rt></ruby>	руини
-<ruby>避難<rt>ひなん</rt></ruby>	евакуация
-<ruby>避難する<rt>ひなんする</rt></ruby>	евакуирам
 <ruby>階段<rt>かいだん</rt></ruby>	етап
 <ruby>難しくなる<rt>むずかしくなる</rt></ruby>	става трудно
-<ruby>骨などから<rt>ほねなどから</rt></ruby>	от кости и др.
+<ruby>震災<rt>しんさい</rt></ruby>	Земетресение
+<ruby>骨などから<rt>ほねなどから</rt></ruby>	from bones etc.
 <ruby>高い<rt>たか</rt></ruby>	скъпо
-<ruby>高さが<rt>たかさが</rt></ruby>	Височината е
+<ruby>高さが<rt>たかさが</rt></ruby>	The height is
+べたり	лепкава
