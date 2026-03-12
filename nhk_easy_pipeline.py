@@ -1680,6 +1680,10 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .control-label{font-size:.92rem;color:var(--muted);margin-bottom:6px}
 .dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
 .dict-word.is-active{background:rgba(138,180,255,.18)}
+
+.shadow-sentence{display:inline;padding:2px 4px;border-radius:8px;transition:background-color .2s ease,box-shadow .2s ease}
+.shadow-sentence.shadow-active{background:rgba(138,180,255,.16);box-shadow:0 0 0 1px var(--accent)}
+
 .dict-popup{position:fixed;z-index:9999;display:none;max-width:min(96vw,440px);background:var(--popup);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
 .dict-popup .dw,.dict-popup .dm,.dict-popup .dl{font-family:var(--ui-font);font-size:1rem;font-weight:400;line-height:1.6;white-space:normal;word-break:break-word}
 .dict-popup .dw{color:var(--text)}
@@ -1755,6 +1759,87 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
+
+function wrapBlockSentences(block){
+  if(!block || block.dataset.shadowPrepared==='1') return [];
+  const nodes = Array.from(block.childNodes);
+  const made = [];
+  let current = document.createElement('span');
+  current.className = 'shadow-sentence';
+
+  function flush(){
+    const txt = (current.textContent || '').trim();
+    if(!txt) return;
+    block.appendChild(current);
+    made.push(current);
+    current = document.createElement('span');
+    current.className = 'shadow-sentence';
+  }
+
+  block.textContent = '';
+  for(const node of nodes){
+    current.appendChild(node);
+    const txt = (current.textContent || '').trim();
+    if(/[。！？?!]\s*$/.test(txt)){
+      flush();
+    }
+  }
+  flush();
+  block.dataset.shadowPrepared = '1';
+  return made;
+}
+
+function setupArticleShadowing(article){
+  const audio = article.querySelector('.article-audio');
+  if(!audio) return;
+
+  const sentenceEls = [];
+  article.querySelectorAll('.jp-block').forEach(function(block){
+    wrapBlockSentences(block).forEach(function(el){ sentenceEls.push(el); });
+  });
+  if(!sentenceEls.length) return;
+
+  let timings = [];
+
+  function buildTimings(){
+    const duration = audio.duration || 0;
+    if(!duration) return;
+    const weights = sentenceEls.map(function(el){
+      return Math.max(((el.textContent || '').trim()).length, 1);
+    });
+    const total = weights.reduce(function(a,b){ return a+b; }, 0) || 1;
+    let acc = 0;
+    timings = weights.map(function(w, idx){
+      const start = acc;
+      acc += duration * (w / total);
+      return {index: idx, start: start, end: acc};
+    });
+  }
+
+  function clearActive(){
+    sentenceEls.forEach(function(el){ el.classList.remove('shadow-active'); });
+  }
+
+  function updateHighlight(){
+    if(!timings.length) return;
+    const t = audio.currentTime || 0;
+    clearActive();
+    let current = timings.find(function(seg){ return t >= seg.start && t < seg.end; });
+    if(!current) current = timings[timings.length - 1];
+    if(!current) return;
+    const el = sentenceEls[current.index];
+    if(!el) return;
+    el.classList.add('shadow-active');
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+
+  audio.addEventListener('loadedmetadata', buildTimings);
+  audio.addEventListener('durationchange', buildTimings);
+  audio.addEventListener('timeupdate', updateHighlight);
+  audio.addEventListener('seeked', updateHighlight);
+  audio.addEventListener('ended', clearActive);
+}
+
 function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||ms;const labelForm=(lang==='en'?'Form':'Форма');const line1=surface+(rs?' ['+rs+']':'')+' - '+ms;const line2=labelForm+': '+form;const line3=lemma+(rl?' ['+rl+']':'')+' - '+ml;const sameLemma=(lemma===surface);let html='<div class="dw">'+line1+'</div><div class="dm">'+line2+'</div>';if(!sameLemma){html+='<div class="dl">'+line3+'</div>';}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
