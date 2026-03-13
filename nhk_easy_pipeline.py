@@ -1678,6 +1678,32 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
+
+def normalize_text_for_seen_words(text: str) -> str:
+    """
+    Normalize sentence text for seen-word / sentence-sync processing.
+    - strips HTML tags
+    - unescapes HTML entities
+    - normalizes Japanese full-width spaces
+    - collapses whitespace
+    """
+    if not text:
+        return ""
+
+    # Remove HTML tags if sentence fragments contain markup
+    text = re.sub(r"<[^>]+>", "", text)
+
+    # Decode entities such as &amp;, &#x3000;, etc.
+    text = html_lib.unescape(text)
+
+    # Normalize Japanese full-width spaces
+    text = text.replace("　", " ")
+
+    # Collapse whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
+
 def build_html(articles, grammar_points=None, build_version="", build_code=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
@@ -1718,17 +1744,8 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:10px 0 14px}
 .title-translation{display:none;color:var(--muted);margin:0 0 14px}
 .article-audio{width:100%;margin:0 0 10px}
-.audio-sync-hint{display:none;margin:-2px 0 10px;color:var(--muted);font-size:.9rem}
-.audio-sync-hint.is-visible{display:block}
 .section-title{margin:18px 0 10px;font-size:1.05rem;color:var(--accent);font-weight:700}
-.jp-block{position:relative;background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem;font-family:var(--jp-font);word-break:break-word;overflow-wrap:anywhere;transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
-.jp-block.is-playing{background:rgba(138,180,255,.12);border-color:var(--accent);box-shadow:0 0 0 1px rgba(138,180,255,.22) inset;transform:translateY(-1px)}
-.jp-block.is-playing::before{content:'▶';position:absolute;top:10px;right:12px;color:var(--accent);font-size:.9rem;line-height:1}
-.jp-block.is-seekable{cursor:pointer}
-.sentence-track{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;padding:0 2px 2px}
-.sentence-chip{display:inline-block;max-width:100%;padding:4px 9px;border-radius:999px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-size:.82rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:background-color .18s ease,border-color .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease}
-.sentence-chip:hover{color:var(--text);border-color:var(--accent)}
-.sentence-chip.is-playing{background:rgba(138,180,255,.18);color:var(--text);border-color:var(--accent);box-shadow:0 0 0 1px rgba(138,180,255,.22) inset;transform:translateY(-1px)}
+.jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem;font-family:var(--jp-font);word-break:break-word;overflow-wrap:anywhere}
 .trans-block{color:var(--trans-text);padding:0 2px 8px 2px;margin-bottom:8px;border-bottom:1px dashed var(--border);display:none}
 .trans-block.is-visible{display:block}
 .grammar{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px}
@@ -1776,21 +1793,11 @@ ruby rt{font-size:.68em;color:var(--muted)}
         if article.get("image_url"):
             html += f"<img class='article-image' src='{article['image_url']}' alt='{html_lib.escape(article['title'], quote=True)}' loading='lazy'/>"
         if article.get("audio_url"):
-            html += f"<audio class='article-audio' controls preload='metadata' src='{article['audio_url']}'></audio>"
-            html += "<div class='audio-sync-hint' data-bg='🎧 Приблизително аудио проследяване по абзаци и изречения.' data-en='🎧 Approximate paragraph and sentence audio tracking.'></div>"
+            html += f"<audio class='article-audio' controls preload='none' src='{article['audio_url']}'></audio>"
         html += "<div class='section-title' data-ui='text'></div>"
         for block in article["blocks"]:
             wrapped_html = wrap_vocab_words_in_html(block["html"], article.get("vocab", []))
             html += f"<div class='jp-block'>{wrapped_html}</div>"
-            sentences = split_japanese_sentences(block.get("text", ""))
-            if len(sentences) > 1:
-                html += "<div class='sentence-track'>"
-                for sentence in sentences:
-                    sentence_text = normalize_text_for_seen_words(sentence)
-                    if not sentence_text:
-                        continue
-                    html += f"<span class='sentence-chip' data-sentence-text='{html_lib.escape(sentence_text, quote=True)}' title='{html_lib.escape(sentence_text, quote=True)}'>{html_lib.escape(sentence_text)}</span>"
-                html += "</div>"
             html += f"<div class='trans-block' data-bg='{html_lib.escape(block.get('translation_bg',''), quote=True)}' data-en='{html_lib.escape(block.get('translation_en',''), quote=True)}'></div>"
         html += "</article>"
     html += "<div class='downloads'>"
@@ -1814,7 +1821,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class='contacts'>vebaev.github.io</div>
 </div>
 <script>
-const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод, върху дума за значение или върху sentence chip за seek.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",vocab_apkg:"Свали Anki речник (.apkg)",vocab_tsv:"Свали речник TSV",grammar_apkg:"Свали Anki граматика (.apkg)",grammar_tsv:"Свали граматика TSV",audio_sync_hint:"🎧 Приблизително аудио проследяване по абзаци и изречения."},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation, a word for its meaning, or a sentence chip to seek.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",vocab_apkg:"Download Anki vocabulary (.apkg)",vocab_tsv:"Download vocabulary TSV",grammar_apkg:"Download Anki grammar (.apkg)",grammar_tsv:"Download grammar TSV",audio_sync_hint:"🎧 Approximate paragraph and sentence audio tracking."}};
+const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху дума за значение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",vocab_apkg:"Свали Anki речник (.apkg)",vocab_tsv:"Свали речник TSV",grammar_apkg:"Свали Anki граматика (.apkg)",grammar_tsv:"Свали граматика TSV"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a word for its meaning.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",vocab_apkg:"Download Anki vocabulary (.apkg)",vocab_tsv:"Download vocabulary TSV",grammar_apkg:"Download Anki grammar (.apkg)",grammar_tsv:"Download grammar TSV"}};
 const FILES={bg:{vocab_apkg:"nhk_easy_vocab_bg.apkg",vocab_tsv:"anki_cards_bg.tsv",grammar_apkg:"nhk_easy_grammar_bg.apkg",grammar_tsv:"anki_grammar_bg.tsv"},en:{vocab_apkg:"nhk_easy_vocab_en.apkg",vocab_tsv:"anki_cards_en.tsv",grammar_apkg:"nhk_easy_grammar_en.apkg",grammar_tsv:"anki_grammar_en.tsv"}};
 function getContentLanguage(){return localStorage.getItem('nhk_content_lang')||'bg';}
 function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;const lang=getContentLanguage();const langSel=document.getElementById('lang-select');if(langSel)langSel.value=lang;applyContentLanguage(lang);}
@@ -1822,20 +1829,13 @@ function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk
 function applyJapaneseFont(kind){const font=kind==='gothic'?'"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif':'"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif';document.documentElement.style.setProperty('--jp-font',font);}
 function setJapaneseFont(kind){localStorage.setItem('nhk_jp_font',kind);applyJapaneseFont(kind);}
 function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);applyContentLanguage(lang);closeDictPopup();}
-function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info,.audio-sync-hint').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
+function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
 function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||ms;const labelForm=(lang==='en'?'Form':'Форма');const line1=surface+(rs?' ['+rs+']':'')+' - '+ms;const line2=labelForm+': '+form;const line3=lemma+(rl?' ['+rl+']':'')+' - '+ml;const sameLemma=(lemma===surface);let html='<div class="dw">'+line1+'</div><div class="dm">'+line2+'</div>';if(!sameLemma){html+='<div class="dm">'+line3+'</div>';}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
-function normalizeSyncText(text){return (text||'').replace(/\s+/g,' ').trim();}
-function estimateTextWeight(text){const normalized=normalizeSyncText(text);if(!normalized)return 1;const strongStops=(normalized.match(/[。！？!?]/g)||[]).length;const softStops=(normalized.match(/[、,，]/g)||[]).length;return Math.max(1,normalized.length + strongStops*8 + softStops*3);}
-function estimateBlockWeight(block){return estimateTextWeight(block.textContent||'');}
-function clearArticleHighlight(article){article.querySelectorAll('.jp-block.is-playing').forEach(el=>el.classList.remove('is-playing'));article.querySelectorAll('.sentence-chip.is-playing').forEach(el=>el.classList.remove('is-playing'));}
-function buildWeightedRanges(items,start,end,getWeight){const totalDuration=Math.max(0,(end||0)-(start||0));if(!items.length||totalDuration<=0)return [];const weights=items.map(item=>Math.max(1,getWeight(item)));const total=weights.reduce((sum,value)=>sum+value,0)||items.length;let cursor=start;const ranges=items.map((item,index)=>{const itemStart=cursor;cursor+=totalDuration*(weights[index]/total);return {start:itemStart,end:cursor};});if(ranges.length)ranges[ranges.length-1].end=end+0.001;return ranges;}
-function updateApproxArticleSync(article){const audio=article.querySelector('.article-audio');const blocks=[...article.querySelectorAll('.jp-block')];const ranges=article._approxSyncRanges||[];if(!audio||!blocks.length||!ranges.length){clearArticleHighlight(article);return;}const current=Math.min(audio.currentTime||0,audio.duration||0);let activeIndex=ranges.findIndex(range=>current>=range.start&&current<range.end);if(activeIndex===-1&&current>=(audio.duration||0)-0.05)activeIndex=ranges.length-1;blocks.forEach((block,index)=>block.classList.toggle('is-playing',index===activeIndex));article.querySelectorAll('.sentence-chip.is-playing').forEach(el=>el.classList.remove('is-playing'));if(activeIndex>=0){const block=blocks[activeIndex];const sentenceRanges=(article._approxSentenceRanges||[])[activeIndex]||[];const chips=[...((article._sentenceTracks||[])[activeIndex]||[])];let activeSentenceIndex=sentenceRanges.findIndex(range=>current>=range.start&&current<range.end);if(activeSentenceIndex===-1&&sentenceRanges.length&&current>=sentenceRanges[sentenceRanges.length-1].end-0.05)activeSentenceIndex=sentenceRanges.length-1;if(activeSentenceIndex>=0&&chips[activeSentenceIndex]){chips[activeSentenceIndex].classList.add('is-playing');if(!audio.paused){chips[activeSentenceIndex].scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});}}if(!audio.paused){const rect=block.getBoundingClientRect();if(rect.top<72||rect.bottom>window.innerHeight-72){block.scrollIntoView({block:'nearest',behavior:'smooth'});}}}}
-function prepareApproxArticleSync(article){const audio=article.querySelector('.article-audio');const blocks=[...article.querySelectorAll('.jp-block')];const hint=article.querySelector('.audio-sync-hint');const sentenceTracks=blocks.map(block=>{const next=block.nextElementSibling;return next&&next.classList.contains('sentence-track')?[...next.querySelectorAll('.sentence-chip')]:[];});article._sentenceTracks=sentenceTracks;if(!audio||!blocks.length)return;blocks.forEach(block=>block.classList.add('is-seekable'));function rebuildRanges(){if(!Number.isFinite(audio.duration)||audio.duration<=0){article._approxSyncRanges=[];article._approxSentenceRanges=[];clearArticleHighlight(article);if(hint)hint.classList.remove('is-visible');return;}article._approxSyncRanges=buildWeightedRanges(blocks,0,audio.duration,estimateBlockWeight);article._approxSentenceRanges=article._approxSyncRanges.map(function(range,index){const chips=sentenceTracks[index]||[];if(!chips.length)return [];return buildWeightedRanges(chips,range.start,range.end,function(chip){return estimateTextWeight(chip.dataset.sentenceText||chip.textContent||'');});});if(hint)hint.classList.add('is-visible');updateApproxArticleSync(article);}audio.addEventListener('loadedmetadata',rebuildRanges);audio.addEventListener('durationchange',rebuildRanges);audio.addEventListener('timeupdate',function(){updateApproxArticleSync(article);});audio.addEventListener('seeked',function(){updateApproxArticleSync(article);});audio.addEventListener('play',function(){updateApproxArticleSync(article);});audio.addEventListener('pause',function(){updateApproxArticleSync(article);});audio.addEventListener('ended',function(){clearArticleHighlight(article);});blocks.forEach(function(block,index){block.addEventListener('click',function(event){if(event.target.closest('.dict-word')||event.target.closest('.sentence-chip'))return;const ranges=article._approxSyncRanges||[];if(audio&&ranges[index]&&Number.isFinite(ranges[index].start)){audio.currentTime=Math.max(0,ranges[index].start+0.01);audio.play().catch(function(){});updateApproxArticleSync(article);}});const chips=sentenceTracks[index]||[];chips.forEach(function(chip,chipIndex){chip.addEventListener('click',function(event){event.stopPropagation();const blockRanges=article._approxSentenceRanges||[];const sentenceRanges=blockRanges[index]||[];if(audio&&sentenceRanges[chipIndex]&&Number.isFinite(sentenceRanges[chipIndex].start)){audio.currentTime=Math.max(0,sentenceRanges[chipIndex].start+0.01);audio.play().catch(function(){});updateApproxArticleSync(article);}});});});if(audio.readyState>=1)rebuildRanges();}
-function initArticleInteractions(article){article.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});article.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.classList.add('is-seekable');if(jpBlock.dataset.translationBound==='1')return;jpBlock.dataset.translationBound='1';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});prepareApproxArticleSync(article);}
-function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name="app-version" content="([^"]+)"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
-document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('article').forEach(function(article){initArticleInteractions(article);});});
+
+function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
+document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
 </html>"""
