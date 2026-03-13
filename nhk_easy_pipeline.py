@@ -301,56 +301,29 @@ def translate_text(text: str, dest: str = "bg") -> str:
     cache_key = ("text", text, dest, bool(DEEPL_API_KEY))
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
-
-    result = ""
     if DEEPL_API_KEY:
         try:
             deepl_url = "https://api-free.deepl.com/v2/translate"
             if not DEEPL_API_KEY.endswith(":fx"):
                 deepl_url = "https://api.deepl.com/v2/translate"
-            resp = requests.post(
-                deepl_url,
-                headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"},
-                data={"text": text, "target_lang": dest.upper()},
-                timeout=20,
-            )
+            resp = requests.post(deepl_url, headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"}, data={"text": text, "target_lang": dest.upper()}, timeout=20)
             resp.raise_for_status()
             data = resp.json()
             translations = data.get("translations") or []
             if translations and translations[0].get("text"):
                 result = translations[0]["text"].strip()
                 _TRANSLATION_STATS["deepl"] += 1
+                _TRANSLATION_CACHE[cache_key] = result
+                return result
         except Exception:
-            result = ""
-
-    if not result:
-        try:
-            result = (translator.translate(text, dest=dest).text or "").strip()
-            if result:
-                _TRANSLATION_STATS["google"] += 1
-        except Exception:
-            result = ""
-
-    if result == text:
-        if dest != "en":
-            en_guess = ""
-            try:
-                en_guess = (translator.translate(text, dest="en").text or "").strip()
-            except Exception:
-                en_guess = ""
-            if en_guess and en_guess != text:
-                try:
-                    bridged = (translator.translate(en_guess, dest=dest).text or "").strip()
-                except Exception:
-                    bridged = ""
-                result = bridged if bridged and bridged != en_guess else ""
-            else:
-                result = ""
-        else:
-            result = ""
-
-    _TRANSLATION_CACHE[cache_key] = result
-    return result
+            pass
+    try:
+        result = translator.translate(text, dest=dest).text
+        _TRANSLATION_STATS["google"] += 1
+        _TRANSLATION_CACHE[cache_key] = result
+        return result
+    except Exception:
+        return ""
 
 
 def translate_word(word: str, reading: str = "") -> str:
@@ -505,11 +478,9 @@ def get_reading_for_word(word: str, fallback: str = "") -> str:
     fallback = normalize_katakana_to_hiragana((fallback or "").strip())
     if not word:
         return fallback
-
     entry = lookup_dictionary_entry(word)
-    if entry and (entry.get("surface") or "").strip() == word and (entry.get("reading") or "").strip():
+    if entry and (entry.get("reading") or "").strip():
         return normalize_katakana_to_hiragana((entry.get("reading") or "").strip())
-
     tagger = get_mecab_tagger()
     if tagger is not None:
         try:
@@ -520,10 +491,6 @@ def get_reading_for_word(word: str, fallback: str = "") -> str:
                     return reading
         except Exception:
             pass
-
-    if entry and (entry.get("reading") or "").strip():
-        return normalize_katakana_to_hiragana((entry.get("reading") or "").strip())
-
     return fallback
 
 def unique_keep_order(values):
@@ -641,12 +608,9 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
                     info["cform"] = safe_feature_value(feat, "cForm", "cform", "conjForm", "inflectionForm")
                 else:
                     token_lemmas = [token_lemma(t).strip() or token_surface(t).strip() for t in tokens]
-                    pos1s = [token_pos1(t) for t in tokens]
                     derived = to_dictionary_form(surface)
                     non_aux_lemmas = [x for x in token_lemmas if x not in {"て", "で", "いる", "居る", "ます", "です", "ん", "ない"}]
-                    if all(p == "名詞" for p in pos1s):
-                        info["lemma"] = surface
-                    elif derived and derived != surface:
+                    if derived and derived != surface:
                         info["lemma"] = derived
                     elif non_aux_lemmas:
                         info["lemma"] = non_aux_lemmas[0]
@@ -914,21 +878,19 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     form_en = (analysis.get("form_en") or "form in context").strip()
 
     lemma_entry = lookup_dictionary_entry(lemma) or lookup_dictionary_entry(lemma, reading=reading_lemma)
-    lemma_gloss_en = ""
-    if lemma_entry and (lemma_entry.get("surface") or "").strip() == lemma:
-        lemma_gloss_en = ((lemma_entry or {}).get("gloss") or "").strip()
-    lemma_meaning_en = lemma_gloss_en or translate_word_lang(lemma, reading_lemma, dest="en") or ""
-    lemma_meaning_bg = (translate_text(lemma_gloss_en, dest="bg") if lemma_gloss_en else "") or translate_word_lang(lemma, reading_lemma, dest="bg") or ""
+    lemma_gloss_en = ((lemma_entry or {}).get("gloss") or "").strip()
+    lemma_meaning_en = lemma_gloss_en
+    lemma_meaning_bg = (translate_text(lemma_gloss_en, dest="bg") if lemma_gloss_en else "").strip()
 
     exact_item_match = lemma == (item.get("word") or "").strip() == surface
     if not lemma_meaning_bg and exact_item_match and (item.get("meaning_bg") or "").strip():
         lemma_meaning_bg = (item.get("meaning_bg") or "").strip()
     if not lemma_meaning_en and exact_item_match and (item.get("meaning_en") or "").strip():
         lemma_meaning_en = (item.get("meaning_en") or "").strip()
-    if not lemma_meaning_bg and lemma_meaning_en:
-        lemma_meaning_bg = translate_text(lemma_meaning_en, dest="bg") or lemma_meaning_en
-    if not lemma_meaning_en and lemma_meaning_bg:
-        lemma_meaning_en = translate_text(lemma_meaning_bg, dest="en") or lemma_meaning_bg
+    if not lemma_meaning_bg:
+        lemma_meaning_bg = lemma_meaning_en
+    if not lemma_meaning_en:
+        lemma_meaning_en = lemma_meaning_bg
 
     contextual = contextual_surface_meaning(
         surface=surface,
@@ -938,13 +900,8 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
         form_label_bg=form_bg,
         form_label_en=form_en,
     )
-    surface_meaning_bg = (contextual.get("bg") or "").strip()
-    surface_meaning_en = (contextual.get("en") or "").strip()
-
-    if not surface_meaning_bg:
-        surface_meaning_bg = translate_word_lang(surface, reading_surface, dest="bg") or lemma_meaning_bg or "Няма намерен превод"
-    if not surface_meaning_en:
-        surface_meaning_en = translate_word_lang(surface, reading_surface, dest="en") or lemma_meaning_en or "No translation found"
+    surface_meaning_bg = (contextual.get("bg") or "").strip() or lemma_meaning_bg
+    surface_meaning_en = (contextual.get("en") or "").strip() or lemma_meaning_en
 
     if lemma == surface:
         reading_lemma = ""
@@ -1509,25 +1466,10 @@ def parse_article_from_nhk_easy(link: str):
     vocab = extract_vocab_from_blocks(filtered_blocks)
     translated_blocks = []
     for b in filtered_blocks:
-        src_text = (b["text"] or "").strip()
-        bg_tr = translate_text(src_text, dest="bg") or ""
-        en_tr = translate_text(src_text, dest="en") or ""
-        if bg_tr.strip() == src_text:
-            bg_tr = ""
-        if en_tr.strip() == src_text:
-            en_tr = ""
+        bg_tr = translate_text(b["text"], dest="bg") or b["text"]
+        en_tr = translate_text(b["text"], dest="en") or b["text"]
         translated_blocks.append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
-
-    title_bg = translate_text(title, dest="bg") or ""
-    title_en = translate_text(title, dest="en") or ""
-    if title_bg.strip() == title.strip():
-        title_bg = ""
-    if title_en.strip() == title.strip():
-        title_en = ""
-
-    title_bg = (title_bg or "").split(" | ")[0].strip()
-    title_en = (title_en or "").split(" | ")[0].strip()
-    return {"title": title, "title_html": title_html, "title_translation_bg": title_bg, "title_translation_en": title_en, "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
+    return {"title": title, "title_html": title_html, "title_translation_bg": (translate_text(title, dest="bg") or title), "title_translation_en": (translate_text(title, dest="en") or title), "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
@@ -1925,3 +1867,20 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+def sanitize_translation_text(src: str, tr: str) -> str:
+    src = (src or "").strip()
+    tr = (tr or "").strip()
+    if not tr:
+        return ""
+    tr = re.sub(r"\s*\|\s*.*$", "", tr).strip()
+    if not tr or tr == src:
+        return ""
+    # If translation still looks mostly Japanese, drop it
+    jp_chars = len(re.findall(r"[一-龯ぁ-ゖァ-ヺー]", tr))
+    latin_cyr = len(re.findall(r"[A-Za-zА-Яа-я]", tr))
+    if jp_chars > 0 and jp_chars >= max(4, latin_cyr):
+        return ""
+    return tr
