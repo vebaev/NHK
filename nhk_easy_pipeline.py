@@ -7,6 +7,7 @@ import hashlib
 import json
 import time
 import uuid
+import difflib
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -23,6 +24,16 @@ try:
     import genanki
 except Exception:
     genanki = None
+
+try:
+    import whisperx
+except Exception:
+    whisperx = None
+
+try:
+    import torch
+except Exception:
+    torch = None
 
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
@@ -1240,6 +1251,184 @@ def build_anki_apkg(cards, apkg_path, deck_name="NHK Easy Vocabulary"):
 
     genanki.Package(deck).write_to_file(apkg_path)
     return True
+def normalize_alignment_text(text: str) -> str:
+    t = (text or "").strip()
+    if not t:
+        return ""
+    t = re.sub(r"<[^>]+>", "", t)
+    t = re.sub(r"\s+", "", t)
+    t = re.sub(r'[。、「」『』（）()\[\]【】〈〉《》…・･：:；;!！?？,，\.\-ー〜～"\'`]+', '', t)
+    return t
+
+def choose_whisperx_device(explicit: str = "auto") -> str:
+    if explicit and explicit != "auto":
+        return explicit
+    try:
+        if torch is not None and torch.cuda.is_available():
+            return "cuda"
+    except Exception:
+        pass
+    return "cpu"
+
+def choose_whisperx_compute_type(device: str, explicit: str = "auto") -> str:
+    if explicit and explicit != "auto":
+        return explicit
+    return "float16" if device == "cuda" else "int8"
+
+def download_audio_for_alignment(audio_url: str, cache_dir: str) -> str:
+    if not audio_url:
+        return ""
+    os.makedirs(cache_dir, exist_ok=True)
+    parsed = urlparse(audio_url)
+    suffix = os.path.splitext(parsed.path)[1] or ".mp3"
+    digest = hashlib.sha1(audio_url.encode("utf-8")).hexdigest()
+    target = os.path.join(cache_dir, digest + suffix)
+    if os.path.exists(target) and os.path.getsize(target) > 0:
+        return target
+    resp = requests.get(audio_url, timeout=60, stream=True)
+    resp.raise_for_status()
+    with open(target, "wb") as f:
+        for chunk in resp.iter_content(chunk_size=1024 * 256):
+            if chunk:
+                f.write(chunk)
+    return target
+
+def build_alignment_char_timeline(segments):
+    timeline = []
+    combined = []
+    cursor = 0
+    for segment in segments or []:
+        raw_text = (segment.get("text") or "").strip()
+        norm = normalize_alignment_text(raw_text)
+        start = float(segment.get("start") or 0.0)
+        end = float(segment.get("end") or start)
+        if not norm or end < start:
+            continue
+        seg_start = cursor
+        combined.append(norm)
+        char_count = len(norm)
+        duration = max(0.001, end - start)
+        for idx, ch in enumerate(norm):
+            frac = idx / max(1, char_count)
+            timeline.append({"index": cursor + idx, "time": start + duration * frac, "char": ch})
+        cursor += char_count
+        timeline.append({"index": cursor, "time": end, "char": ""})
+    return "".join(combined), timeline
+
+def time_from_timeline(timeline, char_index: int, fallback: float = 0.0) -> float:
+    if not timeline:
+        return float(fallback or 0.0)
+    char_index = max(0, char_index)
+    prev = timeline[0]
+    for point in timeline:
+        if point["index"] >= char_index:
+            if point["index"] == char_index:
+                return float(point["time"])
+            return float(prev["time"])
+        prev = point
+    return float(timeline[-1]["time"])
+
+def locate_sentence_in_transcript(transcript_text: str, sentence_text: str, cursor: int):
+    target = normalize_alignment_text(sentence_text)
+    if not transcript_text or not target:
+        return None
+    start_search = max(0, min(cursor, len(transcript_text)))
+    pos = transcript_text.find(target, start_search)
+    if pos != -1:
+        return {"start_idx": pos, "end_idx": pos + len(target), "score": 1.0}
+    search_start = max(0, start_search - 20)
+    search_end = min(len(transcript_text), start_search + max(len(target) * 8, 160))
+    hay = transcript_text[search_start:search_end]
+    if not hay:
+        return None
+    match = difflib.SequenceMatcher(None, hay, target).find_longest_match(0, len(hay), 0, len(target))
+    coverage = (match.size / max(1, len(target))) if target else 0.0
+    if match.size >= max(4, int(len(target) * 0.55)) or coverage >= 0.72:
+        aligned_start = search_start + match.a
+        aligned_end = min(search_end, aligned_start + max(match.size, len(target)))
+        return {"start_idx": aligned_start, "end_idx": aligned_end, "score": coverage}
+    return None
+
+def align_article_sentences_with_whisperx(article: dict, cache_dir: str, model_name: str = "small", device: str = "auto", compute_type: str = "auto", batch_size: int = 8, language_code: str = "ja") -> bool:
+    if whisperx is None:
+        print("WhisperX not installed; falling back to approximate sync.")
+        return False
+    audio_url = (article.get("audio_url") or "").strip()
+    if not audio_url:
+        return False
+    audio_file = download_audio_for_alignment(audio_url, cache_dir)
+    runtime_device = choose_whisperx_device(device)
+    runtime_compute_type = choose_whisperx_compute_type(runtime_device, compute_type)
+    model = None
+    model_a = None
+    try:
+        audio = whisperx.load_audio(audio_file)
+        model = whisperx.load_model(model_name, runtime_device, compute_type=runtime_compute_type, language=language_code)
+        result = model.transcribe(audio, batch_size=batch_size, language=language_code)
+        model_a, metadata = whisperx.load_align_model(language_code=result.get("language") or language_code, device=runtime_device)
+        aligned = whisperx.align(result.get("segments") or [], model_a, metadata, audio, runtime_device, return_char_alignments=False)
+        segments = aligned.get("segments") or result.get("segments") or []
+        transcript_text, timeline = build_alignment_char_timeline(segments)
+        if not transcript_text or not timeline:
+            return False
+        cursor = 0
+        article_has_exact = False
+        for block in article.get("blocks", []):
+            sentences = []
+            block_start = None
+            block_end = None
+            for sentence in split_japanese_sentences(block.get("text", "")):
+                hit = locate_sentence_in_transcript(transcript_text, sentence, cursor)
+                if not hit:
+                    sentences.append({"text": sentence})
+                    continue
+                start_time = time_from_timeline(timeline, hit["start_idx"])
+                end_time = time_from_timeline(timeline, hit["end_idx"], fallback=start_time)
+                if end_time < start_time:
+                    end_time = start_time
+                sentences.append({"text": sentence, "start": round(start_time, 3), "end": round(end_time, 3), "score": round(hit["score"], 3)})
+                cursor = max(cursor, hit["end_idx"])
+                block_start = start_time if block_start is None else min(block_start, start_time)
+                block_end = end_time if block_end is None else max(block_end, end_time)
+                article_has_exact = True
+            block["sentences"] = sentences
+            if block_start is not None and block_end is not None:
+                block["start"] = round(block_start, 3)
+                block["end"] = round(block_end, 3)
+        article["sync_mode"] = "exact" if article_has_exact else "approx"
+        return article_has_exact
+    except Exception as e:
+        print(f"WhisperX alignment failed for article: {e}")
+        article["sync_mode"] = "approx"
+        return False
+    finally:
+        try:
+            del model
+        except Exception:
+            pass
+        try:
+            del model_a
+        except Exception:
+            pass
+        try:
+            if torch is not None and runtime_device == "cuda":
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
+def align_articles_forced(articles, cache_dir: str, model_name: str = "small", device: str = "auto", compute_type: str = "auto", batch_size: int = 8, language_code: str = "ja"):
+    aligned_count = 0
+    for article in articles or []:
+        ok = align_article_sentences_with_whisperx(article, cache_dir=cache_dir, model_name=model_name, device=device, compute_type=compute_type, batch_size=batch_size, language_code=language_code)
+        if not ok:
+            article.setdefault("sync_mode", "approx")
+            for block in article.get("blocks", []):
+                if "sentences" not in block:
+                    block["sentences"] = [{"text": s} for s in split_japanese_sentences(block.get("text", ""))]
+        else:
+            aligned_count += 1
+    return aligned_count
+
 def split_japanese_sentences(text: str):
     t = (text or "").strip()
     if not t:
@@ -1678,16 +1867,6 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
-def normalize_text_for_seen_words(text: str) -> str:
-    """Normalize sentence text for seen-word tracking and sentence sync."""
-    if not text:
-        return ""
-    text = re.sub(r"<[^>]+>", "", text)
-    text = html_lib.unescape(text)
-    text = text.replace("\u3000", " ")
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
 def build_html(articles, grammar_points=None, build_version="", build_code=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
@@ -1722,7 +1901,7 @@ h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-fam
 .lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .update-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.7;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;white-space:pre-line}
-.build-marker{max-width:760px;margin:14px auto 16px auto;padding:8px 12px;text-align:center;color:var(--text);font-size:.86rem;opacity:1;background:var(--card2);border:1px dashed var(--accent);border-radius:999px;width:fit-content;max-width:calc(100% - 32px);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+.build-marker{max-width:760px;margin:20px auto 8px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:10px 0 14px}
@@ -1732,14 +1911,13 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .audio-sync-hint.is-visible{display:block}
 .section-title{margin:18px 0 10px;font-size:1.05rem;color:var(--accent);font-weight:700}
 .jp-block{position:relative;background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem;font-family:var(--jp-font);word-break:break-word;overflow-wrap:anywhere;transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
-.jp-block.is-playing{background:linear-gradient(90deg,rgba(138,180,255,.28),rgba(138,180,255,.14));border-color:var(--accent);box-shadow:0 0 0 2px rgba(138,180,255,.45) inset,0 0 0 2px rgba(138,180,255,.22);transform:translateY(-1px);outline:2px solid rgba(138,180,255,.35);outline-offset:0;animation:pulsePlaying 1.25s ease-in-out infinite}
+.jp-block.is-playing{background:rgba(138,180,255,.12);border-color:var(--accent);box-shadow:0 0 0 1px rgba(138,180,255,.22) inset;transform:translateY(-1px)}
 .jp-block.is-playing::before{content:'▶';position:absolute;top:10px;right:12px;color:var(--accent);font-size:.9rem;line-height:1}
 .jp-block.is-seekable{cursor:pointer}
 .sentence-track{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;padding:0 2px 2px}
 .sentence-chip{display:inline-block;max-width:100%;padding:4px 9px;border-radius:999px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-size:.82rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:background-color .18s ease,border-color .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease}
 .sentence-chip:hover{color:var(--text);border-color:var(--accent)}
-.sentence-chip.is-playing{background:rgba(138,180,255,.32);color:var(--text);border-color:var(--accent);box-shadow:0 0 0 2px rgba(138,180,255,.28) inset;transform:translateY(-1px) scale(1.02);font-weight:700}
-@keyframes pulsePlaying{0%{box-shadow:0 0 0 2px rgba(138,180,255,.28) inset,0 0 0 0 rgba(138,180,255,.18)}50%{box-shadow:0 0 0 2px rgba(138,180,255,.48) inset,0 0 0 6px rgba(138,180,255,.08)}100%{box-shadow:0 0 0 2px rgba(138,180,255,.28) inset,0 0 0 0 rgba(138,180,255,.18)}}
+.sentence-chip.is-playing{background:rgba(138,180,255,.18);color:var(--text);border-color:var(--accent);box-shadow:0 0 0 1px rgba(138,180,255,.22) inset;transform:translateY(-1px)}
 .trans-block{color:var(--trans-text);padding:0 2px 8px 2px;margin-bottom:8px;border-bottom:1px dashed var(--border);display:none}
 .trans-block.is-visible{display:block}
 .grammar{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px}
@@ -1787,20 +1965,27 @@ ruby rt{font-size:.68em;color:var(--muted)}
         if article.get("image_url"):
             html += f"<img class='article-image' src='{article['image_url']}' alt='{html_lib.escape(article['title'], quote=True)}' loading='lazy'/>"
         if article.get("audio_url"):
-            html += f"<audio class='article-audio' controls preload='metadata' src='{article['audio_url']}'></audio>"
-            html += "<div class='audio-sync-hint' data-bg='🎧 Приблизително аудио проследяване по абзаци и изречения.' data-en='🎧 Approximate paragraph and sentence audio tracking.'></div>"
+            sync_mode = article.get("sync_mode", "approx")
+            hint_bg = "🎧 Точно forced-alignment проследяване по изречения." if sync_mode == "exact" else "🎧 Приблизително аудио проследяване по абзаци и изречения."
+            hint_en = "🎧 Exact forced-alignment sentence tracking." if sync_mode == "exact" else "🎧 Approximate paragraph and sentence audio tracking."
+            html += f"<audio class='article-audio' controls preload='metadata' src='{article['audio_url']}' data-sync-mode='{sync_mode}'></audio>"
+            html += f"<div class='audio-sync-hint' data-bg='{html_lib.escape(hint_bg, quote=True)}' data-en='{html_lib.escape(hint_en, quote=True)}'></div>"
         html += "<div class='section-title' data-ui='text'></div>"
         for block in article["blocks"]:
             wrapped_html = wrap_vocab_words_in_html(block["html"], article.get("vocab", []))
-            html += f"<div class='jp-block'>{wrapped_html}</div>"
-            sentences = split_japanese_sentences(block.get("text", ""))
+            block_start_attr = f" data-start='{block['start']}'" if block.get("start") is not None else ""
+            block_end_attr = f" data-end='{block['end']}'" if block.get("end") is not None else ""
+            html += f"<div class='jp-block'{block_start_attr}{block_end_attr}>{wrapped_html}</div>"
+            sentences = block.get("sentences") or [{"text": s} for s in split_japanese_sentences(block.get("text", ""))]
             if len(sentences) > 1:
                 html += "<div class='sentence-track'>"
                 for sentence in sentences:
-                    sentence_text = normalize_text_for_seen_words(sentence)
+                    sentence_text = normalize_text_for_seen_words(sentence.get("text", ""))
                     if not sentence_text:
                         continue
-                    html += f"<span class='sentence-chip' data-sentence-text='{html_lib.escape(sentence_text, quote=True)}' title='{html_lib.escape(sentence_text, quote=True)}'>{html_lib.escape(sentence_text)}</span>"
+                    sentence_start_attr = f" data-start='{sentence['start']}'" if sentence.get("start") is not None else ""
+                    sentence_end_attr = f" data-end='{sentence['end']}'" if sentence.get("end") is not None else ""
+                    html += f"<span class='sentence-chip' data-sentence-text='{html_lib.escape(sentence_text, quote=True)}'{sentence_start_attr}{sentence_end_attr} title='{html_lib.escape(sentence_text, quote=True)}'>{html_lib.escape(sentence_text)}</span>"
                 html += "</div>"
             html += f"<div class='trans-block' data-bg='{html_lib.escape(block.get('translation_bg',''), quote=True)}' data-en='{html_lib.escape(block.get('translation_en',''), quote=True)}'></div>"
         html += "</article>"
@@ -1840,11 +2025,12 @@ function showDictPopup(el){const popup=document.getElementById('dict-popup');if(
 function normalizeSyncText(text){return (text||'').replace(/\s+/g,' ').trim();}
 function estimateTextWeight(text){const normalized=normalizeSyncText(text);if(!normalized)return 1;const strongStops=(normalized.match(/[。！？!?]/g)||[]).length;const softStops=(normalized.match(/[、,，]/g)||[]).length;return Math.max(1,normalized.length + strongStops*8 + softStops*3);}
 function estimateBlockWeight(block){return estimateTextWeight(block.textContent||'');}
-function clearArticleHighlight(article){article.querySelectorAll('.jp-block.is-playing').forEach(el=>{el.classList.remove('is-playing');el.removeAttribute('data-playing');});article.querySelectorAll('.sentence-chip.is-playing').forEach(el=>el.classList.remove('is-playing'));}
+function clearArticleHighlight(article){article.querySelectorAll('.jp-block.is-playing').forEach(el=>el.classList.remove('is-playing'));article.querySelectorAll('.sentence-chip.is-playing').forEach(el=>el.classList.remove('is-playing'));}
 function buildWeightedRanges(items,start,end,getWeight){const totalDuration=Math.max(0,(end||0)-(start||0));if(!items.length||totalDuration<=0)return [];const weights=items.map(item=>Math.max(1,getWeight(item)));const total=weights.reduce((sum,value)=>sum+value,0)||items.length;let cursor=start;const ranges=items.map((item,index)=>{const itemStart=cursor;cursor+=totalDuration*(weights[index]/total);return {start:itemStart,end:cursor};});if(ranges.length)ranges[ranges.length-1].end=end+0.001;return ranges;}
-function updateApproxArticleSync(article){const audio=article.querySelector('.article-audio');const blocks=[...article.querySelectorAll('.jp-block')];const ranges=article._approxSyncRanges||[];if(!audio||!blocks.length||!ranges.length){clearArticleHighlight(article);return;}const current=Math.min(audio.currentTime||0,audio.duration||0);let activeIndex=ranges.findIndex(range=>current>=range.start&&current<range.end);if(activeIndex===-1&&current>=(audio.duration||0)-0.05)activeIndex=ranges.length-1;blocks.forEach((block,index)=>block.classList.toggle('is-playing',index===activeIndex));article.querySelectorAll('.sentence-chip.is-playing').forEach(el=>el.classList.remove('is-playing'));if(activeIndex>=0){const block=blocks[activeIndex];block.setAttribute('data-playing','1');const sentenceRanges=(article._approxSentenceRanges||[])[activeIndex]||[];const chips=[...((article._sentenceTracks||[])[activeIndex]||[])];let activeSentenceIndex=sentenceRanges.findIndex(range=>current>=range.start&&current<range.end);if(activeSentenceIndex===-1&&sentenceRanges.length&&current>=sentenceRanges[sentenceRanges.length-1].end-0.05)activeSentenceIndex=sentenceRanges.length-1;if(activeSentenceIndex>=0&&chips[activeSentenceIndex]){chips[activeSentenceIndex].classList.add('is-playing');if(!audio.paused){chips[activeSentenceIndex].scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});}}if(!audio.paused){const rect=block.getBoundingClientRect();if(rect.top<72||rect.bottom>window.innerHeight-72){block.scrollIntoView({block:'nearest',behavior:'smooth'});}}}}
-function prepareApproxArticleSync(article){const audio=article.querySelector('.article-audio');const blocks=[...article.querySelectorAll('.jp-block')];const hint=article.querySelector('.audio-sync-hint');const sentenceTracks=blocks.map(block=>{const next=block.nextElementSibling;return next&&next.classList.contains('sentence-track')?[...next.querySelectorAll('.sentence-chip')]:[];});article._sentenceTracks=sentenceTracks;if(!audio||!blocks.length)return;blocks.forEach(block=>block.classList.add('is-seekable'));function rebuildRanges(){if(!Number.isFinite(audio.duration)||audio.duration<=0){article._approxSyncRanges=[];article._approxSentenceRanges=[];clearArticleHighlight(article);if(hint)hint.classList.remove('is-visible');return;}article._approxSyncRanges=buildWeightedRanges(blocks,0,audio.duration,estimateBlockWeight);article._approxSentenceRanges=article._approxSyncRanges.map(function(range,index){const chips=sentenceTracks[index]||[];if(!chips.length)return [];return buildWeightedRanges(chips,range.start,range.end,function(chip){return estimateTextWeight(chip.dataset.sentenceText||chip.textContent||'');});});if(hint)hint.classList.add('is-visible');updateApproxArticleSync(article);}audio.addEventListener('loadedmetadata',rebuildRanges);audio.addEventListener('durationchange',rebuildRanges);audio.addEventListener('timeupdate',function(){updateApproxArticleSync(article);});audio.addEventListener('seeked',function(){updateApproxArticleSync(article);});audio.addEventListener('play',function(){updateApproxArticleSync(article);});audio.addEventListener('pause',function(){updateApproxArticleSync(article);});audio.addEventListener('ended',function(){clearArticleHighlight(article);});blocks.forEach(function(block,index){block.addEventListener('click',function(event){if(event.target.closest('.dict-word')||event.target.closest('.sentence-chip'))return;const ranges=article._approxSyncRanges||[];if(audio&&ranges[index]&&Number.isFinite(ranges[index].start)){audio.currentTime=Math.max(0,ranges[index].start+0.01);audio.play().catch(function(){});updateApproxArticleSync(article);}});const chips=sentenceTracks[index]||[];chips.forEach(function(chip,chipIndex){chip.addEventListener('click',function(event){event.stopPropagation();const blockRanges=article._approxSentenceRanges||[];const sentenceRanges=blockRanges[index]||[];if(audio&&sentenceRanges[chipIndex]&&Number.isFinite(sentenceRanges[chipIndex].start)){audio.currentTime=Math.max(0,sentenceRanges[chipIndex].start+0.01);audio.play().catch(function(){});updateApproxArticleSync(article);}});});});if(audio.readyState>=1)rebuildRanges();}
-function initArticleInteractions(article){article.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});article.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.classList.add('is-seekable');if(jpBlock.dataset.translationBound==='1')return;jpBlock.dataset.translationBound='1';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});prepareApproxArticleSync(article);}
+function collectExactRanges(article,blocks,sentenceTracks){const blockRanges=blocks.map(function(block){const start=parseFloat(block.dataset.start||'');const end=parseFloat(block.dataset.end||'');return Number.isFinite(start)&&Number.isFinite(end)&&end>=start?{start:start,end:end+0.001}:null;});const exactBlockCount=blockRanges.filter(Boolean).length;const sentenceRanges=sentenceTracks.map(function(chips){return chips.map(function(chip){const start=parseFloat(chip.dataset.start||'');const end=parseFloat(chip.dataset.end||'');return Number.isFinite(start)&&Number.isFinite(end)&&end>=start?{start:start,end:end+0.001}:null;});});const exactSentenceCount=sentenceRanges.flat().filter(Boolean).length;return {blockRanges:blockRanges,sentenceRanges:sentenceRanges,hasExact:exactBlockCount>0||exactSentenceCount>0};}
+function updateArticleSync(article){const audio=article.querySelector('.article-audio');const blocks=[...article.querySelectorAll('.jp-block')];const ranges=article._syncRanges||[];if(!audio||!blocks.length||!ranges.length){clearArticleHighlight(article);return;}const current=Math.min(audio.currentTime||0,audio.duration||0);let activeIndex=ranges.findIndex(range=>range&&current>=range.start&&current<range.end);if(activeIndex===-1&&current>=(audio.duration||0)-0.05){for(let i=ranges.length-1;i>=0;i-=1){if(ranges[i]){activeIndex=i;break;}}}blocks.forEach((block,index)=>block.classList.toggle('is-playing',index===activeIndex));article.querySelectorAll('.sentence-chip.is-playing').forEach(el=>el.classList.remove('is-playing'));if(activeIndex>=0){const block=blocks[activeIndex];const sentenceRanges=(article._sentenceSyncRanges||[])[activeIndex]||[];const chips=[...((article._sentenceTracks||[])[activeIndex]||[])];let activeSentenceIndex=sentenceRanges.findIndex(range=>range&&current>=range.start&&current<range.end);if(activeSentenceIndex===-1&&sentenceRanges.length){for(let i=sentenceRanges.length-1;i>=0;i-=1){if(sentenceRanges[i]&&current>=sentenceRanges[i].end-0.05){activeSentenceIndex=i;break;}}}if(activeSentenceIndex>=0&&chips[activeSentenceIndex]){chips[activeSentenceIndex].classList.add('is-playing');if(!audio.paused){chips[activeSentenceIndex].scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});}}if(!audio.paused){const rect=block.getBoundingClientRect();if(rect.top<72||rect.bottom>window.innerHeight-72){block.scrollIntoView({block:'nearest',behavior:'smooth'});}}}}
+function prepareArticleSync(article){const audio=article.querySelector('.article-audio');const blocks=[...article.querySelectorAll('.jp-block')];const hint=article.querySelector('.audio-sync-hint');const sentenceTracks=blocks.map(block=>{const next=block.nextElementSibling;return next&&next.classList.contains('sentence-track')?[...next.querySelectorAll('.sentence-chip')]:[];});article._sentenceTracks=sentenceTracks;if(!audio||!blocks.length)return;blocks.forEach(block=>block.classList.add('is-seekable'));function rebuildRanges(){if(!Number.isFinite(audio.duration)||audio.duration<=0){article._syncRanges=[];article._sentenceSyncRanges=[];clearArticleHighlight(article);if(hint)hint.classList.remove('is-visible');return;}const exact=collectExactRanges(article,blocks,sentenceTracks);if(exact.hasExact){article._syncRanges=exact.blockRanges.map(function(range,index){if(range)return range;const nextRange=exact.blockRanges.slice(index+1).find(Boolean);const prevRange=[...exact.blockRanges.slice(0,index)].reverse().find(Boolean);const start=prevRange?prevRange.end:(nextRange?Math.max(0,nextRange.start-0.25):0);const end=nextRange?nextRange.start:(prevRange?Math.min(audio.duration,prevRange.end+0.25):audio.duration);return {start:start,end:Math.max(start+0.01,end)};});article._sentenceSyncRanges=exact.sentenceRanges.map(function(ranges,index){if(ranges.some(Boolean))return ranges.map(function(range,chipIndex){if(range)return range;const parent=article._syncRanges[index]||{start:0,end:audio.duration};const chips=sentenceTracks[index]||[];const approx=buildWeightedRanges(chips,parent.start,parent.end,function(chip){return estimateTextWeight(chip.dataset.sentenceText||chip.textContent||'');});return approx[chipIndex]||null;});const parent=article._syncRanges[index]||{start:0,end:audio.duration};const chips=sentenceTracks[index]||[];return buildWeightedRanges(chips,parent.start,parent.end,function(chip){return estimateTextWeight(chip.dataset.sentenceText||chip.textContent||'');});});if(hint){hint.classList.add('is-visible');hint.dataset.mode='exact';}}else{article._syncRanges=buildWeightedRanges(blocks,0,audio.duration,estimateBlockWeight);article._sentenceSyncRanges=article._syncRanges.map(function(range,index){const chips=sentenceTracks[index]||[];if(!chips.length)return [];return buildWeightedRanges(chips,range.start,range.end,function(chip){return estimateTextWeight(chip.dataset.sentenceText||chip.textContent||'');});});if(hint){hint.classList.add('is-visible');hint.dataset.mode='approx';}}updateArticleSync(article);}audio.addEventListener('loadedmetadata',rebuildRanges);audio.addEventListener('durationchange',rebuildRanges);audio.addEventListener('timeupdate',function(){updateArticleSync(article);});audio.addEventListener('seeked',function(){updateArticleSync(article);});audio.addEventListener('play',function(){updateArticleSync(article);});audio.addEventListener('pause',function(){updateArticleSync(article);});audio.addEventListener('ended',function(){clearArticleHighlight(article);});blocks.forEach(function(block,index){block.addEventListener('click',function(event){if(event.target.closest('.dict-word')||event.target.closest('.sentence-chip'))return;const ranges=article._syncRanges||[];if(audio&&ranges[index]&&Number.isFinite(ranges[index].start)){audio.currentTime=Math.max(0,ranges[index].start+0.01);audio.play().catch(function(){});updateArticleSync(article);}});const chips=sentenceTracks[index]||[];chips.forEach(function(chip,chipIndex){chip.addEventListener('click',function(event){event.stopPropagation();const blockRanges=article._sentenceSyncRanges||[];const sentenceRanges=blockRanges[index]||[];if(audio&&sentenceRanges[chipIndex]&&Number.isFinite(sentenceRanges[chipIndex].start)){audio.currentTime=Math.max(0,sentenceRanges[chipIndex].start+0.01);audio.play().catch(function(){});updateArticleSync(article);}});});});if(audio.readyState>=1)rebuildRanges();}
+function initArticleInteractions(article){article.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});article.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.classList.add('is-seekable');if(jpBlock.dataset.translationBound==='1')return;jpBlock.dataset.translationBound='1';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});prepareArticleSync(article);}
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name="app-version" content="([^"]+)"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
 document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('article').forEach(function(article){initArticleInteractions(article);});});
 </script>
@@ -1881,6 +2067,12 @@ def main():
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
+    parser.add_argument("--audio-sync-mode", choices=["approx", "forced", "auto"], default="auto")
+    parser.add_argument("--alignment-cache-dir", default=os.path.join(".cache", "nhk_easy_alignment"))
+    parser.add_argument("--whisperx-model", default="small")
+    parser.add_argument("--whisperx-device", default="auto")
+    parser.add_argument("--whisperx-compute-type", default="auto")
+    parser.add_argument("--whisperx-batch-size", type=int, default=8)
     args = parser.parse_args()
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
@@ -1895,6 +2087,17 @@ def main():
     articles = get_articles(args.count)
     if not articles:
         raise RuntimeError("No articles were extracted.")
+
+    wants_forced_alignment = args.audio_sync_mode in {"forced", "auto"}
+    if wants_forced_alignment:
+        aligned_count = align_articles_forced(articles, cache_dir=args.alignment_cache_dir, model_name=args.whisperx_model, device=args.whisperx_device, compute_type=args.whisperx_compute_type, batch_size=args.whisperx_batch_size, language_code="ja")
+        if aligned_count == 0 and args.audio_sync_mode == "forced":
+            print("Forced alignment requested, but no article was aligned. Falling back to approximate sync.")
+    else:
+        for article in articles:
+            article["sync_mode"] = "approx"
+            for block in article.get("blocks", []):
+                block["sentences"] = [{"text": s} for s in split_japanese_sentences(block.get("text", ""))]
 
     grammar_points = extract_grammar_points(articles)
 
