@@ -6,6 +6,7 @@ import html as html_lib
 import hashlib
 import json
 import time
+from datetime import datetime
 import uuid
 from urllib.parse import urljoin, urlparse
 
@@ -1524,6 +1525,8 @@ def parse_article_from_nhk_easy(link: str):
     if title_en.strip() == title.strip():
         title_en = ""
 
+    title_bg = (title_bg or "").split(" | ")[0].strip()
+    title_en = (title_en or "").split(" | ")[0].strip()
     return {"title": title, "title_html": title_html, "title_translation_bg": title_bg, "title_translation_en": title_en, "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(max(n * 8, n))
@@ -1678,7 +1681,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
-def build_html(articles, grammar_points=None, build_version="", build_code=""):
+def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
 <html lang=\"ja\">
@@ -1712,6 +1715,7 @@ h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-fam
 .lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .update-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.7;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;white-space:pre-line}
+.generated-marker,.build-marker{max-width:760px;margin:4px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9;line-height:1.35}
 .build-marker{max-width:760px;margin:20px auto 8px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
@@ -1756,7 +1760,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class=\"lang-hint\" data-ui=\"help_hint\"></div>
 <div class=\"update-hint\" data-ui=\"update_hint\"></div>
 <div class=\"author-info\" data-bg=\"Създадено от Веселин Баев&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\" data-en=\"Created by Veselin Baev&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\"></div>
-<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
+<div class=\"generated-marker\">Generated: {generated_at}</div>\n<div class=\"build-marker\">Build code: {build_code}</div>\n<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
 """
     for idx, article in enumerate(articles, start=1):
         html += "<article>"
@@ -1813,6 +1817,7 @@ document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceW
 </script>
 </body>
 </html>"""
+    html = html.replace("{build_version}", str(build_version)).replace("{build_code}", str(build_code)).replace("{generated_at}", str(generated_at))
     return html
 
 def write_pwa_files(output_dir, build_version=""):
@@ -1848,6 +1853,8 @@ def main():
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     build_version = str(int(time.time()))
+    build_code = build_version[-4:] if len(build_version) >= 4 else build_version
+    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     output_dir = os.path.dirname(args.output)
     if output_dir:
@@ -1912,7 +1919,7 @@ def main():
 
     save_seen_words(anki_seen_words_path, seen_words)
 
-    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code)
+    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code, generated_at=generated_at)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
