@@ -1,52 +1,4 @@
 
-
-def sentence_weight(sentence: str) -> float:
-    s = (sentence or "").strip()
-    if not s:
-        return 1.0
-
-    weight = 0.0
-    for ch in s:
-        if re.match(r"[一-龯]", ch):
-            weight += 1.8
-        elif re.match(r"[ぁ-ゖ]", ch):
-            weight += 1.1
-        elif re.match(r"[ァ-ヺー]", ch):
-            weight += 1.2
-        elif ch in "、":
-            weight += 0.6
-        elif ch in "。！？!?":
-            weight += 0.8
-        else:
-            weight += 0.9
-
-    return max(weight, 1.0)
-
-
-def build_sentence_timings(sentences, audio_duration: float):
-    if not sentences or audio_duration <= 0:
-        return []
-
-    weights = [sentence_weight(s) for s in sentences]
-    total = sum(weights) or 1.0
-
-    timings = []
-    current = 0.0
-    for s, w in zip(sentences, weights):
-        dur = audio_duration * (w / total)
-        timings.append({
-            "text": s,
-            "start": current,
-            "end": current + dur,
-        })
-        current += dur
-
-    if timings:
-        timings[-1]["end"] = audio_duration
-
-    return timings
-
-
 import os
 import re
 import argparse
@@ -67,6 +19,23 @@ try:
     import fugashi
 except Exception:
     fugashi = None
+
+try:
+    import unidic
+except Exception:
+    unidic = None
+
+try:
+    import unidic_lite
+except Exception:
+    unidic_lite = None
+
+try:
+    from sudachipy import dictionary as sudachi_dictionary
+    from sudachipy import tokenizer as sudachi_tokenizer
+except Exception:
+    sudachi_dictionary = None
+    sudachi_tokenizer = None
 
 try:
     import genanki
@@ -91,6 +60,8 @@ DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
 _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _MECAB_TAGGER = None
+_TOKENIZER_BACKEND = None
+_TOKENIZER_NAME = ""
 _WORD_GLOSSARY = None
 _JMDICT_DB = None
 
@@ -328,8 +299,8 @@ def merge_compound_nouns(tokens):
     current = []
     for token in tokens:
         feat = token_feature(token)
-        pos1 = getattr(feat, "pos1", "") if feat is not None else ""
-        pos2 = getattr(feat, "pos2", "") if feat is not None else ""
+        pos1 = get_token_pos(token, 0)
+        pos2 = get_token_pos(token, 1)
         surface = token_surface(token).strip()
         reading = normalize_katakana_to_hiragana(feature_reading(token).strip())
         if pos1 == "名詞" and pos2 not in {"代名詞", "非自立"} and surface:
@@ -388,55 +359,6 @@ def sanitize_translation_text(src: str, tr: str) -> str:
     if jp_chars > 0 and jp_chars >= max(4, latin_cyr):
         return ""
     return tr
-
-
-def split_japanese_sentences(text: str):
-    text = (text or "").strip()
-    if not text:
-        return []
-    parts = re.split(r'(?<=[。！？?!])\s*', text)
-    return [p.strip() for p in parts if p.strip()]
-
-def translate_paragraph_with_fallback(src_text: str, dest: str = "bg") -> str:
-    src_text = (src_text or "").strip()
-    if not src_text:
-        return ""
-
-    direct = sanitize_translation_text(src_text, translate_text(src_text, dest=dest) or "")
-    if direct:
-        return direct
-
-    sents = split_japanese_sentences(src_text)
-    if len(sents) >= 2:
-        translated = []
-        for s in sents:
-            tr = sanitize_translation_text(s, translate_text(s, dest=dest) or "")
-            if not tr and dest != "en":
-                en_tmp = sanitize_translation_text(s, translate_text(s, dest="en") or "")
-                if en_tmp:
-                    tr = sanitize_translation_text(s, translate_text(en_tmp, dest=dest) or "")
-            elif not tr and dest == "en":
-                bg_tmp = sanitize_translation_text(s, translate_text(s, dest="bg") or "")
-                if bg_tmp:
-                    tr = sanitize_translation_text(s, translate_text(bg_tmp, dest=dest) or "")
-            if tr:
-                translated.append(tr)
-        if translated:
-            return " ".join(translated).strip()
-
-    if dest != "en":
-        en_tmp = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
-        if en_tmp:
-            bridged = sanitize_translation_text(src_text, translate_text(en_tmp, dest=dest) or "")
-            if bridged:
-                return bridged
-    else:
-        bg_tmp = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
-        if bg_tmp:
-            bridged = sanitize_translation_text(src_text, translate_text(bg_tmp, dest=dest) or "")
-            if bridged:
-                return bridged
-    return ""
 
 def translate_word(word: str, reading: str = "") -> str:
     word = (word or "").strip()
@@ -543,40 +465,161 @@ def get_article_blocks(content):
         blocks.append({"text": txt, "html": "".join(str(x) for x in el.contents).strip()})
     return blocks
 
+def get_unidic_dicdir() -> str:
+    for mod in (unidic, unidic_lite):
+        if mod is None:
+            continue
+        for attr in ("DICDIR", "dicdir"):
+            value = getattr(mod, attr, "") or ""
+            if callable(value):
+                try:
+                    value = value()
+                except Exception:
+                    value = ""
+            if value:
+                return str(value).strip()
+    return ""
+
+
+class SudachiTaggerAdapter:
+    def __init__(self):
+        self.mode = getattr(sudachi_tokenizer.Tokenizer.SplitMode, "C", None) if sudachi_tokenizer else None
+        self.obj = sudachi_dictionary.Dictionary().create() if sudachi_dictionary else None
+
+    def __call__(self, text):
+        if self.obj is None:
+            return []
+        try:
+            return list(self.obj.tokenize(text, self.mode))
+        except Exception:
+            return []
+
+
 def get_mecab_tagger():
-    global _MECAB_TAGGER
+    global _MECAB_TAGGER, _TOKENIZER_BACKEND, _TOKENIZER_NAME
     if _MECAB_TAGGER is not None:
         return _MECAB_TAGGER
-    if fugashi is None:
-        return None
-    try:
-        _MECAB_TAGGER = fugashi.Tagger()
-    except Exception:
-        _MECAB_TAGGER = None
+
+    if fugashi is not None:
+        dicdir = get_unidic_dicdir()
+        fugashi_args = []
+        if dicdir:
+            fugashi_args.extend([f'-d "{dicdir}"', f'-r "{os.devnull}"'])
+        for arg in [" ".join(fugashi_args).strip(), ""]:
+            try:
+                _MECAB_TAGGER = fugashi.Tagger(arg) if arg else fugashi.Tagger()
+                _TOKENIZER_BACKEND = "fugashi"
+                _TOKENIZER_NAME = "fugashi+UniDic" if dicdir else "fugashi"
+                return _MECAB_TAGGER
+            except Exception:
+                continue
+
+    if sudachi_dictionary is not None and sudachi_tokenizer is not None:
+        try:
+            _MECAB_TAGGER = SudachiTaggerAdapter()
+            _TOKENIZER_BACKEND = "sudachipy"
+            _TOKENIZER_NAME = "SudachiPy"
+            return _MECAB_TAGGER
+        except Exception:
+            pass
+
+    _MECAB_TAGGER = None
+    _TOKENIZER_BACKEND = None
+    _TOKENIZER_NAME = ""
     return _MECAB_TAGGER
 
+
 def token_feature(token):
-    return getattr(token, "feature", None)
+    feat = getattr(token, "feature", None)
+    if feat is not None:
+        return feat
+    if hasattr(token, "part_of_speech") and callable(getattr(token, "part_of_speech")):
+        try:
+            pos = list(token.part_of_speech())
+        except Exception:
+            pos = []
+        return {
+            "pos1": pos[0] if len(pos) > 0 else "",
+            "pos2": pos[1] if len(pos) > 1 else "",
+            "pos3": pos[2] if len(pos) > 2 else "",
+            "pos4": pos[3] if len(pos) > 3 else "",
+            "cType": pos[4] if len(pos) > 4 else "",
+            "cForm": pos[5] if len(pos) > 5 else "",
+        }
+    return None
+
+
 def token_surface(token) -> str:
-    return getattr(token, "surface", "") or ""
+    value = getattr(token, "surface", None)
+    if isinstance(value, str):
+        return value
+    if callable(value):
+        try:
+            return value() or ""
+        except Exception:
+            return ""
+    return ""
+
+
 def token_lemma(token) -> str:
     feat = token_feature(token)
-    if feat is None:
-        return ""
-    for name in ("lemma", "dictionary_form", "lemma_form", "orthBase"):
-        value = getattr(feat, name, "") or ""
-        if value:
-            return value.strip()
+    if feat is not None and not isinstance(feat, dict):
+        for name in ("lemma", "dictionary_form", "lemma_form", "orthBase"):
+            value = getattr(feat, name, "") or ""
+            if value and value != "*":
+                return value.strip()
+    if isinstance(feat, dict):
+        for name in ("lemma", "dictionary_form", "lemma_form", "orthBase"):
+            value = feat.get(name, "") or ""
+            if value and value != "*":
+                return str(value).strip()
+    for meth in ("dictionary_form", "normalized_form"):
+        fn = getattr(token, meth, None)
+        if callable(fn):
+            try:
+                value = fn() or ""
+                if value and value != "*":
+                    return str(value).strip()
+            except Exception:
+                pass
     return ""
+
+
 def feature_reading(token) -> str:
     feat = token_feature(token)
-    if feat is None:
-        return ""
-    for name in ("kana", "pron", "reading", "pronBase"):
-        value = getattr(feat, name, "") or ""
-        if value and value != "*":
-            return value.strip()
+    if feat is not None and not isinstance(feat, dict):
+        for name in ("kana", "pron", "reading", "pronBase"):
+            value = getattr(feat, name, "") or ""
+            if value and value != "*":
+                return value.strip()
+    if isinstance(feat, dict):
+        for name in ("kana", "pron", "reading", "pronBase"):
+            value = feat.get(name, "") or ""
+            if value and value != "*":
+                return str(value).strip()
+    fn = getattr(token, "reading_form", None)
+    if callable(fn):
+        try:
+            value = fn() or ""
+            if value and value != "*":
+                return str(value).strip()
+        except Exception:
+            pass
     return ""
+
+
+def get_token_pos(token, index: int) -> str:
+    feat = token_feature(token)
+    names = {0: "pos1", 1: "pos2", 2: "pos3", 3: "pos4", 4: "cType", 5: "cForm"}
+    name = names.get(index, "")
+    if not name:
+        return ""
+    if isinstance(feat, dict):
+        return str(feat.get(name, "") or "").strip()
+    if feat is not None:
+        return str(getattr(feat, name, "") or "").strip()
+    return ""
+
 def normalize_katakana_to_hiragana(text: str) -> str:
     result = []
     for ch in text or "":
@@ -619,7 +662,8 @@ def safe_feature_value(feat, *names):
     if feat is None:
         return ""
     for name in names:
-        value = getattr(feat, name, "") or ""
+        value = feat.get(name, "") if isinstance(feat, dict) else getattr(feat, name, "")
+        value = value or ""
         if value and value != "*":
             return str(value).strip()
     return ""
@@ -764,7 +808,7 @@ def register_vocab_item(vocab_lookup, item, extra_keys=None):
             vocab_lookup[key] = item
 def is_target_pos(token) -> bool:
     feat = token_feature(token)
-    pos1 = getattr(feat, "pos1", "") if feat is not None else ""
+    pos1 = get_token_pos(token, 0)
     return pos1 in {"動詞", "形容詞"} or "動詞" in str(feat) or "形容詞" in str(feat)
 def lemmatize_japanese(word: str) -> str:
     w = (word or "").strip()
@@ -803,6 +847,17 @@ def to_dictionary_form(word: str) -> str:
     w = (word or "").strip()
     if not w:
         return w
+
+    tagger = get_mecab_tagger()
+    if tagger is not None:
+        try:
+            tokens = list(tagger(w))
+            if len(tokens) == 1:
+                lemma = token_lemma(tokens[0]).strip()
+                if lemma and lemma not in {"*", w}:
+                    return lemma
+        except Exception:
+            pass
 
     def te_base_to_dictionary(stem: str) -> str:
         stem = (stem or "").strip()
@@ -865,30 +920,7 @@ def to_dictionary_form(word: str) -> str:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
     return w
-    for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
-        if w.endswith(suffix):
-            return w[:-len(suffix)] + "する"
-    for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
-        if w.endswith(suffix):
-            return w[:-len(suffix)] + "くる"
-    for suffix in ["ました", "ます"]:
-        if w.endswith(suffix):
-            stem = w[:-len(suffix)]
-            if not stem:
-                return w
-            mapped = GODAN_I_TO_U.get(stem[-1])
-            return stem[:-1] + mapped if mapped else stem + "る"
-    if w.endswith("ない") and len(w) > 2:
-        stem = w[:-2]
-        mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
-        return stem[:-1] + mapped if mapped else stem + "る"
-    for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
-        if w.endswith(src) and len(w) > len(src):
-            return w[:-len(src)] + dst
-    for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
-        if w.endswith(src) and len(w) > len(src):
-            return w[:-len(src)] + dst
-    return w
+
 def is_person_name_span(tokens_slice) -> bool:
     if not tokens_slice:
         return False
@@ -897,8 +929,8 @@ def is_person_name_span(tokens_slice) -> bool:
     surfaces = []
     for t in tokens_slice:
         feat = token_feature(t)
-        pos1s.append(getattr(feat, "pos1", "") if feat is not None else "")
-        pos2s.append(getattr(feat, "pos2", "") if feat is not None else "")
+        pos1s.append(get_token_pos(t, 0))
+        pos2s.append(get_token_pos(t, 1))
         surfaces.append(token_surface(t).strip())
     if any(p1 != "名詞" for p1 in pos1s):
         return False
@@ -917,7 +949,7 @@ def is_matchable_token_span(tokens_slice) -> bool:
     surfaces = []
     for t in tokens_slice:
         feat = token_feature(t)
-        pos1s.append(getattr(feat, "pos1", "") if feat is not None else "")
+        pos1s.append(get_token_pos(t, 0))
         surfaces.append(token_surface(t).strip())
 
     if any(p in {"記号", "補助記号"} for p in pos1s):
@@ -944,8 +976,8 @@ def should_keep_token_for_vocab(token) -> bool:
     if len(surface) == 1 and re.fullmatch(r"[ぁ-んァ-ンー]", surface):
         return False
     feat = token_feature(token)
-    pos1 = getattr(feat, "pos1", "") if feat is not None else ""
-    pos2 = getattr(feat, "pos2", "") if feat is not None else ""
+    pos1 = get_token_pos(token, 0)
+    pos2 = get_token_pos(token, 1)
     if pos1 in {"名詞", "動詞", "形容詞", "副詞"}:
         if pos1 == "名詞" and pos2 in {"代名詞", "数詞", "非自立"}:
             return False
@@ -1852,7 +1884,7 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .dict-popup .dm{color:var(--text);margin-top:6px;line-height:1.65;white-space:normal;word-break:break-word}
 ruby rt{font-size:.68em;color:var(--muted)}
 
-.shadow-active{color:#ff7a00;}
+.shadow-active,.shadow-sentence.shadow-active{color:#ff7a00 !important;}
 </style>
 </head>
 <body class=\"theme-dark\">
@@ -1919,7 +1951,7 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||ms;const labelForm=(lang==='en'?'Form':'Форма');const line1=surface+(rs?' ['+rs+']':'')+' - '+ms;const line2=labelForm+': '+form;const line3=lemma+(rl?' ['+rl+']':'')+' - '+ml;const sameLemma=(lemma===surface);let html='<div class="dw">'+line1+'</div><div class="dm">'+line2+'</div>';if(!sameLemma){html+='<div class="dm">'+line3+'</div>';}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||ms;const labelForm=(lang==='en'?'Form':'Форма');const line1=surface+(rs?' ['+rs+']':'')+' - '+ms;const line2=labelForm+': '+form;const line3=lemma+(rl?' ['+rl+']':'')+' - '+ml;const sameLemma=(lemma===surface);let html='<div class="dw">'+line1+'</div><div class="dm">'+line2+'</div>';if(!sameLemma){html+='<div class="dm">'+line3+'</div>';}popup.innerHTML=html;el.classList.add('is-active'); sentence.classList.add('shadow-active');positionPopupNear(el,popup);}
 
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
 document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
@@ -1958,9 +1990,17 @@ def main():
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
+    parser.add_argument("--tokenizer", choices=["auto", "fugashi", "sudachi"], default=os.environ.get("JP_TOKENIZER", "auto"))
     args = parser.parse_args()
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
+    global fugashi, sudachi_dictionary, sudachi_tokenizer
+    selected_tokenizer = (args.tokenizer or "auto").strip().lower()
+    if selected_tokenizer == "fugashi":
+        sudachi_dictionary = None
+        sudachi_tokenizer = None
+    elif selected_tokenizer == "sudachi":
+        fugashi = None
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -1969,6 +2009,11 @@ def main():
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         write_pwa_files(output_dir, build_version=build_version)
+
+    tagger = get_mecab_tagger()
+    print("Tokenizer backend:", _TOKENIZER_NAME or "none")
+    if tagger is None:
+        print("Warning: no Japanese tokenizer available; falling back to heuristic lemmatization.")
 
     ensure_grammar_bilingual()
     articles = get_articles(args.count)
