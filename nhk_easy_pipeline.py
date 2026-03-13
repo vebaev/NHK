@@ -298,6 +298,22 @@ def translate_text(text: str, dest: str = "bg") -> str:
     text = (text or "").strip()
     if not text:
         return ""
+
+
+def sanitize_translation_text(src: str, tr: str) -> str:
+    src = (src or "").strip()
+    tr = (tr or "").strip()
+    if not tr:
+        return ""
+    tr = re.sub(r"\s*\|\s*.*$", "", tr).strip()
+    if not tr or tr == src:
+        return ""
+    jp_chars = len(re.findall(r"[一-龯ぁ-ゖァ-ヺー]", tr))
+    latin_cyr = len(re.findall(r"[A-Za-zА-Яа-я]", tr))
+    if jp_chars > 0 and jp_chars >= max(4, latin_cyr):
+        return ""
+    return tr
+
     cache_key = ("text", text, dest, bool(DEEPL_API_KEY))
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
@@ -424,7 +440,7 @@ def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: s
 
 def get_article_blocks(content):
     blocks = []
-    for el in content.find_all(["p", "h2", "h3", "li"], recursive=True):
+    for el in content.find_all(["p", "li"], recursive=True):
         txt = el.get_text(" ", strip=True)
         if not txt or len(txt) < 3:
             continue
@@ -1388,16 +1404,27 @@ def parse_article_from_nhk_easy(link: str):
     page = requests.get(link, timeout=20)
     page.raise_for_status()
     psoup = BeautifulSoup(page.text, "html.parser")
-    title_tag = psoup.select_one("h1")
+
+    def clean_page_title(s: str) -> str:
+        s = (s or "").strip()
+        s = re.sub(r"\s*\|\s*.*$", "", s).strip()
+        return s
+
     title = ""
     title_html = ""
+
+    og_title = psoup.select_one('meta[property="og:title"]')
+    if og_title:
+        title = clean_page_title(og_title.get("content") or "")
+
+    title_tag = psoup.select_one("h1")
     if title_tag:
-        title = title_tag.get_text(" ", strip=True)
-        title_html = "".join(str(x) for x in title_tag.contents).strip() or title
-    if not title:
-        og_title = psoup.select_one('meta[property="og:title"]')
-        if og_title:
-            title = (og_title.get("content") or "").strip()
+        h1_text = clean_page_title(title_tag.get_text(" ", strip=True))
+        # Prefer h1 only when it looks like a real title, not a pasted summary/body.
+        if h1_text and len(h1_text) <= 120 and h1_text.count("。") <= 1:
+            title = h1_text or title
+            title_html = "".join(str(x) for x in title_tag.contents).strip() or title
+
     if not title:
         title = "NHK Easy Article"
     if not title_html:
@@ -1438,6 +1465,16 @@ def parse_article_from_nhk_easy(link: str):
             if "share" in t.lower() or "follow us" in t.lower():
                 continue
             filtered_blocks.append(b)
+    if filtered_blocks:
+        title_plain = re.sub(r"\s+", "", BeautifulSoup(title_html or title, "html.parser").get_text(" ", strip=True))
+        cleaned_blocks = []
+        for i, b in enumerate(filtered_blocks):
+            bt = re.sub(r"\s+", "", (b.get("text") or ""))
+            if i == 0 and title_plain and (bt == title_plain or bt.startswith(title_plain) or title_plain.startswith(bt)):
+                continue
+            cleaned_blocks.append(b)
+        filtered_blocks = cleaned_blocks
+
     if not filtered_blocks:
         payload_texts = []
         for txt in re.findall(r'"children":"([^"]{10,}?)"', page.text):
@@ -1867,20 +1904,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-def sanitize_translation_text(src: str, tr: str) -> str:
-    src = (src or "").strip()
-    tr = (tr or "").strip()
-    if not tr:
-        return ""
-    tr = re.sub(r"\s*\|\s*.*$", "", tr).strip()
-    if not tr or tr == src:
-        return ""
-    # If translation still looks mostly Japanese, drop it
-    jp_chars = len(re.findall(r"[一-龯ぁ-ゖァ-ヺー]", tr))
-    latin_cyr = len(re.findall(r"[A-Za-zА-Яа-я]", tr))
-    if jp_chars > 0 and jp_chars >= max(4, latin_cyr):
-        return ""
-    return tr
