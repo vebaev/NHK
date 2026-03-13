@@ -7,13 +7,13 @@
 <ruby>ホルムズ海峡<rt>ほるむずかいきょう</rt></ruby>	Ормузкия пролив
 <ruby>一番<rt>いちばん</rt></ruby>	номер едно
 <ruby>上げた<rt>あげた</rt></ruby>	повдигнати
-<ruby>下駄<rt>げた</rt></ruby>	може
+<ruby>下駄<rt>げた</rt></ruby>	гета
 <ruby>乗った<rt>のった</rt></ruby>	яздеше
 <ruby>乗り<rt>のり</rt></ruby>	карам
 <ruby>事故<rt>じこ</rt></ruby>	инцидент
 <ruby>付く<rt>つい</rt></ruby>	приложен
 <ruby>件ありまする<rt>けんありまする</rt></ruby>	Има случаи
-<ruby>似ていますが<rt>にていますが</rt></ruby>	Въпреки че е подобен
+<ruby>似ていますが<rt>にていますが</rt></ruby>	Although it is similar
 <ruby>似る<rt>に</rt></ruby>	подобни
 <ruby>使う<rt>つかう</rt></ruby>	използване
 <ruby>値段<rt>ねだん</rt></ruby>	цена
@@ -40,14 +40,13 @@
 <ruby>回転<rt>かいてん</rt></ruby>	завъртане
 <ruby>困る<rt>こまる</rt></ruby>	в беда
 <ruby>基地<rt>きち</rt></ruby>	база
-<ruby>壊す<rt>こわす</rt></ruby>	прекъсване
+<ruby>壊す<rt>こわす</rt></ruby>	прекъсвам
 <ruby>売る<rt>うる</rt></ruby>	продавам
 <ruby>多くなりまする<rt>おおくなりまする</rt></ruby>	Ще има още
 <ruby>大きい<rt>おおきく</rt></ruby>	голям
 <ruby>大会<rt>たいかい</rt></ruby>	турнир
 <ruby>大統領<rt>だいとうりょう</rt></ruby>	президент
 <ruby>女子<rt>じょし</rt></ruby>	момичета
-<ruby>女子大<rt>じょしだい</rt></ruby>	женски университет
 <ruby>季節<rt>きせつ</rt></ruby>	сезон
 <ruby>季節なので<rt>きせつなので</rt></ruby>	Защото е сезонът
 <ruby>居る<rt>いる</rt></ruby>	бъди там
@@ -57,8 +56,8 @@
 <ruby>強くなる<rt>つよくなる</rt></ruby>	станете по-силни
 <ruby>得意<rt>とくい</rt></ruby>	добър в
 <ruby>心配<rt>しんぱい</rt></ruby>	безпокойство
-<ruby>必要<rt>ひつよう</rt></ruby>	нужда
-<ruby>思う<rt>おもう</rt></ruby>	аз мисля
+<ruby>必要<rt>ひつよう</rt></ruby>	need
+<ruby>思う<rt>おもう</rt></ruby>	мисля
 <ruby>恣意<rt>しい</rt></ruby>	безсмислен
 <ruby>悔しい<rt>かいしい</rt></ruby>	за съжаление
 <ruby>悔しいです<rt>くやしいです</rt></ruby>	Това е разочароващо
@@ -99,7 +98,7 @@
 <ruby>種目<rt>しゅもく</rt></ruby>	Събитие
 <ruby>続く<rt>つづく</rt></ruby>	Продължи
 <ruby>自分<rt>じぶん</rt></ruby>	себе си
-<ruby>自転<rt>じてん</rt></ruby>	въртене
+<ruby>自転<rt>じてん</rt></ruby>	rotation
 <ruby>自転車<rt>じてんしゃ</rt></ruby>	велосипед
 <ruby>良い<rt>よかっ</rt></ruby>	добре
 <ruby>補助<rt>ほじょ</rt></ruby>	спомагателни
@@ -110,7 +109,6 @@
 <ruby>話す<rt>はなす</rt></ruby>	говорете
 <ruby>読み<rt>よみ</rt></ruby>	четене
 <ruby>読みまする<rt>よみまする</rt></ruby>	ще чета
-<ruby>買い<rt>かい</rt></ruby>	Купете
 <ruby>買うときは<rt>かうときは</rt></ruby>	При закупуване
 <ruby>走ることができませ<rt>はしることができませ</rt></ruby>	не може да бяга
 <ruby>近くに<rt>きんくに</rt></ruby>	наблизо
@@ -126,4 +124,4 @@
 <ruby>銀メダル<rt>ぎんめだる</rt></ruby>	сребърен медал
 <ruby>電動<rt>でんどう</rt></ruby>	електрически
 <ruby>電動アシスト自転<rt>でんどうあしすとじてん</rt></ruby>	електрическо подпомагане на въртенето
-<ruby>首相<rt>しゅしょう</rt></ruby>	премиер
+<ruby>首相<rt>しゅしょう</rt></ruby>	министър-председател

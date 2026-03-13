@@ -28,7 +28,7 @@
 <ruby>出する<rt>だする</rt></ruby>	give out
 <ruby>出まする<rt>でまする</rt></ruby>	come out
 <ruby>出る<rt>で</rt></ruby>	come out
-<ruby>出来る<rt>でき</rt></ruby>	I can do it
+<ruby>出来る<rt>でき</rt></ruby>	Мога да го направя
 <ruby>分かる<rt>わかり</rt></ruby>	I understand
 <ruby>初めて<rt>はじめて</rt></ruby>	first time
 <ruby>北京<rt>ぺきん</rt></ruby>	Beijing
@@ -47,7 +47,6 @@
 <ruby>大会<rt>たいかい</rt></ruby>	tournament
 <ruby>大統領<rt>だいとうりょう</rt></ruby>	president
 <ruby>女子<rt>じょし</rt></ruby>	girls
-<ruby>女子大<rt>じょしだい</rt></ruby>	women's university
 <ruby>季節<rt>きせつ</rt></ruby>	season
 <ruby>季節なので<rt>きせつなので</rt></ruby>	Because it's the season
 <ruby>居る<rt>いる</rt></ruby>	be there
@@ -58,7 +57,7 @@
 <ruby>得意<rt>とくい</rt></ruby>	good at
 <ruby>心配<rt>しんぱい</rt></ruby>	anxiety
 <ruby>必要<rt>ひつよう</rt></ruby>	need
-<ruby>思う<rt>おもう</rt></ruby>	мисля
+<ruby>思う<rt>おもう</rt></ruby>	think
 <ruby>恣意<rt>しい</rt></ruby>	wanton
 <ruby>悔しい<rt>かいしい</rt></ruby>	regrettable
 <ruby>悔しいです<rt>くやしいです</rt></ruby>	It's frustrating
@@ -79,14 +78,14 @@
 <ruby>村岡<rt>むらおか</rt></ruby>	Muraoka
 <ruby>村岡桃佳<rt>むらおかももか</rt></ruby>	Momoka Muraoka
 <ruby>村岡桃佳選手<rt>むらおかももかせんしゅ</rt></ruby>	Momoka Muraoka
-<ruby>村岡選手<rt>むらおかせんしゅ</rt></ruby>	Muraoka player
+<ruby>村岡選手<rt>むらおかせんしゅ</rt></ruby>	Мураока играч
 <ruby>来る<rt>こ</rt></ruby>	come
 <ruby>来ればよかったです<rt>くればよかったです</rt></ruby>	I wish I had come
 <ruby>東京<rt>とうきょう</rt></ruby>	Tokyo
 <ruby>欲しい<rt>ほしい</rt></ruby>	want
 <ruby>歩道<rt>ほどう</rt></ruby>	sidewalk
 <ruby>決める<rt>きめる</rt></ruby>	decide
-<ruby>法律<rt>ほうりつ</rt></ruby>	law
+<ruby>法律<rt>ほうりつ</rt></ruby>	закон
 <ruby>海峡<rt>かいきょう</rt></ruby>	strait
 <ruby>滋賀県大津市<rt>しがけんおおつし</rt></ruby>	Otsu City, Shiga Prefecture
 <ruby>滑ったあと<rt>すべったあと</rt></ruby>	After slipping
@@ -96,11 +95,11 @@
 <ruby>目指する<rt>めざする</rt></ruby>	aim
 <ruby>知れる<rt>しれ</rt></ruby>	know
 <ruby>私たちは<rt>わたしたちは</rt></ruby>	we
-<ruby>種目<rt>しゅもく</rt></ruby>	Event
+<ruby>種目<rt>しゅもく</rt></ruby>	Събитие
 <ruby>続く<rt>つづく</rt></ruby>	Continue
 <ruby>自分<rt>じぶん</rt></ruby>	myself
 <ruby>自転<rt>じてん</rt></ruby>	rotation
-<ruby>自転車<rt>じてんしゃ</rt></ruby>	bicycle
+<ruby>自転車<rt>じてんしゃ</rt></ruby>	велосипед
 <ruby>良い<rt>よかっ</rt></ruby>	good
 <ruby>補助<rt>ほじょ</rt></ruby>	auxiliary
 <ruby>言いまする<rt>いいまする</rt></ruby>	I say
@@ -110,9 +109,8 @@
 <ruby>話す<rt>はなす</rt></ruby>	talk
 <ruby>読み<rt>よみ</rt></ruby>	reading
 <ruby>読みまする<rt>よみまする</rt></ruby>	I'll read
-<ruby>買い<rt>かい</rt></ruby>	Buy
 <ruby>買うときは<rt>かうときは</rt></ruby>	When buying
-<ruby>走ることができませ<rt>はしることができませ</rt></ruby>	can't run
+<ruby>走ることができませ<rt>はしることができませ</rt></ruby>	не може да бяга
 <ruby>近くに<rt>きんくに</rt></ruby>	nearby
 <ruby>近くにある<rt>ちかくにある</rt></ruby>	nearby
 <ruby>通ることを<rt>とおることを</rt></ruby>	to pass
@@ -125,5 +123,5 @@
 <ruby>金メダル<rt>きんめだる</rt></ruby>	gold medal
 <ruby>銀メダル<rt>ぎんめだる</rt></ruby>	silver medal
 <ruby>電動<rt>でんどう</rt></ruby>	electric
-<ruby>電動アシスト自転<rt>でんどうあしすとじてん</rt></ruby>	electric assist rotation
+<ruby>電動アシスト自転<rt>でんどうあしすとじてん</rt></ruby>	електрическо подпомагане на въртенето
 <ruby>首相<rt>しゅしょう</rt></ruby>	prime minister
