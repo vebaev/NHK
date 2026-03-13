@@ -21,23 +21,6 @@ except Exception:
     fugashi = None
 
 try:
-    import unidic
-except Exception:
-    unidic = None
-
-try:
-    import unidic_lite
-except Exception:
-    unidic_lite = None
-
-try:
-    from sudachipy import dictionary as sudachi_dictionary
-    from sudachipy import tokenizer as sudachi_tokenizer
-except Exception:
-    sudachi_dictionary = None
-    sudachi_tokenizer = None
-
-try:
     import genanki
 except Exception:
     genanki = None
@@ -60,8 +43,6 @@ DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
 _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _MECAB_TAGGER = None
-_TOKENIZER_BACKEND = None
-_TOKENIZER_NAME = ""
 _WORD_GLOSSARY = None
 _JMDICT_DB = None
 
@@ -299,8 +280,8 @@ def merge_compound_nouns(tokens):
     current = []
     for token in tokens:
         feat = token_feature(token)
-        pos1 = get_token_pos(token, 0)
-        pos2 = get_token_pos(token, 1)
+        pos1 = getattr(feat, "pos1", "") if feat is not None else ""
+        pos2 = getattr(feat, "pos2", "") if feat is not None else ""
         surface = token_surface(token).strip()
         reading = normalize_katakana_to_hiragana(feature_reading(token).strip())
         if pos1 == "名詞" and pos2 not in {"代名詞", "非自立"} and surface:
@@ -359,6 +340,55 @@ def sanitize_translation_text(src: str, tr: str) -> str:
     if jp_chars > 0 and jp_chars >= max(4, latin_cyr):
         return ""
     return tr
+
+
+def split_japanese_sentences(text: str):
+    text = (text or "").strip()
+    if not text:
+        return []
+    parts = re.split(r'(?<=[。！？?!])\s*', text)
+    return [p.strip() for p in parts if p.strip()]
+
+def translate_paragraph_with_fallback(src_text: str, dest: str = "bg") -> str:
+    src_text = (src_text or "").strip()
+    if not src_text:
+        return ""
+
+    direct = sanitize_translation_text(src_text, translate_text(src_text, dest=dest) or "")
+    if direct:
+        return direct
+
+    sents = split_japanese_sentences(src_text)
+    if len(sents) >= 2:
+        translated = []
+        for s in sents:
+            tr = sanitize_translation_text(s, translate_text(s, dest=dest) or "")
+            if not tr and dest != "en":
+                en_tmp = sanitize_translation_text(s, translate_text(s, dest="en") or "")
+                if en_tmp:
+                    tr = sanitize_translation_text(s, translate_text(en_tmp, dest=dest) or "")
+            elif not tr and dest == "en":
+                bg_tmp = sanitize_translation_text(s, translate_text(s, dest="bg") or "")
+                if bg_tmp:
+                    tr = sanitize_translation_text(s, translate_text(bg_tmp, dest=dest) or "")
+            if tr:
+                translated.append(tr)
+        if translated:
+            return " ".join(translated).strip()
+
+    if dest != "en":
+        en_tmp = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
+        if en_tmp:
+            bridged = sanitize_translation_text(src_text, translate_text(en_tmp, dest=dest) or "")
+            if bridged:
+                return bridged
+    else:
+        bg_tmp = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
+        if bg_tmp:
+            bridged = sanitize_translation_text(src_text, translate_text(bg_tmp, dest=dest) or "")
+            if bridged:
+                return bridged
+    return ""
 
 def translate_word(word: str, reading: str = "") -> str:
     word = (word or "").strip()
@@ -465,161 +495,40 @@ def get_article_blocks(content):
         blocks.append({"text": txt, "html": "".join(str(x) for x in el.contents).strip()})
     return blocks
 
-def get_unidic_dicdir() -> str:
-    for mod in (unidic, unidic_lite):
-        if mod is None:
-            continue
-        for attr in ("DICDIR", "dicdir"):
-            value = getattr(mod, attr, "") or ""
-            if callable(value):
-                try:
-                    value = value()
-                except Exception:
-                    value = ""
-            if value:
-                return str(value).strip()
-    return ""
-
-
-class SudachiTaggerAdapter:
-    def __init__(self):
-        self.mode = getattr(sudachi_tokenizer.Tokenizer.SplitMode, "C", None) if sudachi_tokenizer else None
-        self.obj = sudachi_dictionary.Dictionary().create() if sudachi_dictionary else None
-
-    def __call__(self, text):
-        if self.obj is None:
-            return []
-        try:
-            return list(self.obj.tokenize(text, self.mode))
-        except Exception:
-            return []
-
-
 def get_mecab_tagger():
-    global _MECAB_TAGGER, _TOKENIZER_BACKEND, _TOKENIZER_NAME
+    global _MECAB_TAGGER
     if _MECAB_TAGGER is not None:
         return _MECAB_TAGGER
-
-    if fugashi is not None:
-        dicdir = get_unidic_dicdir()
-        fugashi_args = []
-        if dicdir:
-            fugashi_args.extend([f'-d "{dicdir}"', f'-r "{os.devnull}"'])
-        for arg in [" ".join(fugashi_args).strip(), ""]:
-            try:
-                _MECAB_TAGGER = fugashi.Tagger(arg) if arg else fugashi.Tagger()
-                _TOKENIZER_BACKEND = "fugashi"
-                _TOKENIZER_NAME = "fugashi+UniDic" if dicdir else "fugashi"
-                return _MECAB_TAGGER
-            except Exception:
-                continue
-
-    if sudachi_dictionary is not None and sudachi_tokenizer is not None:
-        try:
-            _MECAB_TAGGER = SudachiTaggerAdapter()
-            _TOKENIZER_BACKEND = "sudachipy"
-            _TOKENIZER_NAME = "SudachiPy"
-            return _MECAB_TAGGER
-        except Exception:
-            pass
-
-    _MECAB_TAGGER = None
-    _TOKENIZER_BACKEND = None
-    _TOKENIZER_NAME = ""
+    if fugashi is None:
+        return None
+    try:
+        _MECAB_TAGGER = fugashi.Tagger()
+    except Exception:
+        _MECAB_TAGGER = None
     return _MECAB_TAGGER
 
-
 def token_feature(token):
-    feat = getattr(token, "feature", None)
-    if feat is not None:
-        return feat
-    if hasattr(token, "part_of_speech") and callable(getattr(token, "part_of_speech")):
-        try:
-            pos = list(token.part_of_speech())
-        except Exception:
-            pos = []
-        return {
-            "pos1": pos[0] if len(pos) > 0 else "",
-            "pos2": pos[1] if len(pos) > 1 else "",
-            "pos3": pos[2] if len(pos) > 2 else "",
-            "pos4": pos[3] if len(pos) > 3 else "",
-            "cType": pos[4] if len(pos) > 4 else "",
-            "cForm": pos[5] if len(pos) > 5 else "",
-        }
-    return None
-
-
+    return getattr(token, "feature", None)
 def token_surface(token) -> str:
-    value = getattr(token, "surface", None)
-    if isinstance(value, str):
-        return value
-    if callable(value):
-        try:
-            return value() or ""
-        except Exception:
-            return ""
-    return ""
-
-
+    return getattr(token, "surface", "") or ""
 def token_lemma(token) -> str:
     feat = token_feature(token)
-    if feat is not None and not isinstance(feat, dict):
-        for name in ("lemma", "dictionary_form", "lemma_form", "orthBase"):
-            value = getattr(feat, name, "") or ""
-            if value and value != "*":
-                return value.strip()
-    if isinstance(feat, dict):
-        for name in ("lemma", "dictionary_form", "lemma_form", "orthBase"):
-            value = feat.get(name, "") or ""
-            if value and value != "*":
-                return str(value).strip()
-    for meth in ("dictionary_form", "normalized_form"):
-        fn = getattr(token, meth, None)
-        if callable(fn):
-            try:
-                value = fn() or ""
-                if value and value != "*":
-                    return str(value).strip()
-            except Exception:
-                pass
+    if feat is None:
+        return ""
+    for name in ("lemma", "dictionary_form", "lemma_form", "orthBase"):
+        value = getattr(feat, name, "") or ""
+        if value:
+            return value.strip()
     return ""
-
-
 def feature_reading(token) -> str:
     feat = token_feature(token)
-    if feat is not None and not isinstance(feat, dict):
-        for name in ("kana", "pron", "reading", "pronBase"):
-            value = getattr(feat, name, "") or ""
-            if value and value != "*":
-                return value.strip()
-    if isinstance(feat, dict):
-        for name in ("kana", "pron", "reading", "pronBase"):
-            value = feat.get(name, "") or ""
-            if value and value != "*":
-                return str(value).strip()
-    fn = getattr(token, "reading_form", None)
-    if callable(fn):
-        try:
-            value = fn() or ""
-            if value and value != "*":
-                return str(value).strip()
-        except Exception:
-            pass
-    return ""
-
-
-def get_token_pos(token, index: int) -> str:
-    feat = token_feature(token)
-    names = {0: "pos1", 1: "pos2", 2: "pos3", 3: "pos4", 4: "cType", 5: "cForm"}
-    name = names.get(index, "")
-    if not name:
+    if feat is None:
         return ""
-    if isinstance(feat, dict):
-        return str(feat.get(name, "") or "").strip()
-    if feat is not None:
-        return str(getattr(feat, name, "") or "").strip()
+    for name in ("kana", "pron", "reading", "pronBase"):
+        value = getattr(feat, name, "") or ""
+        if value and value != "*":
+            return value.strip()
     return ""
-
 def normalize_katakana_to_hiragana(text: str) -> str:
     result = []
     for ch in text or "":
@@ -662,8 +571,7 @@ def safe_feature_value(feat, *names):
     if feat is None:
         return ""
     for name in names:
-        value = feat.get(name, "") if isinstance(feat, dict) else getattr(feat, name, "")
-        value = value or ""
+        value = getattr(feat, name, "") or ""
         if value and value != "*":
             return str(value).strip()
     return ""
@@ -808,7 +716,7 @@ def register_vocab_item(vocab_lookup, item, extra_keys=None):
             vocab_lookup[key] = item
 def is_target_pos(token) -> bool:
     feat = token_feature(token)
-    pos1 = get_token_pos(token, 0)
+    pos1 = getattr(feat, "pos1", "") if feat is not None else ""
     return pos1 in {"動詞", "形容詞"} or "動詞" in str(feat) or "形容詞" in str(feat)
 def lemmatize_japanese(word: str) -> str:
     w = (word or "").strip()
@@ -847,17 +755,6 @@ def to_dictionary_form(word: str) -> str:
     w = (word or "").strip()
     if not w:
         return w
-
-    tagger = get_mecab_tagger()
-    if tagger is not None:
-        try:
-            tokens = list(tagger(w))
-            if len(tokens) == 1:
-                lemma = token_lemma(tokens[0]).strip()
-                if lemma and lemma not in {"*", w}:
-                    return lemma
-        except Exception:
-            pass
 
     def te_base_to_dictionary(stem: str) -> str:
         stem = (stem or "").strip()
@@ -920,7 +817,30 @@ def to_dictionary_form(word: str) -> str:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
     return w
-
+    for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
+        if w.endswith(suffix):
+            return w[:-len(suffix)] + "する"
+    for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
+        if w.endswith(suffix):
+            return w[:-len(suffix)] + "くる"
+    for suffix in ["ました", "ます"]:
+        if w.endswith(suffix):
+            stem = w[:-len(suffix)]
+            if not stem:
+                return w
+            mapped = GODAN_I_TO_U.get(stem[-1])
+            return stem[:-1] + mapped if mapped else stem + "る"
+    if w.endswith("ない") and len(w) > 2:
+        stem = w[:-2]
+        mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
+        return stem[:-1] + mapped if mapped else stem + "る"
+    for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
+        if w.endswith(src) and len(w) > len(src):
+            return w[:-len(src)] + dst
+    for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
+        if w.endswith(src) and len(w) > len(src):
+            return w[:-len(src)] + dst
+    return w
 def is_person_name_span(tokens_slice) -> bool:
     if not tokens_slice:
         return False
@@ -929,8 +849,8 @@ def is_person_name_span(tokens_slice) -> bool:
     surfaces = []
     for t in tokens_slice:
         feat = token_feature(t)
-        pos1s.append(get_token_pos(t, 0))
-        pos2s.append(get_token_pos(t, 1))
+        pos1s.append(getattr(feat, "pos1", "") if feat is not None else "")
+        pos2s.append(getattr(feat, "pos2", "") if feat is not None else "")
         surfaces.append(token_surface(t).strip())
     if any(p1 != "名詞" for p1 in pos1s):
         return False
@@ -949,7 +869,7 @@ def is_matchable_token_span(tokens_slice) -> bool:
     surfaces = []
     for t in tokens_slice:
         feat = token_feature(t)
-        pos1s.append(get_token_pos(t, 0))
+        pos1s.append(getattr(feat, "pos1", "") if feat is not None else "")
         surfaces.append(token_surface(t).strip())
 
     if any(p in {"記号", "補助記号"} for p in pos1s):
@@ -976,8 +896,8 @@ def should_keep_token_for_vocab(token) -> bool:
     if len(surface) == 1 and re.fullmatch(r"[ぁ-んァ-ンー]", surface):
         return False
     feat = token_feature(token)
-    pos1 = get_token_pos(token, 0)
-    pos2 = get_token_pos(token, 1)
+    pos1 = getattr(feat, "pos1", "") if feat is not None else ""
+    pos2 = getattr(feat, "pos2", "") if feat is not None else ""
     if pos1 in {"名詞", "動詞", "形容詞", "副詞"}:
         if pos1 == "名詞" and pos2 in {"代名詞", "数詞", "非自立"}:
             return False
@@ -1646,8 +1566,8 @@ def parse_article_from_nhk_easy(link: str):
     translated_blocks = []
     for b in filtered_blocks:
         src_text = (b["text"] or "").strip()
-        bg_tr = translate_paragraph_with_fallback(src_text, dest="bg")
-        en_tr = translate_paragraph_with_fallback(src_text, dest="en")
+        bg_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
+        en_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
         translated_blocks.append({
             "html": b["html"],
             "text": b["text"],
@@ -1687,8 +1607,8 @@ def get_articles(n=4):
                 article["blocks"] = []
                 for b in fallback["blocks"]:
                     src_text = (b["text"] or "").strip()
-                    bg_tr = translate_paragraph_with_fallback(src_text, dest="bg")
-                    en_tr = translate_paragraph_with_fallback(src_text, dest="en")
+                    bg_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
+                    en_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
                     article["blocks"].append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
@@ -1988,17 +1908,9 @@ def main():
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
-    parser.add_argument("--tokenizer", choices=["auto", "fugashi", "sudachi"], default=os.environ.get("JP_TOKENIZER", "auto"))
     args = parser.parse_args()
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
-    global fugashi, sudachi_dictionary, sudachi_tokenizer
-    selected_tokenizer = (args.tokenizer or "auto").strip().lower()
-    if selected_tokenizer == "fugashi":
-        sudachi_dictionary = None
-        sudachi_tokenizer = None
-    elif selected_tokenizer == "sudachi":
-        fugashi = None
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -2007,11 +1919,6 @@ def main():
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         write_pwa_files(output_dir, build_version=build_version)
-
-    tagger = get_mecab_tagger()
-    print("Tokenizer backend:", _TOKENIZER_NAME or "none")
-    if tagger is None:
-        print("Warning: no Japanese tokenizer available; falling back to heuristic lemmatization.")
 
     ensure_grammar_bilingual()
     articles = get_articles(args.count)
