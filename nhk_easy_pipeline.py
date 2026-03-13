@@ -298,22 +298,6 @@ def translate_text(text: str, dest: str = "bg") -> str:
     text = (text or "").strip()
     if not text:
         return ""
-
-
-def sanitize_translation_text(src: str, tr: str) -> str:
-    src = (src or "").strip()
-    tr = (tr or "").strip()
-    if not tr:
-        return ""
-    tr = re.sub(r"\s*\|\s*.*$", "", tr).strip()
-    if not tr or tr == src:
-        return ""
-    jp_chars = len(re.findall(r"[一-龯ぁ-ゖァ-ヺー]", tr))
-    latin_cyr = len(re.findall(r"[A-Za-zА-Яа-я]", tr))
-    if jp_chars > 0 and jp_chars >= max(4, latin_cyr):
-        return ""
-    return tr
-
     cache_key = ("text", text, dest, bool(DEEPL_API_KEY))
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
@@ -340,6 +324,21 @@ def sanitize_translation_text(src: str, tr: str) -> str:
         return result
     except Exception:
         return ""
+
+
+def sanitize_translation_text(src: str, tr: str) -> str:
+    src = (src or "").strip()
+    tr = (tr or "").strip()
+    if not tr:
+        return ""
+    tr = re.sub(r"\s*\|\s*.*$", "", tr).strip()
+    if not tr or tr == src:
+        return ""
+    jp_chars = len(re.findall(r"[一-龯ぁ-ゖァ-ヺー]", tr))
+    latin_cyr = len(re.findall(r"[A-Za-zА-Яа-я]", tr))
+    if jp_chars > 0 and jp_chars >= max(4, latin_cyr):
+        return ""
+    return tr
 
 
 def translate_word(word: str, reading: str = "") -> str:
@@ -1420,6 +1419,7 @@ def parse_article_from_nhk_easy(link: str):
     title_tag = psoup.select_one("h1")
     if title_tag:
         h1_text = clean_page_title(title_tag.get_text(" ", strip=True))
+        # accept h1 only when it looks like a title, not a full pasted paragraph
         if h1_text and len(h1_text) <= 120 and h1_text.count("。") <= 1:
             title = h1_text or title
             title_html = "".join(str(x) for x in title_tag.contents).strip() or title
@@ -1464,6 +1464,16 @@ def parse_article_from_nhk_easy(link: str):
             if "share" in t.lower() or "follow us" in t.lower():
                 continue
             filtered_blocks.append(b)
+    if filtered_blocks:
+        title_plain = re.sub(r"\s+", "", BeautifulSoup(title_html or title, "html.parser").get_text(" ", strip=True))
+        cleaned_blocks = []
+        for i, b in enumerate(filtered_blocks):
+            bt = re.sub(r"\s+", "", (b.get("text") or ""))
+            if i == 0 and title_plain and (bt == title_plain or bt.startswith(title_plain) or title_plain.startswith(bt)):
+                continue
+            cleaned_blocks.append(b)
+        filtered_blocks = cleaned_blocks
+
     if not filtered_blocks:
         payload_texts = []
         for txt in re.findall(r'"children":"([^"]{10,}?)"', page.text):
@@ -1490,16 +1500,6 @@ def parse_article_from_nhk_easy(link: str):
     if not filtered_blocks:
         return None
     vocab = extract_vocab_from_blocks(filtered_blocks)
-    if filtered_blocks:
-        title_plain = re.sub(r"\s+", "", BeautifulSoup(title_html or title, "html.parser").get_text(" ", strip=True))
-        cleaned_blocks = []
-        for i, b in enumerate(filtered_blocks):
-            bt = re.sub(r"\s+", "", (b.get("text") or ""))
-            if i == 0 and title_plain and (bt == title_plain or bt.startswith(title_plain) or title_plain.startswith(bt)):
-                continue
-            cleaned_blocks.append(b)
-        filtered_blocks = cleaned_blocks
-
     translated_blocks = []
     for b in filtered_blocks:
         src_text = (b["text"] or "").strip()
@@ -1527,8 +1527,9 @@ def get_articles(n=4):
             if article and fallback and fallback.get("blocks"):
                 article["blocks"] = []
                 for b in fallback["blocks"]:
-                    bg_tr = translate_text(b["text"], dest="bg") or b["text"]
-                    en_tr = translate_text(b["text"], dest="en") or b["text"]
+                    src_text = (b["text"] or "").strip()
+                    bg_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
+                    en_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
                     article["blocks"].append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
@@ -1698,6 +1699,7 @@ h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-fam
 .lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .update-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.7;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;white-space:pre-line}
+.generated-marker,.build-marker{max-width:760px;margin:4px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9;line-height:1.35}
 .build-marker{max-width:760px;margin:20px auto 8px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
