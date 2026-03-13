@@ -1,4 +1,52 @@
 
+
+def sentence_weight(sentence: str) -> float:
+    s = (sentence or "").strip()
+    if not s:
+        return 1.0
+
+    weight = 0.0
+    for ch in s:
+        if re.match(r"[一-龯]", ch):
+            weight += 1.8
+        elif re.match(r"[ぁ-ゖ]", ch):
+            weight += 1.1
+        elif re.match(r"[ァ-ヺー]", ch):
+            weight += 1.2
+        elif ch in "、":
+            weight += 0.6
+        elif ch in "。！？!?":
+            weight += 0.8
+        else:
+            weight += 0.9
+
+    return max(weight, 1.0)
+
+
+def build_sentence_timings(sentences, audio_duration: float):
+    if not sentences or audio_duration <= 0:
+        return []
+
+    weights = [sentence_weight(s) for s in sentences]
+    total = sum(weights) or 1.0
+
+    timings = []
+    current = 0.0
+    for s, w in zip(sentences, weights):
+        dur = audio_duration * (w / total)
+        timings.append({
+            "text": s,
+            "start": current,
+            "end": current + dur,
+        })
+        current += dur
+
+    if timings:
+        timings[-1]["end"] = audio_duration
+
+    return timings
+
+
 import os
 import re
 import argparse
@@ -1803,6 +1851,8 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .dict-popup .dr{color:var(--accent);font-size:.95rem;margin-top:2px}
 .dict-popup .dm{color:var(--text);margin-top:6px;line-height:1.65;white-space:normal;word-break:break-word}
 ruby rt{font-size:.68em;color:var(--muted)}
+
+.shadow-active{color:#ff7a00;}
 </style>
 </head>
 <body class=\"theme-dark\">
