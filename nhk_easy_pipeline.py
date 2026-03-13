@@ -6,7 +6,6 @@ import html as html_lib
 import hashlib
 import json
 import time
-from datetime import datetime
 import uuid
 from urllib.parse import urljoin, urlparse
 
@@ -326,21 +325,6 @@ def translate_text(text: str, dest: str = "bg") -> str:
         return ""
 
 
-
-def sanitize_translation_text(src: str, tr: str) -> str:
-    src = (src or "").strip()
-    tr = (tr or "").strip()
-    if not tr:
-        return ""
-    tr = re.sub(r"\s*\|\s*.*$", "", tr).strip()
-    if not tr or tr == src:
-        return ""
-    jp_chars = len(re.findall(r"[一-龯ぁ-ゖァ-ヺー]", tr))
-    latin_cyr = len(re.findall(r"[A-Za-zА-Яа-я]", tr))
-    if jp_chars > 0 and jp_chars >= max(4, latin_cyr):
-        return ""
-    return tr
-
 def translate_word(word: str, reading: str = "") -> str:
     word = (word or "").strip()
     if not word:
@@ -439,7 +423,7 @@ def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: s
 
 def get_article_blocks(content):
     blocks = []
-    for el in content.find_all(["p", "li"], recursive=True):
+    for el in content.find_all(["p", "h2", "h3", "li"], recursive=True):
         txt = el.get_text(" ", strip=True)
         if not txt or len(txt) < 3:
             continue
@@ -1403,31 +1387,20 @@ def parse_article_from_nhk_easy(link: str):
     page = requests.get(link, timeout=20)
     page.raise_for_status()
     psoup = BeautifulSoup(page.text, "html.parser")
-
-    def clean_page_title(s: str) -> str:
-        s = (s or "").strip()
-        s = re.sub(r"\s*\|\s*.*$", "", s).strip()
-        return s
-
+    title_tag = psoup.select_one("h1")
     title = ""
     title_html = ""
-
-    og_title = psoup.select_one('meta[property="og:title"]')
-    if og_title:
-        title = clean_page_title(og_title.get("content") or "")
-
-    title_tag = psoup.select_one("h1")
     if title_tag:
-        h1_text = clean_page_title(title_tag.get_text(" ", strip=True))
-        if h1_text and len(h1_text) <= 80 and h1_text.count("。") <= 1:
-            title = h1_text or title
-            title_html = "".join(str(x) for x in title_tag.contents).strip() or title
-
+        title = title_tag.get_text(" ", strip=True)
+        title_html = "".join(str(x) for x in title_tag.contents).strip() or title
+    if not title:
+        og_title = psoup.select_one('meta[property="og:title"]')
+        if og_title:
+            title = (og_title.get("content") or "").strip()
     if not title:
         title = "NHK Easy Article"
     if not title_html:
         title_html = title
-
     image_url = ""
     for sel in ['meta[property="og:image"]', 'meta[name="og:image"]', "article img[src]", "main img[src]", "img[src]"]:
         el = psoup.select_one(sel)
@@ -1437,7 +1410,6 @@ def parse_article_from_nhk_easy(link: str):
         if candidate:
             image_url = urljoin(link, candidate)
             break
-
     audio_url = ""
     for sel in ["audio source[src]", "audio[src]", 'a[href$=".mp3"]', 'a[href*=".mp3"]']:
         el = psoup.select_one(sel)
@@ -1455,26 +1427,16 @@ def parse_article_from_nhk_easy(link: str):
         audio_field_match = re.search(r'"(?:audio|voice|sound|movie)Url"\s*:\s*"([^"]+)"', page.text, re.IGNORECASE)
         if audio_field_match:
             audio_url = urljoin(link, audio_field_match.group(1))
-
-    content = (
-        psoup.select_one(".article-main__body")
-        or psoup.select_one(".module--content")
-        or psoup.select_one("#js-article-body")
-        or psoup.select_one(".content--detail-body")
-        or psoup.select_one("article")
-        or psoup.select_one("main")
-    )
-
+    content = psoup.select_one(".article-main__body") or psoup.select_one(".module--content") or psoup.select_one("#js-article-body") or psoup.select_one(".content--detail-body") or psoup.select_one("article") or psoup.select_one("main")
     filtered_blocks = []
     if content is not None:
-        for bad in content.select("script, style, nav, footer, header, aside, form, h1, h2, h3"):
+        for bad in content.select("script, style, nav, footer, header, aside, form"):
             bad.decompose()
         for b in get_article_blocks(content):
-            t = (b["text"] or "").strip()
+            t = b["text"]
             if "share" in t.lower() or "follow us" in t.lower():
                 continue
             filtered_blocks.append(b)
-
     if not filtered_blocks:
         payload_texts = []
         for txt in re.findall(r'"children":"([^"]{10,}?)"', page.text):
@@ -1493,54 +1455,20 @@ def parse_article_from_nhk_easy(link: str):
             filtered_blocks.append({"html": t, "text": t})
             if len(filtered_blocks) >= 8:
                 break
-
     if not filtered_blocks:
         desc_meta = psoup.select_one('meta[name="description"]')
         desc = (desc_meta.get("content") or "").strip() if desc_meta else ""
         if desc:
             filtered_blocks.append({"html": desc, "text": desc})
-
     if not filtered_blocks:
         return None
-
-    title_plain = re.sub(r"\s+", "", BeautifulSoup(title_html or title, "html.parser").get_text(" ", strip=True))
-    cleaned_blocks = []
-    for i, b in enumerate(filtered_blocks):
-        bt = re.sub(r"\s+", "", (b.get("text") or ""))
-        if i == 0 and title_plain and (bt == title_plain or bt.startswith(title_plain) or title_plain in bt[: max(len(title_plain) + 20, 40)]):
-            continue
-        cleaned_blocks.append(b)
-    filtered_blocks = cleaned_blocks or filtered_blocks
-
     vocab = extract_vocab_from_blocks(filtered_blocks)
-
     translated_blocks = []
     for b in filtered_blocks:
-        src_text = (b["text"] or "").strip()
-        bg_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
-        en_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
-        translated_blocks.append({
-            "html": b["html"],
-            "text": b["text"],
-            "translation_bg": bg_tr,
-            "translation_en": en_tr,
-        })
-
-    title_bg = sanitize_translation_text(title, translate_text(title, dest="bg") or "")
-    title_en = sanitize_translation_text(title, translate_text(title, dest="en") or "")
-
-    return {
-        "title": title,
-        "title_html": title_html,
-        "title_translation_bg": title_bg,
-        "title_translation_en": title_en,
-        "link": link,
-        "image_url": image_url,
-        "audio_url": audio_url,
-        "blocks": translated_blocks,
-        "vocab": vocab,
-    }
-
+        bg_tr = translate_text(b["text"], dest="bg") or b["text"]
+        en_tr = translate_text(b["text"], dest="en") or b["text"]
+        translated_blocks.append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
+    return {"title": title, "title_html": title_html, "title_translation_bg": (translate_text(title, dest="bg") or title), "title_translation_en": (translate_text(title, dest="en") or title), "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
@@ -1557,15 +1485,18 @@ def get_articles(n=4):
             if article and fallback and fallback.get("blocks"):
                 article["blocks"] = []
                 for b in fallback["blocks"]:
-                    src_text = (b["text"] or "").strip()
-                    bg_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
-                    en_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
+                    bg_tr = translate_text(b["text"], dest="bg") or b["text"]
+                    en_tr = translate_text(b["text"], dest="en") or b["text"]
                     article["blocks"].append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
                     article["audio_url"] = fallback["audio_url"]
                 if fallback.get("image_url"):
                     article["image_url"] = fallback["image_url"]
+                for b in fallback["blocks"]:
+                    if "<ruby" in b["html"]:
+                        article["title_html"] = b["html"]
+                        break
             if article and article.get("blocks") and article.get("vocab") and article.get("image_url") and article.get("audio_url"):
                 articles.append(article)
                 if len(articles) >= n:
@@ -1691,7 +1622,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
-def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
+def build_html(articles, grammar_points=None, build_version="", build_code=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
 <html lang=\"ja\">
@@ -1725,7 +1656,6 @@ h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-fam
 .lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .update-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.7;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;white-space:pre-line}
-.generated-marker,.build-marker{max-width:760px;margin:4px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9;line-height:1.35}
 .build-marker{max-width:760px;margin:20px auto 8px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
@@ -1749,16 +1679,15 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .control-label{font-size:.92rem;color:var(--muted);margin-bottom:6px}
 .dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
 .dict-word.is-active{background:rgba(138,180,255,.18)}
+
+.shadow-sentence{display:block;margin:2px 0;padding-left:10px}
+.shadow-sentence.shadow-active{border-left:3px solid #ff7a00}
+
 .dict-popup{position:fixed;z-index:9999;display:none;max-width:min(96vw,440px);background:var(--popup);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
 .dict-popup .dw{font-weight:700;font-size:1.08rem;font-family:var(--jp-font);line-height:1.6;white-space:normal;word-break:break-word}
 .dict-popup .dr{color:var(--accent);font-size:.95rem;margin-top:2px}
 .dict-popup .dm{color:var(--text);margin-top:6px;line-height:1.65;white-space:normal;word-break:break-word}
 ruby rt{font-size:.68em;color:var(--muted)}
-
-
-.shadow-sentence{display:block;margin:2px 0;padding-left:10px}
-.shadow-sentence
-
 </style>
 </head>
 <body class=\"theme-dark\">
@@ -1775,7 +1704,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class=\"lang-hint\" data-ui=\"help_hint\"></div>
 <div class=\"update-hint\" data-ui=\"update_hint\"></div>
 <div class=\"author-info\" data-bg=\"Създадено от Веселин Баев&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\" data-en=\"Created by Veselin Baev&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\"></div>
-<div class=\"generated-marker\">Generated: {generated_at}</div>\n<div class=\"build-marker\">Build code: {build_code}</div>\n<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
+<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
 """
     for idx, article in enumerate(articles, start=1):
         html += "<article>"
@@ -1827,12 +1756,135 @@ function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
 function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||ms;const labelForm=(lang==='en'?'Form':'Форма');const line1=surface+(rs?' ['+rs+']':'')+' - '+ms;const line2=labelForm+': '+form;const line3=lemma+(rl?' ['+rl+']':'')+' - '+ml;const sameLemma=(lemma===surface);let html='<div class="dw">'+line1+'</div><div class="dm">'+line2+'</div>';if(!sameLemma){html+='<div class="dm">'+line3+'</div>';}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
+
+function splitSentenceParts(text){
+  return (text || '').split(/(?<=[。！？?!])\s*/).filter(function(s){return s && s.trim();});
+}
+
+function wrapBlockSentences(block){
+  if(!block) return [];
+  if(block.dataset.shadowPrepared === '1'){
+    return Array.from(block.querySelectorAll('.shadow-sentence'));
+  }
+
+  const originalNodes = Array.from(block.childNodes);
+  const frag = document.createDocumentFragment();
+  let current = document.createElement('span');
+  current.className = 'shadow-sentence';
+
+  function flushCurrent(){
+    if(!current.childNodes.length) return;
+    frag.appendChild(current);
+    current = document.createElement('span');
+    current.className = 'shadow-sentence';
+  }
+
+  function appendSplitText(txt){
+    const parts = splitSentenceParts(txt);
+    if(!parts.length){
+      if(txt) current.appendChild(document.createTextNode(txt));
+      return;
+    }
+    parts.forEach(function(part){
+      current.appendChild(document.createTextNode(part));
+      if(/[。！？?!]\s*$/.test(part)){
+        flushCurrent();
+      }
+    });
+  }
+
+  originalNodes.forEach(function(node){
+    if(node.nodeType === Node.TEXT_NODE){
+      appendSplitText(node.textContent || '');
+    } else {
+      const clone = node.cloneNode(true);
+      current.appendChild(clone);
+      const t = (current.textContent || '').trim();
+      if(/[。！？?!]\s*$/.test(t)){
+        flushCurrent();
+      }
+    }
+  });
+
+  flushCurrent();
+  block.innerHTML = '';
+  block.appendChild(frag);
+  block.dataset.shadowPrepared = '1';
+  return Array.from(block.querySelectorAll('.shadow-sentence'));
+}
+
+function sentenceWeight(text){
+  let score = 0;
+  for(const ch of (text || '')){
+    if(/[一-龯]/.test(ch)) score += 1.8;
+    else if(/[ぁ-ゖ]/.test(ch)) score += 1.1;
+    else if(/[ァ-ヺー]/.test(ch)) score += 1.2;
+    else if(/[、]/.test(ch)) score += 0.6;
+    else if(/[。！？?!]/.test(ch)) score += 0.8;
+    else score += 0.9;
+  }
+  return Math.max(score, 1);
+}
+
+function setupArticleShadowing(article){
+  const audio = article.querySelector('.article-audio');
+  if(!audio) return;
+
+  const sentenceEls = [];
+  article.querySelectorAll('.jp-block').forEach(function(block){
+    wrapBlockSentences(block).forEach(function(el){ sentenceEls.push(el); });
+  });
+  if(!sentenceEls.length) return;
+
+  let timings = [];
+
+  function buildTimings(){
+    const duration = audio.duration || 0;
+    if(!duration || !isFinite(duration)) return;
+    const weights = sentenceEls.map(function(el){ return sentenceWeight((el.textContent || '').trim()); });
+    const total = weights.reduce(function(a,b){ return a+b; }, 0) || 1;
+    let acc = 0;
+    timings = weights.map(function(w, idx){
+      const start = acc;
+      acc += duration * (w / total);
+      return { index: idx, start: start, end: acc };
+    });
+    if(timings.length){
+      timings[0].start = 0;
+      timings[timings.length - 1].end = duration;
+    }
+  }
+
+  function clearActive(){
+    sentenceEls.forEach(function(el){ el.classList.remove('shadow-active'); });
+  }
+
+  function updateHighlight(){
+    if(!timings.length) buildTimings();
+    if(!timings.length) return;
+    const t = audio.currentTime || 0;
+    let current = timings.find(function(seg){ return t >= seg.start && t < seg.end; });
+    if(!current) current = timings[timings.length - 1];
+    if(!current) return;
+    clearActive();
+    const el = sentenceEls[current.index];
+    if(el) el.classList.add('shadow-active');
+  }
+
+  audio.addEventListener('loadedmetadata', buildTimings);
+  audio.addEventListener('canplay', buildTimings);
+  audio.addEventListener('play', updateHighlight);
+  audio.addEventListener('timeupdate', updateHighlight);
+  audio.addEventListener('seeked', updateHighlight);
+  audio.addEventListener('pause', updateHighlight);
+  audio.addEventListener('ended', clearActive);
+}
+
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
-document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
+document.addEventListener('DOMContentLoaded',function(){loadPrefs();document.querySelectorAll('article').forEach(function(article){setupArticleShadowing(article);});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
 </html>"""
-    html = html.replace("{build_version}", str(build_version)).replace("{build_code}", str(build_code)).replace("{generated_at}", str(generated_at))
     return html
 
 def write_pwa_files(output_dir, build_version=""):
@@ -1868,8 +1920,6 @@ def main():
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     build_version = str(int(time.time()))
-    build_code = build_version[-4:] if len(build_version) >= 4 else build_version
-    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     output_dir = os.path.dirname(args.output)
     if output_dir:
@@ -1934,7 +1984,7 @@ def main():
 
     save_seen_words(anki_seen_words_path, seen_words)
 
-    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code, generated_at=generated_at)
+    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
