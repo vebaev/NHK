@@ -6,6 +6,7 @@ import html as html_lib
 import hashlib
 import json
 import time
+from datetime import datetime
 import uuid
 from urllib.parse import urljoin, urlparse
 
@@ -300,57 +301,45 @@ def translate_text(text: str, dest: str = "bg") -> str:
     cache_key = ("text", text, dest, bool(DEEPL_API_KEY))
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
-
-    result = ""
     if DEEPL_API_KEY:
         try:
             deepl_url = "https://api-free.deepl.com/v2/translate"
             if not DEEPL_API_KEY.endswith(":fx"):
                 deepl_url = "https://api.deepl.com/v2/translate"
-            resp = requests.post(
-                deepl_url,
-                headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"},
-                data={"text": text, "target_lang": dest.upper()},
-                timeout=20,
-            )
+            resp = requests.post(deepl_url, headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"}, data={"text": text, "target_lang": dest.upper()}, timeout=20)
             resp.raise_for_status()
             data = resp.json()
             translations = data.get("translations") or []
             if translations and translations[0].get("text"):
                 result = translations[0]["text"].strip()
                 _TRANSLATION_STATS["deepl"] += 1
+                _TRANSLATION_CACHE[cache_key] = result
+                return result
         except Exception:
-            result = ""
+            pass
+    try:
+        result = translator.translate(text, dest=dest).text
+        _TRANSLATION_STATS["google"] += 1
+        _TRANSLATION_CACHE[cache_key] = result
+        return result
+    except Exception:
+        return ""
 
-    if not result:
-        try:
-            result = (translator.translate(text, dest=dest).text or "").strip()
-            if result:
-                _TRANSLATION_STATS["google"] += 1
-        except Exception:
-            result = ""
 
-    if result == text:
-        if dest != "en":
-            en_guess = ""
-            try:
-                en_guess = (translator.translate(text, dest="en").text or "").strip()
-            except Exception:
-                en_guess = ""
-            if en_guess and en_guess != text:
-                try:
-                    bridged = (translator.translate(en_guess, dest=dest).text or "").strip()
-                except Exception:
-                    bridged = ""
-                result = bridged if bridged and bridged != en_guess else ""
-            else:
-                result = ""
-        else:
-            result = ""
 
-    _TRANSLATION_CACHE[cache_key] = result
-    return result
-
+def sanitize_translation_text(src: str, tr: str) -> str:
+    src = (src or "").strip()
+    tr = (tr or "").strip()
+    if not tr:
+        return ""
+    tr = re.sub(r"\s*\|\s*.*$", "", tr).strip()
+    if not tr or tr == src:
+        return ""
+    jp_chars = len(re.findall(r"[一-龯ぁ-ゖァ-ヺー]", tr))
+    latin_cyr = len(re.findall(r"[A-Za-zА-Яа-я]", tr))
+    if jp_chars > 0 and jp_chars >= max(4, latin_cyr):
+        return ""
+    return tr
 
 def translate_word(word: str, reading: str = "") -> str:
     word = (word or "").strip()
@@ -450,7 +439,7 @@ def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: s
 
 def get_article_blocks(content):
     blocks = []
-    for el in content.find_all(["p", "h2", "h3", "li"], recursive=True):
+    for el in content.find_all(["p", "li"], recursive=True):
         txt = el.get_text(" ", strip=True)
         if not txt or len(txt) < 3:
             continue
@@ -504,11 +493,9 @@ def get_reading_for_word(word: str, fallback: str = "") -> str:
     fallback = normalize_katakana_to_hiragana((fallback or "").strip())
     if not word:
         return fallback
-
     entry = lookup_dictionary_entry(word)
-    if entry and (entry.get("surface") or "").strip() == word and (entry.get("reading") or "").strip():
+    if entry and (entry.get("reading") or "").strip():
         return normalize_katakana_to_hiragana((entry.get("reading") or "").strip())
-
     tagger = get_mecab_tagger()
     if tagger is not None:
         try:
@@ -519,10 +506,6 @@ def get_reading_for_word(word: str, fallback: str = "") -> str:
                     return reading
         except Exception:
             pass
-
-    if entry and (entry.get("reading") or "").strip():
-        return normalize_katakana_to_hiragana((entry.get("reading") or "").strip())
-
     return fallback
 
 def unique_keep_order(values):
@@ -640,12 +623,9 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
                     info["cform"] = safe_feature_value(feat, "cForm", "cform", "conjForm", "inflectionForm")
                 else:
                     token_lemmas = [token_lemma(t).strip() or token_surface(t).strip() for t in tokens]
-                    pos1s = [token_pos1(t) for t in tokens]
                     derived = to_dictionary_form(surface)
                     non_aux_lemmas = [x for x in token_lemmas if x not in {"て", "で", "いる", "居る", "ます", "です", "ん", "ない"}]
-                    if all(p == "名詞" for p in pos1s):
-                        info["lemma"] = surface
-                    elif derived and derived != surface:
+                    if derived and derived != surface:
                         info["lemma"] = derived
                     elif non_aux_lemmas:
                         info["lemma"] = non_aux_lemmas[0]
@@ -913,21 +893,19 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     form_en = (analysis.get("form_en") or "form in context").strip()
 
     lemma_entry = lookup_dictionary_entry(lemma) or lookup_dictionary_entry(lemma, reading=reading_lemma)
-    lemma_gloss_en = ""
-    if lemma_entry and (lemma_entry.get("surface") or "").strip() == lemma:
-        lemma_gloss_en = ((lemma_entry or {}).get("gloss") or "").strip()
-    lemma_meaning_en = lemma_gloss_en or translate_word_lang(lemma, reading_lemma, dest="en") or ""
-    lemma_meaning_bg = (translate_text(lemma_gloss_en, dest="bg") if lemma_gloss_en else "") or translate_word_lang(lemma, reading_lemma, dest="bg") or ""
+    lemma_gloss_en = ((lemma_entry or {}).get("gloss") or "").strip()
+    lemma_meaning_en = lemma_gloss_en
+    lemma_meaning_bg = (translate_text(lemma_gloss_en, dest="bg") if lemma_gloss_en else "").strip()
 
     exact_item_match = lemma == (item.get("word") or "").strip() == surface
     if not lemma_meaning_bg and exact_item_match and (item.get("meaning_bg") or "").strip():
         lemma_meaning_bg = (item.get("meaning_bg") or "").strip()
     if not lemma_meaning_en and exact_item_match and (item.get("meaning_en") or "").strip():
         lemma_meaning_en = (item.get("meaning_en") or "").strip()
-    if not lemma_meaning_bg and lemma_meaning_en:
-        lemma_meaning_bg = translate_text(lemma_meaning_en, dest="bg") or lemma_meaning_en
-    if not lemma_meaning_en and lemma_meaning_bg:
-        lemma_meaning_en = translate_text(lemma_meaning_bg, dest="en") or lemma_meaning_bg
+    if not lemma_meaning_bg:
+        lemma_meaning_bg = lemma_meaning_en
+    if not lemma_meaning_en:
+        lemma_meaning_en = lemma_meaning_bg
 
     contextual = contextual_surface_meaning(
         surface=surface,
@@ -937,13 +915,8 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
         form_label_bg=form_bg,
         form_label_en=form_en,
     )
-    surface_meaning_bg = (contextual.get("bg") or "").strip()
-    surface_meaning_en = (contextual.get("en") or "").strip()
-
-    if not surface_meaning_bg:
-        surface_meaning_bg = translate_word_lang(surface, reading_surface, dest="bg") or lemma_meaning_bg or "Няма намерен превод"
-    if not surface_meaning_en:
-        surface_meaning_en = translate_word_lang(surface, reading_surface, dest="en") or lemma_meaning_en or "No translation found"
+    surface_meaning_bg = (contextual.get("bg") or "").strip() or lemma_meaning_bg
+    surface_meaning_en = (contextual.get("en") or "").strip() or lemma_meaning_en
 
     if lemma == surface:
         reading_lemma = ""
@@ -1430,20 +1403,31 @@ def parse_article_from_nhk_easy(link: str):
     page = requests.get(link, timeout=20)
     page.raise_for_status()
     psoup = BeautifulSoup(page.text, "html.parser")
-    title_tag = psoup.select_one("h1")
+
+    def clean_page_title(s: str) -> str:
+        s = (s or "").strip()
+        s = re.sub(r"\s*\|\s*.*$", "", s).strip()
+        return s
+
     title = ""
     title_html = ""
+
+    og_title = psoup.select_one('meta[property="og:title"]')
+    if og_title:
+        title = clean_page_title(og_title.get("content") or "")
+
+    title_tag = psoup.select_one("h1")
     if title_tag:
-        title = title_tag.get_text(" ", strip=True)
-        title_html = "".join(str(x) for x in title_tag.contents).strip() or title
-    if not title:
-        og_title = psoup.select_one('meta[property="og:title"]')
-        if og_title:
-            title = (og_title.get("content") or "").strip()
+        h1_text = clean_page_title(title_tag.get_text(" ", strip=True))
+        if h1_text and len(h1_text) <= 80 and h1_text.count("。") <= 1:
+            title = h1_text or title
+            title_html = "".join(str(x) for x in title_tag.contents).strip() or title
+
     if not title:
         title = "NHK Easy Article"
     if not title_html:
         title_html = title
+
     image_url = ""
     for sel in ['meta[property="og:image"]', 'meta[name="og:image"]', "article img[src]", "main img[src]", "img[src]"]:
         el = psoup.select_one(sel)
@@ -1453,6 +1437,7 @@ def parse_article_from_nhk_easy(link: str):
         if candidate:
             image_url = urljoin(link, candidate)
             break
+
     audio_url = ""
     for sel in ["audio source[src]", "audio[src]", 'a[href$=".mp3"]', 'a[href*=".mp3"]']:
         el = psoup.select_one(sel)
@@ -1470,16 +1455,26 @@ def parse_article_from_nhk_easy(link: str):
         audio_field_match = re.search(r'"(?:audio|voice|sound|movie)Url"\s*:\s*"([^"]+)"', page.text, re.IGNORECASE)
         if audio_field_match:
             audio_url = urljoin(link, audio_field_match.group(1))
-    content = psoup.select_one(".article-main__body") or psoup.select_one(".module--content") or psoup.select_one("#js-article-body") or psoup.select_one(".content--detail-body") or psoup.select_one("article") or psoup.select_one("main")
+
+    content = (
+        psoup.select_one(".article-main__body")
+        or psoup.select_one(".module--content")
+        or psoup.select_one("#js-article-body")
+        or psoup.select_one(".content--detail-body")
+        or psoup.select_one("article")
+        or psoup.select_one("main")
+    )
+
     filtered_blocks = []
     if content is not None:
-        for bad in content.select("script, style, nav, footer, header, aside, form"):
+        for bad in content.select("script, style, nav, footer, header, aside, form, h1, h2, h3"):
             bad.decompose()
         for b in get_article_blocks(content):
-            t = b["text"]
+            t = (b["text"] or "").strip()
             if "share" in t.lower() or "follow us" in t.lower():
                 continue
             filtered_blocks.append(b)
+
     if not filtered_blocks:
         payload_texts = []
         for txt in re.findall(r'"children":"([^"]{10,}?)"', page.text):
@@ -1498,33 +1493,54 @@ def parse_article_from_nhk_easy(link: str):
             filtered_blocks.append({"html": t, "text": t})
             if len(filtered_blocks) >= 8:
                 break
+
     if not filtered_blocks:
         desc_meta = psoup.select_one('meta[name="description"]')
         desc = (desc_meta.get("content") or "").strip() if desc_meta else ""
         if desc:
             filtered_blocks.append({"html": desc, "text": desc})
+
     if not filtered_blocks:
         return None
+
+    title_plain = re.sub(r"\s+", "", BeautifulSoup(title_html or title, "html.parser").get_text(" ", strip=True))
+    cleaned_blocks = []
+    for i, b in enumerate(filtered_blocks):
+        bt = re.sub(r"\s+", "", (b.get("text") or ""))
+        if i == 0 and title_plain and (bt == title_plain or bt.startswith(title_plain) or title_plain in bt[: max(len(title_plain) + 20, 40)]):
+            continue
+        cleaned_blocks.append(b)
+    filtered_blocks = cleaned_blocks or filtered_blocks
+
     vocab = extract_vocab_from_blocks(filtered_blocks)
+
     translated_blocks = []
     for b in filtered_blocks:
         src_text = (b["text"] or "").strip()
-        bg_tr = translate_text(src_text, dest="bg") or ""
-        en_tr = translate_text(src_text, dest="en") or ""
-        if bg_tr.strip() == src_text:
-            bg_tr = ""
-        if en_tr.strip() == src_text:
-            en_tr = ""
-        translated_blocks.append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
+        bg_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
+        en_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
+        translated_blocks.append({
+            "html": b["html"],
+            "text": b["text"],
+            "translation_bg": bg_tr,
+            "translation_en": en_tr,
+        })
 
-    title_bg = translate_text(title, dest="bg") or ""
-    title_en = translate_text(title, dest="en") or ""
-    if title_bg.strip() == title.strip():
-        title_bg = ""
-    if title_en.strip() == title.strip():
-        title_en = ""
+    title_bg = sanitize_translation_text(title, translate_text(title, dest="bg") or "")
+    title_en = sanitize_translation_text(title, translate_text(title, dest="en") or "")
 
-    return {"title": title, "title_html": title_html, "title_translation_bg": title_bg, "title_translation_en": title_en, "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
+    return {
+        "title": title,
+        "title_html": title_html,
+        "title_translation_bg": title_bg,
+        "title_translation_en": title_en,
+        "link": link,
+        "image_url": image_url,
+        "audio_url": audio_url,
+        "blocks": translated_blocks,
+        "vocab": vocab,
+    }
+
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
@@ -1541,18 +1557,15 @@ def get_articles(n=4):
             if article and fallback and fallback.get("blocks"):
                 article["blocks"] = []
                 for b in fallback["blocks"]:
-                    bg_tr = translate_text(b["text"], dest="bg") or b["text"]
-                    en_tr = translate_text(b["text"], dest="en") or b["text"]
+                    src_text = (b["text"] or "").strip()
+                    bg_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
+                    en_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
                     article["blocks"].append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
                     article["audio_url"] = fallback["audio_url"]
                 if fallback.get("image_url"):
                     article["image_url"] = fallback["image_url"]
-                for b in fallback["blocks"]:
-                    if "<ruby" in b["html"]:
-                        article["title_html"] = b["html"]
-                        break
             if article and article.get("blocks") and article.get("vocab") and article.get("image_url") and article.get("audio_url"):
                 articles.append(article)
                 if len(articles) >= n:
@@ -1678,7 +1691,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
-def build_html(articles, grammar_points=None, build_version="", build_code=""):
+def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
 <html lang=\"ja\">
@@ -1712,6 +1725,7 @@ h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-fam
 .lang-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .update-hint{max-width:760px;margin:0 auto 10px auto;text-align:center;color:var(--muted);font-size:.95rem;line-height:1.6}
 .author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.7;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;white-space:pre-line}
+.generated-marker,.build-marker{max-width:760px;margin:4px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9;line-height:1.35}
 .build-marker{max-width:760px;margin:20px auto 8px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
 h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
@@ -1756,7 +1770,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class=\"lang-hint\" data-ui=\"help_hint\"></div>
 <div class=\"update-hint\" data-ui=\"update_hint\"></div>
 <div class=\"author-info\" data-bg=\"Създадено от Веселин Баев&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\" data-en=\"Created by Veselin Baev&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\"></div>
-<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
+<div class=\"generated-marker\">Generated: {generated_at}</div>\n<div class=\"build-marker\">Build code: {build_code}</div>\n<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
 """
     for idx, article in enumerate(articles, start=1):
         html += "<article>"
@@ -1813,6 +1827,7 @@ document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceW
 </script>
 </body>
 </html>"""
+    html = html.replace("{build_version}", str(build_version)).replace("{build_code}", str(build_code)).replace("{generated_at}", str(generated_at))
     return html
 
 def write_pwa_files(output_dir, build_version=""):
@@ -1848,6 +1863,8 @@ def main():
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     build_version = str(int(time.time()))
+    build_code = build_version[-4:] if len(build_version) >= 4 else build_version
+    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     output_dir = os.path.dirname(args.output)
     if output_dir:
@@ -1912,7 +1929,7 @@ def main():
 
     save_seen_words(anki_seen_words_path, seen_words)
 
-    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code)
+    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code, generated_at=generated_at)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
