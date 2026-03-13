@@ -1646,24 +1646,8 @@ def parse_article_from_nhk_easy(link: str):
     translated_blocks = []
     for b in filtered_blocks:
         src_text = (b["text"] or "").strip()
-        
-bg_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
-if not bg_tr:
-    # fallback JP -> EN -> BG
-    en_tmp = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
-    if en_tmp:
-        bg_tmp = translate_text(en_tmp, dest="bg")
-        bg_tr = sanitize_translation_text(src_text, bg_tmp or "")
-
-        
-en_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
-if not en_tr:
-    # fallback via BG
-    bg_tmp = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
-    if bg_tmp:
-        en_tmp = translate_text(bg_tmp, dest="en")
-        en_tr = sanitize_translation_text(src_text, en_tmp or "")
-
+        bg_tr = translate_paragraph_with_fallback(src_text, dest="bg")
+        en_tr = translate_paragraph_with_fallback(src_text, dest="en")
         translated_blocks.append({
             "html": b["html"],
             "text": b["text"],
@@ -1703,24 +1687,8 @@ def get_articles(n=4):
                 article["blocks"] = []
                 for b in fallback["blocks"]:
                     src_text = (b["text"] or "").strip()
-                    
-bg_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
-if not bg_tr:
-    # fallback JP -> EN -> BG
-    en_tmp = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
-    if en_tmp:
-        bg_tmp = translate_text(en_tmp, dest="bg")
-        bg_tr = sanitize_translation_text(src_text, bg_tmp or "")
-
-                    
-en_tr = sanitize_translation_text(src_text, translate_text(src_text, dest="en") or "")
-if not en_tr:
-    # fallback via BG
-    bg_tmp = sanitize_translation_text(src_text, translate_text(src_text, dest="bg") or "")
-    if bg_tmp:
-        en_tmp = translate_text(bg_tmp, dest="en")
-        en_tr = sanitize_translation_text(src_text, en_tmp or "")
-
+                    bg_tr = translate_paragraph_with_fallback(src_text, dest="bg")
+                    en_tr = translate_paragraph_with_fallback(src_text, dest="en")
                     article["blocks"].append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
