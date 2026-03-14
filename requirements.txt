@@ -5,3 +5,4 @@ googletrans==4.0.0rc1
 fugashi
 unidic-lite
 genanki
+weasyprint
