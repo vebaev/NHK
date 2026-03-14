@@ -9,12 +9,13 @@
 <ruby>上げた<rt>あげた</rt></ruby>	raised
 <ruby>下駄<rt>げた</rt></ruby>	geta
 <ruby>乗った<rt>のった</rt></ruby>	rode
-<ruby>乗り<rt>糊</rt></ruby>	ride
+<ruby>乗り<rt>のり</rt></ruby>	карам
 <ruby>事故<rt>じこ</rt></ruby>	accident
 <ruby>付く<rt>つい</rt></ruby>	attached
 <ruby>件ありまする<rt>けんありまする</rt></ruby>	There are cases
 <ruby>似ていますが<rt>にていますが</rt></ruby>	Although it is similar
 <ruby>似る<rt>に</rt></ruby>	similar
+<ruby>使う<rt>つかう</rt></ruby>	use
 <ruby>値段<rt>ねだん</rt></ruby>	price
 <ruby>免許<rt>めんきょ</rt></ruby>	driver licence
 <ruby>入る<rt>いる</rt></ruby>	enter
@@ -29,17 +30,21 @@
 <ruby>出る<rt>で</rt></ruby>	come out
 <ruby>出来る<rt>でき</rt></ruby>	I can do it
 <ruby>分かる<rt>わかり</rt></ruby>	I understand
+<ruby>初めて<rt>はじめて</rt></ruby>	first time
+<ruby>北京<rt>ぺきん</rt></ruby>	Beijing
 <ruby>北京大会<rt>ぺきんたいかい</rt></ruby>	Beijing Conference
 <ruby>原油<rt>げんゆ</rt></ruby>	crude
 <ruby>去年<rt>きょねん</rt></ruby>	last year
 <ruby>取る<rt>とり</rt></ruby>	take
+<ruby>同じ<rt>おなじ</rt></ruby>	same
 <ruby>回転<rt>かいてん</rt></ruby>	rotate
 <ruby>困る<rt>こまる</rt></ruby>	in trouble
 <ruby>基地<rt>きち</rt></ruby>	base
 <ruby>壊す<rt>こわす</rt></ruby>	break
-<ruby>売る<rt>得る</rt></ruby>	sell
+<ruby>売る<rt>うる</rt></ruby>	sell
 <ruby>多くなりまする<rt>おおくなりまする</rt></ruby>	There will be more
-<ruby>大会<rt>たいかい</rt></ruby>	tournament
+<ruby>大きい<rt>おおきく</rt></ruby>	big
+<ruby>大会<rt>たいかい</rt></ruby>	турнир
 <ruby>大統領<rt>だいとうりょう</rt></ruby>	president
 <ruby>女子<rt>じょし</rt></ruby>	girls
 <ruby>女子大<rt>じょしだい</rt></ruby>	women's university
@@ -66,15 +71,18 @@
 <ruby>攻撃すると<rt>こうげきすると</rt></ruby>	when you attack
 <ruby>政府<rt>せいふ</rt></ruby>	government
 <ruby>文字<rt>もじ</rt></ruby>	character
+<ruby>新しい<rt>あたらしい</rt></ruby>	new
 <ruby>日本<rt>にっぽん</rt></ruby>	Japan
 <ruby>昨日<rt>きのう</rt></ruby>	yesterday
 <ruby>書きまする<rt>かきまする</rt></ruby>	I will write
 <ruby>有る<rt>ある</rt></ruby>	Yes
+<ruby>村岡<rt>むらおか</rt></ruby>	Мураока
 <ruby>村岡桃佳<rt>むらおかももか</rt></ruby>	Momoka Muraoka
 <ruby>村岡桃佳選手<rt>むらおかももかせんしゅ</rt></ruby>	Momoka Muraoka
-<ruby>村岡選手<rt>むらおかせんしゅ</rt></ruby>	Muraoka player
+<ruby>村岡選手<rt>むらおかせんしゅ</rt></ruby>	Мураока играч
 <ruby>来る<rt>こ</rt></ruby>	come
 <ruby>来ればよかったです<rt>くればよかったです</rt></ruby>	I wish I had come
+<ruby>東京<rt>とうきょう</rt></ruby>	Tokyo
 <ruby>欲しい<rt>ほしい</rt></ruby>	want
 <ruby>歩道<rt>ほどう</rt></ruby>	sidewalk
 <ruby>決める<rt>きめる</rt></ruby>	decide
@@ -83,11 +91,13 @@
 <ruby>滋賀県大津市<rt>しがけんおおつし</rt></ruby>	Otsu City, Shiga Prefecture
 <ruby>滑ったあと<rt>すべったあと</rt></ruby>	After slipping
 <ruby>滑りましたが<rt>すべりましたが</rt></ruby>	I slipped but
+<ruby>滑る<rt>すべる</rt></ruby>	slide
 <ruby>目指<rt>めゆび</rt></ruby>	aim
 <ruby>目指する<rt>めざする</rt></ruby>	aim
 <ruby>知れる<rt>しれ</rt></ruby>	know
 <ruby>私たちは<rt>わたしたちは</rt></ruby>	we
 <ruby>種目<rt>しゅもく</rt></ruby>	Event
+<ruby>続く<rt>つづく</rt></ruby>	Continue
 <ruby>自分<rt>じぶん</rt></ruby>	myself
 <ruby>自転<rt>じてん</rt></ruby>	rotation
 <ruby>自転車<rt>じてんしゃ</rt></ruby>	bicycle
@@ -108,19 +118,12 @@
 <ruby>通ることを<rt>とおることを</rt></ruby>	to pass
 <ruby>運転<rt>うんてん</rt></ruby>	driving
 <ruby>運転免許<rt>うんてんめんきょ</rt></ruby>	driving license
-<ruby>違いはわかりにくい<rt>ちがいはわかりにくい</rt></ruby>	Difficult to tell the difference
+<ruby>違いはわかりにくい<rt>ちがいはわかりにくい</rt></ruby>	It's hard to tell the difference
 <ruby>違反<rt>いはん</rt></ruby>	violation
-<ruby>選んでほしいです<rt>えらんでほしいです</rt></ruby>	I want you to choose
+<ruby>選んでほしいです<rt>えらんでほしいです</rt></ruby>	Искам ти да избереш
 <ruby>選手<rt>せんしゅ</rt></ruby>	player
 <ruby>金メダル<rt>きんめだる</rt></ruby>	gold medal
 <ruby>銀メダル<rt>ぎんめだる</rt></ruby>	silver medal
 <ruby>電動<rt>でんどう</rt></ruby>	electric
 <ruby>電動アシスト自転<rt>でんどうあしすとじてん</rt></ruby>	electric assist rotation
 <ruby>首相<rt>しゅしょう</rt></ruby>	prime minister
-使う	use
-初めて	first time
-同じ	same
-大きい	big
-新しい	new
-滑る	slide
-続く	Continue
