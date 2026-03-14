@@ -6,6 +6,7 @@ import html as html_lib
 import hashlib
 import json
 import time
+from datetime import datetime
 import uuid
 from urllib.parse import urljoin, urlparse
 
@@ -13,12 +14,6 @@ import requests
 from bs4 import BeautifulSoup, NavigableString
 from googletrans import Translator
 import sqlite3
-
-try:
-    from weasyprint import HTML
-    WEASYPRINT_OK = True
-except Exception:
-    WEASYPRINT_OK = False
 
 try:
     import fugashi
@@ -1628,108 +1623,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
-
-
-def build_pdf_html(articles, generated_at=""):
-    def esc(s: str) -> str:
-        return html_lib.escape((s or "").strip())
-
-    toc_items = []
-    article_sections = []
-    for idx, art in enumerate(articles, start=1):
-        anchor = f"article-{idx}"
-        title_text = (art.get("title") or "").strip()
-        title_html = (art.get("title_html") or esc(title_text)).strip()
-        title_tr = (art.get("title_translation_bg") or "").strip()
-        image_url = (art.get("image_url") or "").strip()
-
-        toc_items.append(f'<li><a href="#{anchor}">{esc(title_text or f"Article {idx}")}</a></li>')
-
-        blocks_html = []
-        for block in art.get("blocks", []):
-            jp_html = (block.get("html") or esc(block.get("text") or "")).strip()
-            tr_bg = (block.get("translation_bg") or "").strip()
-            piece = [f'<div class="jp-block-pdf">{jp_html}</div>']
-            if tr_bg:
-                piece.append(f'<div class="tr-block-pdf">{esc(tr_bg)}</div>')
-            blocks_html.append('<div class="pdf-block">' + "".join(piece) + '</div>')
-
-        article_sections.append(f"""
-        <section class="article" id="{anchor}">
-          <h2 class="article-title">{title_html}</h2>
-          {'<div class="title-tr">' + esc(title_tr) + '</div>' if title_tr else ''}
-          {'<img class="article-image" src="' + esc(image_url) + '" />' if image_url else ''}
-          {''.join(blocks_html)}
-        </section>
-        """)
-
-    return f"""<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<title>NHK Easy News A5 PDF</title>
-<style>
-  @page {{
-    size: A5;
-    margin: 14mm 12mm 14mm 12mm;
-    background: #f4ecd8;
-    @bottom-right {{
-      content: counter(page);
-      color: #6d5a43;
-      font-size: 9px;
-    }}
-  }}
-  html, body {{
-    font-family: "Noto Serif CJK JP","Noto Serif CJK","Source Han Serif JP","IPAexMincho","Hiragino Mincho ProN",serif;
-    color: #32281c;
-    background: #f4ecd8;
-    font-size: 11pt;
-    line-height: 1.7;
-  }}
-  body {{ margin: 0; }}
-  .cover {{ page-break-after: always; }}
-  .cover h1 {{ font-size: 22pt; margin: 0 0 6mm 0; color: #3d2f20; }}
-  .subtitle {{ color: #705a42; margin-bottom: 8mm; font-size: 10pt; }}
-  .toc-title {{ font-size: 14pt; margin: 0 0 4mm 0; color: #4a3826; }}
-  .toc {{ margin: 0; padding-left: 5mm; }}
-  .toc li {{ margin: 0 0 2mm 0; }}
-  .toc a {{ color: #5b452e; text-decoration: none; }}
-  .article {{ page-break-after: always; }}
-  .article:last-child {{ page-break-after: auto; }}
-  .article-title {{ font-size: 16pt; line-height: 1.45; margin: 0 0 3mm 0; color: #3a2d1f; }}
-  .title-tr {{ font-size: 9.5pt; color: #6d573f; margin: 0 0 4mm 0; }}
-  .article-image {{ display: block; width: 100%; max-height: 72mm; object-fit: cover; margin: 0 0 5mm 0; border-radius: 2mm; }}
-  .pdf-block {{ margin: 0 0 4mm 0; break-inside: avoid; }}
-  .jp-block-pdf {{ font-size: 11pt; color: #2f2417; }}
-  .tr-block-pdf {{ margin-top: 1.5mm; font-size: 9.2pt; line-height: 1.55; color: #6f5a44; }}
-  ruby {{ ruby-position: over; ruby-align: center; }}
-  rt {{ font-size: 55%; color: #8a6e52; }}
-  rp {{ display: none; }}
-.pdf-link{max-width:760px;margin:8px auto 10px auto;text-align:center;font-size:.95rem}
-.pdf-link a{color:var(--accent);text-decoration:none}
-</style>
-</head>
-<body>
-  <section class="cover">
-    <h1>NHK Easy News</h1>
-    <div class="subtitle">A5 print edition - Generated: {esc(generated_at)}</div>
-    <div class="toc-title">Съдържание</div>
-    <ol class="toc">
-      {''.join(toc_items)}
-    </ol>
-  </section>
-  {''.join(article_sections)}
-</body>
-</html>"""
-
-def export_news_pdf(articles, output_path, generated_at=""):
-    if not WEASYPRINT_OK:
-        return None
-    pdf_html = build_pdf_html(articles, generated_at=generated_at)
-    HTML(string=pdf_html, base_url=os.getcwd()).write_pdf(output_path)
-    return output_path
-
-def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
+def build_html(articles, grammar_points=None, build_version="", build_code=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
 <html lang=\"ja\">
@@ -1811,7 +1705,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class=\"lang-hint\" data-ui=\"help_hint\"></div>
 <div class=\"update-hint\" data-ui=\"update_hint\"></div>
 <div class=\"author-info\" data-bg=\"Създадено от Веселин Баев&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\" data-en=\"Created by Veselin Baev&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\"></div>
-<div class=\"pdf-link\"><a href=\"./nhk_easy_news_a5.pdf?v={build_version}\" target=\"_blank\" rel=\"noopener\">📄 PDF версия (A5)</a></div>\n<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
+<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
 """
     for idx, article in enumerate(articles, start=1):
         html += "<article>"
@@ -1992,7 +1886,6 @@ document.addEventListener('DOMContentLoaded',function(){loadPrefs();document.que
 </script>
 </body>
 </html>"""
-    html = html.replace("{build_version}", str(build_version)).replace("{build_code}", str(build_code)).replace("{generated_at}", str(generated_at))
     return html
 
 def write_pwa_files(output_dir, build_version=""):
@@ -2029,8 +1922,6 @@ def main():
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
-    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-    build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     output_dir = os.path.dirname(args.output)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -2042,12 +1933,6 @@ def main():
         raise RuntimeError("No articles were extracted.")
 
     grammar_points = extract_grammar_points(articles)
-    pdf_output_path = os.path.join(output_dir, "nhk_easy_news_a5.pdf") if output_dir else "nhk_easy_news_a5.pdf"
-    try:
-        export_news_pdf(articles, pdf_output_path, generated_at=generated_at)
-    except Exception as e:
-        print("PDF export failed:", e)
-
 
     vocab_tsv_filename = DEFAULT_ANKI_FILENAME
     vocab_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
@@ -2100,7 +1985,7 @@ def main():
 
     save_seen_words(anki_seen_words_path, seen_words)
 
-    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code, generated_at=generated_at)
+    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
