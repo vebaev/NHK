@@ -6,6 +6,7 @@ import html as html_lib
 import hashlib
 import json
 import time
+from datetime import datetime
 import uuid
 from urllib.parse import urljoin, urlparse
 
@@ -1622,7 +1623,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
-def build_html(articles, grammar_points=None, build_version="", build_code=""):
+def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
 <html lang=\"ja\">
@@ -1679,6 +1680,10 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .control-label{font-size:.92rem;color:var(--muted);margin-bottom:6px}
 .dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
 .dict-word.is-active{background:rgba(138,180,255,.18)}
+
+.shadow-sentence{display:block;margin:2px 0;padding-left:10px}
+.shadow-sentence.shadow-active{border-left:3px solid #ff7a00}
+
 .dict-popup{position:fixed;z-index:9999;display:none;max-width:min(96vw,440px);background:var(--popup);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
 .dict-popup .dw{font-weight:700;font-size:1.08rem;font-family:var(--jp-font);line-height:1.6;white-space:normal;word-break:break-word}
 .dict-popup .dr{color:var(--accent);font-size:.95rem;margin-top:2px}
@@ -1689,6 +1694,9 @@ ruby rt{font-size:.68em;color:var(--muted)}
 .block-play-btn{flex:0 0 auto;width:28px;height:28px;border:1px solid var(--border);border-radius:999px;background:var(--card2);color:var(--accent);cursor:pointer;font:inherit;line-height:1;padding:0}
 .block-play-btn:hover{filter:brightness(1.05)}
 .block-audio-row .jp-block{flex:1;margin:0}
+.shadow-sentence{display:block;margin:2px 0;padding-left:10px}
+.shadow-sentence.shadow-active{border-left:3px solid #ff7a00 !important}
+.generated-marker,.build-marker{max-width:760px;margin:4px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9;line-height:1.35}
 
 </style>
 </head>
@@ -1706,7 +1714,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class=\"lang-hint\" data-ui=\"help_hint\"></div>
 <div class=\"update-hint\" data-ui=\"update_hint\"></div>
 <div class=\"author-info\" data-bg=\"Създадено от Веселин Баев&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\" data-en=\"Created by Veselin Baev&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\"></div>
-<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
+<div class=\"generated-marker\">Generated: {generated_at}</div>\n<div class=\"build-marker\">Build code: {build_code}</div>\n<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
 """
     for idx, article in enumerate(articles, start=1):
         html += "<article>"
@@ -1759,15 +1767,146 @@ function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup
 function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||ms;const labelForm=(lang==='en'?'Form':'Форма');const line1=surface+(rs?' ['+rs+']':'')+' - '+ms;const line2=labelForm+': '+form;const line3=lemma+(rl?' ['+rl+']':'')+' - '+ml;const sameLemma=(lemma===surface);let html='<div class="dw">'+line1+'</div><div class="dm">'+line2+'</div>';if(!sameLemma){html+='<div class="dm">'+line3+'</div>';}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
+function splitSentenceParts(text){
+  return (text || '').split(/(?<=[。！？?!])\s*/).filter(function(s){return s && s.trim();});
+}
+
+function wrapBlockSentences(block){
+  if(!block) return [];
+  if(block.dataset.shadowPrepared === '1'){
+    return Array.from(block.querySelectorAll('.shadow-sentence'));
+  }
+
+  const originalNodes = Array.from(block.childNodes);
+  const frag = document.createDocumentFragment();
+  let current = document.createElement('span');
+  current.className = 'shadow-sentence';
+
+  function flushCurrent(){
+    if(!current.childNodes.length) return;
+    frag.appendChild(current);
+    current = document.createElement('span');
+    current.className = 'shadow-sentence';
+  }
+
+  function appendSplitText(txt){
+    const parts = splitSentenceParts(txt);
+    if(!parts.length){
+      if(txt) current.appendChild(document.createTextNode(txt));
+      return;
+    }
+    parts.forEach(function(part){
+      current.appendChild(document.createTextNode(part));
+      if(/[。！？?!]\s*$/.test(part)){
+        flushCurrent();
+      }
+    });
+  }
+
+  originalNodes.forEach(function(node){
+    if(node.nodeType === Node.TEXT_NODE){
+      appendSplitText(node.textContent || '');
+    } else {
+      const clone = node.cloneNode(true);
+      current.appendChild(clone);
+      const t = (current.textContent || '').trim();
+      if(/[。！？?!]\s*$/.test(t)){
+        flushCurrent();
+      }
+    }
+  });
+
+  flushCurrent();
+  block.innerHTML = '';
+  block.appendChild(frag);
+  block.dataset.shadowPrepared = '1';
+  return Array.from(block.querySelectorAll('.shadow-sentence'));
+}
+
+function sentenceWeight(text){
+  let score = 0;
+  for(const ch of (text || '')){
+    if(/[一-龯]/.test(ch)) score += 1.8;
+    else if(/[ぁ-ゖ]/.test(ch)) score += 1.1;
+    else if(/[ァ-ヺー]/.test(ch)) score += 1.2;
+    else if(/[、]/.test(ch)) score += 0.6;
+    else if(/[。！？?!]/.test(ch)) score += 0.8;
+    else score += 0.9;
+  }
+  return Math.max(score, 1);
+}
+
+function setupArticleShadowing(article){
+  const audio = article.querySelector('.article-audio');
+  if(!audio) return;
+
+  const sentenceEls = [];
+  const blocks = Array.from(article.querySelectorAll('.jp-block'));
+  blocks.forEach(function(block, bidx){
+    if(!block.dataset.blockUid){ block.dataset.blockUid = 'b' + (bidx + 1); }
+    wrapBlockSentences(block).forEach(function(el){
+      el.dataset.blockUid = block.dataset.blockUid;
+      sentenceEls.push(el);
+    });
+  });
+  if(!sentenceEls.length) return;
+
+  let timings = [];
+
+  function buildTimings(){
+    const duration = audio.duration || 0;
+    if(!duration || !isFinite(duration)) return;
+    const weights = sentenceEls.map(function(el){ return sentenceWeight((el.textContent || '').trim()); });
+    const total = weights.reduce(function(a,b){ return a+b; }, 0) || 1;
+    let acc = 0;
+    timings = weights.map(function(w, idx){
+      const start = acc;
+      acc += duration * (w / total);
+      return { index: idx, start: start, end: acc };
+    });
+    if(timings.length){
+      timings[0].start = 0;
+      timings[timings.length - 1].end = duration;
+    }
+    blocks.forEach(function(block){
+      const uid = block.dataset.blockUid;
+      const firstIdx = sentenceEls.findIndex(function(el){ return el.dataset.blockUid === uid; });
+      block.dataset.audioStart = firstIdx >= 0 && timings[firstIdx] ? String(timings[firstIdx].start || 0) : '0';
+    });
+  }
+
+  function clearActive(){
+    sentenceEls.forEach(function(el){ el.classList.remove('shadow-active'); });
+  }
+
+  function updateHighlight(){
+    if(!timings.length) buildTimings();
+    if(!timings.length) return;
+    const t = audio.currentTime || 0;
+    let current = timings.find(function(seg){ return t >= seg.start && t < seg.end; });
+    if(!current) current = timings[timings.length - 1];
+    if(!current) return;
+    clearActive();
+    const el = sentenceEls[current.index];
+    if(el) el.classList.add('shadow-active');
+  }
+
+  audio.addEventListener('loadedmetadata', buildTimings);
+  audio.addEventListener('canplay', buildTimings);
+  audio.addEventListener('play', updateHighlight);
+  audio.addEventListener('timeupdate', updateHighlight);
+  audio.addEventListener('seeked', updateHighlight);
+  audio.addEventListener('pause', updateHighlight);
+  audio.addEventListener('ended', clearActive);
+}
+
+
 function attachBlockPlayButtons(article){
   const audio = article.querySelector('.article-audio');
   if(!audio) return;
-  let blockCounter = 0;
-  article.querySelectorAll('.jp-block').forEach(function(block){
-    if(!block.dataset.blockUid){
-      blockCounter += 1;
-      block.dataset.blockUid = 'b' + blockCounter;
-    }
+  const blocks = Array.from(article.querySelectorAll('.jp-block'));
+  blocks.forEach(function(block, idx){
+    if(!block.dataset.blockUid){ block.dataset.blockUid = 'b' + (idx + 1); }
     if(block.parentElement && block.parentElement.classList.contains('block-audio-row')) return;
 
     const row = document.createElement('div');
@@ -1777,15 +1916,12 @@ function attachBlockPlayButtons(article){
     btn.className = 'block-play-btn';
     btn.setAttribute('aria-label', 'Play from this passage');
     btn.textContent = '▶';
-
     btn.addEventListener('click', function(event){
       event.stopPropagation();
       const start = parseFloat(block.dataset.audioStart || '0') || 0;
-      try{
-        audio.currentTime = Math.max(0, start);
-      }catch(e){}
-      const playPromise = audio.play();
-      if(playPromise && typeof playPromise.catch === 'function'){ playPromise.catch(function(){}); }
+      try{ audio.currentTime = Math.max(0, start); }catch(e){}
+      const p = audio.play();
+      if(p && typeof p.catch === 'function'){ p.catch(function(){}); }
     });
 
     const parent = block.parentNode;
@@ -1796,10 +1932,47 @@ function attachBlockPlayButtons(article){
 }
 
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
-document.addEventListener('DOMContentLoaded',function(){loadPrefs();if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
+document.addEventListener('DOMContentLoaded',function(){
+loadPrefs();
+document.querySelectorAll('article').forEach(function(article){
+  attachBlockPlayButtons(article);
+  setupArticleShadowing(article);
+});
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){
+    if(reg&&reg.update){reg.update();}
+  }).catch(function(){});
+}
+forceFreshReloadCheck();
+setInterval(forceFreshReloadCheck,120000);
+document.querySelectorAll('.title-toggle').forEach(function(title){
+  title.addEventListener('click',function(){
+    const tr=title.nextElementSibling;
+    if(!tr||!tr.classList.contains('title-translation'))return;
+    tr.style.display=tr.style.display==='block'?'none':'block';
+  });
+});
+document.querySelectorAll('.dict-word').forEach(function(el){
+  el.addEventListener('click',function(event){
+    event.stopPropagation();
+    showDictPopup(el);
+  });
+});
+document.addEventListener('click',function(){closeDictPopup();});
+document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){
+  const jpBlock=trBlock.previousElementSibling;
+  if(!jpBlock)return;
+  jpBlock.style.cursor='pointer';
+  jpBlock.addEventListener('click',function(event){
+    if(event.target.closest('.dict-word') || event.target.closest('.block-play-btn')) return;
+    trBlock.classList.toggle('is-visible');
+  });
+});
+});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
 </html>"""
+    html = html.replace("{build_version}", str(build_version)).replace("{build_code}", str(build_code)).replace("{generated_at}", str(generated_at))
     return html
 
 def write_pwa_files(output_dir, build_version=""):
@@ -1835,6 +2008,8 @@ def main():
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     build_version = str(int(time.time()))
+    build_code = build_version[-4:] if len(build_version) >= 4 else build_version
+    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     output_dir = os.path.dirname(args.output)
     if output_dir:
@@ -1899,7 +2074,7 @@ def main():
 
     save_seen_words(anki_seen_words_path, seen_words)
 
-    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code)
+    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code, generated_at=generated_at)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
