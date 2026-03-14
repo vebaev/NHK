@@ -5,14 +5,11 @@ import argparse
 import html as html_lib
 import hashlib
 import json
-import logging
 import time
+import uuid
 from urllib.parse import urljoin, urlparse
 
 import requests
-from requests import Session
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup, NavigableString
 from googletrans import Translator
 import sqlite3
@@ -43,15 +40,10 @@ DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
 translator = Translator()
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
 _TRANSLATION_CACHE = {}
-_TRANSLATION_STATS = {"deepl": 0, "google": 0, "cache": 0}
-_TRANSLATION_CACHE_PATH = None
-_TRANSLATION_CACHE_DIRTY = False
+_TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _MECAB_TAGGER = None
 _WORD_GLOSSARY = None
 _JMDICT_DB = None
-_HTTP_SESSION = None
-
-logger = logging.getLogger(__name__)
 
 PARTICLE_PREFIXES = ("が", "を", "に", "で", "は", "と", "へ", "や", "も", "の")
 GODAN_I_TO_U = {"い":"う","き":"く","ぎ":"ぐ","し":"す","ち":"つ","に":"ぬ","び":"ぶ","み":"む","り":"る"}
@@ -126,96 +118,10 @@ GRAMMAR_RULES = [
 ]
 GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
 
-def configure_logging(verbose: bool = False):
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(level=level, format="%(levelname)s %(message)s")
-
-def build_http_session() -> Session:
-    session = Session()
-    retries = Retry(
-        total=3,
-        connect=3,
-        read=3,
-        backoff_factor=1.0,
-        status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=frozenset(["GET", "POST"]),
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retries)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    session.headers.update({"User-Agent": "nhk-easy-pipeline/2.0"})
-    return session
-
-def get_http_session() -> Session:
-    global _HTTP_SESSION
-    if _HTTP_SESSION is None:
-        _HTTP_SESSION = build_http_session()
-    return _HTTP_SESSION
-
-def http_get(url: str, **kwargs):
-    timeout = kwargs.pop("timeout", 20)
-    logger.debug("HTTP GET %s", url)
-    response = get_http_session().get(url, timeout=timeout, **kwargs)
-    response.raise_for_status()
-    return response
-
-def http_post(url: str, **kwargs):
-    timeout = kwargs.pop("timeout", 20)
-    logger.debug("HTTP POST %s", url)
-    response = get_http_session().post(url, timeout=timeout, **kwargs)
-    response.raise_for_status()
-    return response
-
-def set_translation_cache_path(path: str = ""):
-    global _TRANSLATION_CACHE_PATH
-    _TRANSLATION_CACHE_PATH = path or None
-
-def load_translation_cache():
-    global _TRANSLATION_CACHE
-    if not _TRANSLATION_CACHE_PATH or not os.path.exists(_TRANSLATION_CACHE_PATH):
-        return
-    try:
-        with open(_TRANSLATION_CACHE_PATH, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-        if isinstance(raw, dict):
-            _TRANSLATION_CACHE = {}
-            for key, value in raw.items():
-                try:
-                    parsed_key = tuple(json.loads(key))
-                except Exception:
-                    continue
-                _TRANSLATION_CACHE[parsed_key] = value
-            logger.info("Loaded %d cached translations from %s", len(_TRANSLATION_CACHE), _TRANSLATION_CACHE_PATH)
-    except Exception as e:
-        logger.warning("Failed to load translation cache from %s: %s", _TRANSLATION_CACHE_PATH, e)
-
-def save_translation_cache(force: bool = False):
-    global _TRANSLATION_CACHE_DIRTY
-    if not _TRANSLATION_CACHE_PATH or (not _TRANSLATION_CACHE_DIRTY and not force):
-        return
-    try:
-        cache_dir = os.path.dirname(_TRANSLATION_CACHE_PATH)
-        if cache_dir:
-            os.makedirs(cache_dir, exist_ok=True)
-        serializable = {json.dumps(list(key), ensure_ascii=False): value for key, value in _TRANSLATION_CACHE.items()}
-        with open(_TRANSLATION_CACHE_PATH, "w", encoding="utf-8") as f:
-            json.dump(serializable, f, ensure_ascii=False, indent=2)
-        _TRANSLATION_CACHE_DIRTY = False
-        logger.info("Saved %d cached translations to %s", len(_TRANSLATION_CACHE), _TRANSLATION_CACHE_PATH)
-    except Exception as e:
-        logger.warning("Failed to save translation cache to %s: %s", _TRANSLATION_CACHE_PATH, e)
-
-def cache_translation_result(cache_key, result: str) -> str:
-    global _TRANSLATION_CACHE_DIRTY
-    _TRANSLATION_CACHE[cache_key] = result
-    _TRANSLATION_CACHE_DIRTY = True
-    return result
-
 def ensure_grammar_bilingual():
     for rule in GRAMMAR_RULES:
         if not rule.get("explanation_en"):
-            rule["explanation_en"] = rule.get("explanation_bg", "")
+            rule["explanation_en"] = translate_text(rule.get("explanation_bg", ""), dest="en") or rule.get("explanation_bg", "")
     global GRAMMAR_RULES_BY_ID
     GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
 
@@ -233,8 +139,8 @@ def load_word_glossary():
                 if isinstance(data, dict):
                     _WORD_GLOSSARY = {str(k).strip(): str(v).strip() for k, v in data.items() if str(k).strip()}
                     return _WORD_GLOSSARY
-            except Exception as e:
-                logger.warning("Failed to load glossary file %s: %s", path, e)
+            except Exception:
+                pass
     _WORD_GLOSSARY = {}
     return _WORD_GLOSSARY
 
@@ -263,8 +169,7 @@ def get_jmdict_connection():
         _JMDICT_DB = sqlite3.connect(db_path)
         _JMDICT_DB.row_factory = sqlite3.Row
         return _JMDICT_DB
-    except Exception as e:
-        logger.warning("Failed to open JMdict database %s: %s", db_path, e)
+    except Exception:
         _JMDICT_DB = None
         return None
 
@@ -313,8 +218,7 @@ def lookup_dictionary_meaning(word: str, reading: str = "") -> str:
                         glosses.append(gloss)
                 if glosses:
                     return "; ".join(glosses[:2])
-        except Exception as e:
-            logger.warning("Dictionary lookup failed for %s=%r: %s", mode, value, e)
+        except Exception:
             continue
     return ""
 
@@ -365,8 +269,7 @@ def lookup_dictionary_entry(word: str, reading: str = ""):
                     "pos": (row["pos"] or "").strip(),
                     "priority": int(row["priority"] or 0),
                 }
-        except Exception as e:
-            logger.warning("Dictionary entry lookup failed for %s=%r: %s", mode, value, e)
+        except Exception:
             continue
     return None
 
@@ -390,54 +293,50 @@ def merge_compound_nouns(tokens):
         compounds.append(current[:])
     return compounds
 
+def contains_japanese(text: str) -> bool:
+    return bool(re.search(r"[ぁ-んァ-ン一-龯]", text or ""))
+
+def normalize_for_compare(text: str) -> str:
+    return re.sub(r"\s+", "", (text or "").strip())
+
 def translate_text(text: str, dest: str = "bg") -> str:
     text = (text or "").strip()
     if not text:
         return ""
     cache_key = ("text", text, dest, bool(DEEPL_API_KEY))
     if cache_key in _TRANSLATION_CACHE:
-        _TRANSLATION_STATS["cache"] += 1
         return _TRANSLATION_CACHE[cache_key]
+    result = ""
     if DEEPL_API_KEY:
         try:
             deepl_url = "https://api-free.deepl.com/v2/translate"
             if not DEEPL_API_KEY.endswith(":fx"):
                 deepl_url = "https://api.deepl.com/v2/translate"
-            resp = http_post(deepl_url, headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"}, data={"text": text, "target_lang": dest.upper()})
+            resp = requests.post(deepl_url, headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"}, data={"text": text, "target_lang": dest.upper()}, timeout=20)
             data = resp.json()
             translations = data.get("translations") or []
             if translations and translations[0].get("text"):
-                result = translations[0]["text"].strip()
-                _TRANSLATION_STATS["deepl"] += 1
-                return cache_translation_result(cache_key, result)
-        except Exception as e:
-            logger.warning("DeepL translation failed for dest=%s text=%r: %s", dest, text[:80], e)
-    try:
-        result = translator.translate(text, dest=dest).text
-        _TRANSLATION_STATS["google"] += 1
-        return cache_translation_result(cache_key, result)
-    except Exception as e:
-        logger.warning("googletrans translation failed for dest=%s text=%r: %s", dest, text[:80], e)
+                result = (translations[0]["text"] or "").strip()
+        except Exception:
+            result = ""
+    if not result:
+        try:
+            result = (translator.translate(text, dest=dest).text or "").strip()
+        except Exception:
+            result = ""
+    if not result:
+        _TRANSLATION_CACHE[cache_key] = ""
         return ""
-
-
-def translate_word(word: str, reading: str = "") -> str:
-    word = (word or "").strip()
-    if not word:
+    src_norm = normalize_for_compare(text)
+    out_norm = normalize_for_compare(result)
+    if out_norm == src_norm:
+        _TRANSLATION_CACHE[cache_key] = ""
         return ""
-    cache_key = ("word", word, reading)
-    if cache_key in _TRANSLATION_CACHE:
-        return _TRANSLATION_CACHE[cache_key]
-
-    entry = lookup_dictionary_entry(word, reading=reading)
-    if entry and entry.get("gloss"):
-        result = entry["gloss"]
-        return cache_translation_result(cache_key, result)
-
-    result = translate_text(word, dest="bg")
+    if contains_japanese(result) and dest in {"bg", "en"}:
+        _TRANSLATION_CACHE[cache_key] = ""
+        return ""
     _TRANSLATION_CACHE[cache_key] = result
     return result
-
 
 def translate_word_lang(word: str, reading: str = "", dest: str = "bg") -> str:
     word = (word or "").strip()
@@ -451,24 +350,30 @@ def translate_word_lang(word: str, reading: str = "", dest: str = "bg") -> str:
     if entry and entry.get("gloss"):
         gloss = entry["gloss"].strip()
         result = gloss if dest == "en" else (translate_text(gloss, dest=dest) or gloss)
-        return cache_translation_result(cache_key, result)
+        _TRANSLATION_CACHE[cache_key] = result
+        return result
 
     # Fallback path for words missing from JMdict:
     # JP -> EN is often more reliable than JP -> BG, so bridge through EN for BG.
     direct = translate_text(word, dest=dest)
     if direct and direct.strip() != word:
-        return cache_translation_result(cache_key, direct.strip())
+        _TRANSLATION_CACHE[cache_key] = direct.strip()
+        return direct.strip()
 
     en_guess = translate_text(word, dest="en")
     if en_guess and en_guess.strip() != word:
         if dest == "en":
-            return cache_translation_result(cache_key, en_guess.strip())
+            _TRANSLATION_CACHE[cache_key] = en_guess.strip()
+            return en_guess.strip()
         bridged = translate_text(en_guess, dest=dest)
         if bridged and bridged.strip() != en_guess:
-            return cache_translation_result(cache_key, bridged.strip())
-        return cache_translation_result(cache_key, en_guess.strip())
+            _TRANSLATION_CACHE[cache_key] = bridged.strip()
+            return bridged.strip()
+        _TRANSLATION_CACHE[cache_key] = en_guess.strip()
+        return en_guess.strip()
 
-    return cache_translation_result(cache_key, "")
+    _TRANSLATION_CACHE[cache_key] = ""
+    return ""
 
 
 def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: str = "", reading_lemma: str = "", form_label_bg: str = "", form_label_en: str = ""):
@@ -527,8 +432,7 @@ def get_mecab_tagger():
         return None
     try:
         _MECAB_TAGGER = fugashi.Tagger()
-    except Exception as e:
-        logger.warning("Failed to initialize fugashi tagger: %s", e)
+    except Exception:
         _MECAB_TAGGER = None
     return _MECAB_TAGGER
 
@@ -578,8 +482,8 @@ def get_reading_for_word(word: str, fallback: str = "") -> str:
                 reading = normalize_katakana_to_hiragana("".join(feature_reading(t).strip() for t in tokens))
                 if reading:
                     return reading
-        except Exception as e:
-            logger.warning("Failed to derive reading for %r: %s", word, e)
+        except Exception:
+            pass
     return fallback
 
 def unique_keep_order(values):
@@ -756,8 +660,8 @@ def lemmatize_japanese(word: str) -> str:
             lemma = token_lemma(tokens[0])
             if lemma and lemma not in {"*", w}:
                 return lemma
-    except Exception as e:
-        logger.warning("Lemmatization via fugashi failed for %r: %s", w, e)
+    except Exception:
+        pass
     return to_dictionary_form(w)
 def extract_following_okurigana(ruby_tag):
     sibling = ruby_tag.next_sibling
@@ -781,53 +685,18 @@ def to_dictionary_form(word: str) -> str:
     if not w:
         return w
 
-    tagger = get_mecab_tagger()
-    if tagger is not None:
-        try:
-            tokens = list(tagger(w))
-            if len(tokens) == 1:
-                lemma = token_lemma(tokens[0]).strip()
-                if lemma and lemma != "*":
-                    return lemma
-        except Exception as e:
-            logger.warning("MeCab dictionary-form lookup failed for %r: %s", w, e)
-
-    irregular_map = {
-        "した": "する",
-        "して": "する",
-        "します": "する",
-        "しました": "する",
-        "しない": "する",
-        "しなかった": "する",
-        "きた": "くる",
-        "きて": "くる",
-        "きます": "くる",
-        "きました": "くる",
-        "こない": "くる",
-        "こなかった": "くる",
-    }
-    if w in irregular_map:
-        return irregular_map[w]
-
-    for suffix in ["していませんでした", "していました", "しています", "していません", "していない", "していた", "している"]:
-        if w.endswith(suffix):
-            return w[:-len(suffix)] + "する"
-    for suffix in ["きていませんでした", "きていました", "きています", "きていません", "きていない", "きていた", "きている"]:
-        if w.endswith(suffix):
-            return w[:-len(suffix)] + "くる"
-
-    def te_base_to_dictionary(stem: str, voiced: bool = False) -> str:
+    def te_base_to_dictionary(stem: str) -> str:
         stem = (stem or "").strip()
         if not stem:
             return stem
         if stem.endswith("っ"):
-            return stem[:-1] + "う"
+            return stem[:-1] + "る"
         if stem.endswith("ん"):
-            return stem[:-1] + ("ぶ" if voiced else "む")
+            return stem[:-1] + "む"
         if stem.endswith("し"):
             return stem[:-1] + "す"
         if stem.endswith("い"):
-            return stem[:-1] + ("ぐ" if voiced else "く")
+            return stem[:-1] + "く"
         if stem.endswith("ち"):
             return stem[:-1] + "つ"
         if stem.endswith("り"):
@@ -851,20 +720,14 @@ def to_dictionary_form(word: str) -> str:
     ]
     for suffix in te_iru_suffixes:
         if w.endswith(suffix) and len(w) > len(suffix):
-            stem = w[:-len(suffix)]
-            return te_base_to_dictionary(stem, voiced=suffix.startswith("で"))
+            return te_base_to_dictionary(w[:-len(suffix)])
 
-    for suffix in ["していました", "しています", "しました", "します", "して", "した", "しない", "しなかった"]:
+    for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
         if w.endswith(suffix):
             return w[:-len(suffix)] + "する"
     for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
         if w.endswith(suffix):
             return w[:-len(suffix)] + "くる"
-
-    for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
-        if w.endswith(src) and len(w) > len(src):
-            return w[:-len(src)] + dst
-
     for suffix in ["ました", "ます"]:
         if w.endswith(suffix):
             stem = w[:-len(suffix)]
@@ -872,23 +735,41 @@ def to_dictionary_form(word: str) -> str:
                 return w
             mapped = GODAN_I_TO_U.get(stem[-1])
             return stem[:-1] + mapped if mapped else stem + "る"
-
-    if w.endswith("なかった") and len(w) > 4:
-        stem = w[:-4]
-        mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
-        return stem[:-1] + mapped if mapped else stem + "る"
-
     if w.endswith("ない") and len(w) > 2:
         stem = w[:-2]
         mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
         return stem[:-1] + mapped if mapped else stem + "る"
-
     for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
-
+    for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
+        if w.endswith(src) and len(w) > len(src):
+            return w[:-len(src)] + dst
     return w
-
+    for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
+        if w.endswith(suffix):
+            return w[:-len(suffix)] + "する"
+    for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
+        if w.endswith(suffix):
+            return w[:-len(suffix)] + "くる"
+    for suffix in ["ました", "ます"]:
+        if w.endswith(suffix):
+            stem = w[:-len(suffix)]
+            if not stem:
+                return w
+            mapped = GODAN_I_TO_U.get(stem[-1])
+            return stem[:-1] + mapped if mapped else stem + "る"
+    if w.endswith("ない") and len(w) > 2:
+        stem = w[:-2]
+        mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
+        return stem[:-1] + mapped if mapped else stem + "る"
+    for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
+        if w.endswith(src) and len(w) > len(src):
+            return w[:-len(src)] + dst
+    for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
+        if w.endswith(src) and len(w) > len(src):
+            return w[:-len(src)] + dst
+    return w
 def is_person_name_span(tokens_slice) -> bool:
     if not tokens_slice:
         return False
@@ -1432,7 +1313,8 @@ def extract_ne_id(text: str) -> str:
     m = re.search(r"(ne\d{10,})", text or "")
     return m.group(1) if m else ""
 def get_nhkeasier_items():
-    r = http_get(NHKEASIER_FEED_URL)
+    r = requests.get(NHKEASIER_FEED_URL, timeout=20)
+    r.raise_for_status()
     soup = BeautifulSoup(r.text, "xml")
     items = {}
     for item in soup.find_all("item"):
@@ -1478,7 +1360,8 @@ def get_nhkeasier_items():
             items[ne_id] = {"title": title, "blocks": blocks, "audio_url": audio_url, "image_url": image_url, "original_link": original_link}
     return items
 def extract_easy_article_links_from_sitemap(n=4):
-    r = http_get(EASY_SITEMAP_URL)
+    r = requests.get(EASY_SITEMAP_URL, timeout=20)
+    r.raise_for_status()
     soup = BeautifulSoup(r.text, "xml")
     links = []
     seen = set()
@@ -1495,7 +1378,8 @@ def extract_easy_article_links_from_sitemap(n=4):
             break
     return links
 def parse_article_from_nhk_easy(link: str):
-    page = http_get(link)
+    page = requests.get(link, timeout=20)
+    page.raise_for_status()
     psoup = BeautifulSoup(page.text, "html.parser")
     title_tag = psoup.select_one("h1")
     title = ""
@@ -1575,17 +1459,17 @@ def parse_article_from_nhk_easy(link: str):
     vocab = extract_vocab_from_blocks(filtered_blocks)
     translated_blocks = []
     for b in filtered_blocks:
-        bg_tr = translate_text(b["text"], dest="bg") or b["text"]
-        en_tr = translate_text(b["text"], dest="en") or b["text"]
+        bg_tr = translate_text(b["text"], dest="bg")
+        en_tr = translate_text(b["text"], dest="en")
         translated_blocks.append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
-    return {"title": title, "title_html": title_html, "title_translation_bg": (translate_text(title, dest="bg") or title), "title_translation_en": (translate_text(title, dest="en") or title), "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
+    return {"title": title, "title_html": title_html, "title_translation_bg": translate_text(title, dest="bg"), "title_translation_en": translate_text(title, dest="en"), "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
     try:
         nhkeasier_items = get_nhkeasier_items()
     except Exception as e:
-        logger.warning("Could not load nhkeasier fallback feed: %s", e)
+        print(f"Could not load nhkeasier fallback feed: {e}")
     articles = []
     for link in links:
         try:
@@ -1595,30 +1479,20 @@ def get_articles(n=4):
             if article and fallback and fallback.get("blocks"):
                 article["blocks"] = []
                 for b in fallback["blocks"]:
-                    bg_tr = translate_text(b["text"], dest="bg") or b["text"]
-                    en_tr = translate_text(b["text"], dest="en") or b["text"]
+                    bg_tr = translate_text(b["text"], dest="bg")
+                    en_tr = translate_text(b["text"], dest="en")
                     article["blocks"].append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
                 article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
                 if fallback.get("audio_url"):
                     article["audio_url"] = fallback["audio_url"]
                 if fallback.get("image_url"):
                     article["image_url"] = fallback["image_url"]
-                for b in fallback["blocks"]:
-                    if "<ruby" in b["html"]:
-                        article["title_html"] = b["html"]
-                        break
-            if article and article.get("blocks"):
-                if not article.get("vocab"):
-                    article["vocab"] = extract_vocab_from_blocks(article["blocks"])
-                article.setdefault("image_url", "")
-                article.setdefault("audio_url", "")
+            if article and article.get("blocks") and article.get("vocab"):
                 articles.append(article)
                 if len(articles) >= n:
                     break
-            else:
-                logger.info("Discarded article without content blocks: %s", link)
         except Exception as e:
-            logger.warning("Skipping article %s because of error: %s", link, e)
+            print(f"Skipping article because of error: {e}")
             continue
     return articles[:n]
 def wrap_vocab_words_in_html(html_fragment, vocab_items):
@@ -1774,12 +1648,12 @@ h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-fam
 .author-info{max-width:760px;margin:0 auto 18px auto;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.7;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;white-space:pre-line}
 .build-marker{max-width:760px;margin:20px auto 8px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9}
 article{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:24px}
-h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
+h2{margin:0 0 10px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font);line-height:1.5}
 .article-image{width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block;margin:10px 0 14px}
-.title-translation{display:none;color:var(--muted);margin:0 0 14px}
+.title-translation{display:none;color:var(--muted);margin:4px 0 16px}
 .article-audio{width:100%;margin:0 0 10px}
 .section-title{margin:18px 0 10px;font-size:1.05rem;color:var(--accent);font-weight:700}
-.jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:12px 0 6px;font-size:1.08rem;font-family:var(--jp-font);word-break:break-word;overflow-wrap:anywhere}
+.jp-block{background:var(--jp-panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin:14px 0 6px;font-size:1.08rem;font-family:var(--jp-font);word-break:break-word;overflow-wrap:anywhere}
 .trans-block{color:var(--trans-text);padding:0 2px 8px 2px;margin-bottom:8px;border-bottom:1px dashed var(--border);display:none}
 .trans-block.is-visible{display:block}
 .grammar{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px}
@@ -1827,7 +1701,10 @@ ruby rt{font-size:.68em;color:var(--muted)}
         num_map = {1:'1️⃣',2:'2️⃣',3:'3️⃣',4:'4️⃣'}
         prefix = num_map.get(idx, f'{idx}.')
         html += f"<h2 class='title-toggle'>{prefix} {article.get('title_html', article['title'])}</h2>"
-        html += f"<div class='title-translation' data-bg='{html_lib.escape(article.get('title_translation_bg',''), quote=True)}' data-en='{html_lib.escape(article.get('title_translation_en',''), quote=True)}'></div>"
+        title_bg = html_lib.escape(article.get('title_translation_bg', ''), quote=True)
+        title_en = html_lib.escape(article.get('title_translation_en', ''), quote=True)
+        if title_bg or title_en:
+            html += f"<div class='title-translation' data-bg='{title_bg}' data-en='{title_en}'></div>"
         if article.get("image_url"):
             html += f"<img class='article-image' src='{article['image_url']}' alt='{html_lib.escape(article['title'], quote=True)}' loading='lazy'/>"
         if article.get("audio_url"):
@@ -1836,7 +1713,10 @@ ruby rt{font-size:.68em;color:var(--muted)}
         for block in article["blocks"]:
             wrapped_html = wrap_vocab_words_in_html(block["html"], article.get("vocab", []))
             html += f"<div class='jp-block'>{wrapped_html}</div>"
-            html += f"<div class='trans-block' data-bg='{html_lib.escape(block.get('translation_bg',''), quote=True)}' data-en='{html_lib.escape(block.get('translation_en',''), quote=True)}'></div>"
+            block_bg = html_lib.escape(block.get('translation_bg', ''), quote=True)
+            block_en = html_lib.escape(block.get('translation_en', ''), quote=True)
+            if block_bg or block_en:
+                html += f"<div class='trans-block' data-bg='{block_bg}' data-en='{block_en}'></div>"
         html += "</article>"
     html += "<div class='downloads'>"
     html += f"<a class='download-btn download-link' data-kind='vocab_apkg' href='{DEFAULT_ANKI_APKG_FILENAME}' download></a>"
@@ -2032,11 +1912,8 @@ def main():
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
-    parser.add_argument("--translation-cache", default=os.environ.get("TRANSLATION_CACHE_PATH", ""))
-    parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
-    configure_logging(args.verbose)
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
@@ -2044,12 +1921,6 @@ def main():
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         write_pwa_files(output_dir, build_version=build_version)
-
-    cache_path = (args.translation_cache or "").strip()
-    if not cache_path:
-        cache_path = os.path.join(output_dir or os.getcwd(), "translations_cache.json")
-    set_translation_cache_path(cache_path)
-    load_translation_cache()
 
     ensure_grammar_bilingual()
     articles = get_articles(args.count)
@@ -2112,9 +1983,6 @@ def main():
     html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
-
-    save_translation_cache(force=True)
-    logger.info("Translation stats: %s", _TRANSLATION_STATS)
 
 if __name__ == "__main__":
     main()
