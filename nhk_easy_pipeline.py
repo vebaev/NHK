@@ -6,7 +6,6 @@ import html as html_lib
 import hashlib
 import json
 import time
-from datetime import datetime
 import uuid
 from urllib.parse import urljoin, urlparse
 
@@ -1623,7 +1622,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items):
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
-def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
+def build_html(articles, grammar_points=None, build_version="", build_code=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
 <html lang=\"ja\">
@@ -1689,15 +1688,6 @@ h2{margin:0 0 6px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font)}
 .dict-popup .dr{color:var(--accent);font-size:.95rem;margin-top:2px}
 .dict-popup .dm{color:var(--text);margin-top:6px;line-height:1.65;white-space:normal;word-break:break-word}
 ruby rt{font-size:.68em;color:var(--muted)}
-
-.block-audio-row{display:flex;align-items:flex-start;gap:8px;margin:12px 0 6px}
-.block-play-btn{flex:0 0 auto;width:28px;height:28px;border:1px solid var(--border);border-radius:999px;background:var(--card2);color:var(--accent);cursor:pointer;font:inherit;line-height:1;padding:0}
-.block-play-btn:hover{filter:brightness(1.05)}
-.block-audio-row .jp-block{flex:1;margin:0}
-.shadow-sentence{display:block;margin:2px 0;padding-left:10px}
-.shadow-sentence.shadow-active{border-left:3px solid #ff7a00 !important}
-.generated-marker,.build-marker{max-width:760px;margin:4px auto;text-align:center;color:var(--muted);font-size:.84rem;opacity:.9;line-height:1.35}
-
 </style>
 </head>
 <body class=\"theme-dark\">
@@ -1714,7 +1704,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class=\"lang-hint\" data-ui=\"help_hint\"></div>
 <div class=\"update-hint\" data-ui=\"update_hint\"></div>
 <div class=\"author-info\" data-bg=\"Създадено от Веселин Баев&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\" data-en=\"Created by Veselin Baev&#10;GitHub: vebaev&#10;Email: vebaev@gmail.com\"></div>
-<div class=\"generated-marker\">Generated: {generated_at}</div>\n<div class=\"build-marker\">Build code: {build_code}</div>\n<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
+<div id=\"dict-popup\" class=\"dict-popup\" aria-hidden=\"true\"></div>
 """
     for idx, article in enumerate(articles, start=1):
         html += "<article>"
@@ -1841,13 +1831,8 @@ function setupArticleShadowing(article){
   if(!audio) return;
 
   const sentenceEls = [];
-  const blocks = Array.from(article.querySelectorAll('.jp-block'));
-  blocks.forEach(function(block, bidx){
-    if(!block.dataset.blockUid){ block.dataset.blockUid = 'b' + (bidx + 1); }
-    wrapBlockSentences(block).forEach(function(el){
-      el.dataset.blockUid = block.dataset.blockUid;
-      sentenceEls.push(el);
-    });
+  article.querySelectorAll('.jp-block').forEach(function(block){
+    wrapBlockSentences(block).forEach(function(el){ sentenceEls.push(el); });
   });
   if(!sentenceEls.length) return;
 
@@ -1868,11 +1853,6 @@ function setupArticleShadowing(article){
       timings[0].start = 0;
       timings[timings.length - 1].end = duration;
     }
-    blocks.forEach(function(block){
-      const uid = block.dataset.blockUid;
-      const firstIdx = sentenceEls.findIndex(function(el){ return el.dataset.blockUid === uid; });
-      block.dataset.audioStart = firstIdx >= 0 && timings[firstIdx] ? String(timings[firstIdx].start || 0) : '0';
-    });
   }
 
   function clearActive(){
@@ -1900,79 +1880,11 @@ function setupArticleShadowing(article){
   audio.addEventListener('ended', clearActive);
 }
 
-
-function attachBlockPlayButtons(article){
-  const audio = article.querySelector('.article-audio');
-  if(!audio) return;
-  const blocks = Array.from(article.querySelectorAll('.jp-block'));
-  blocks.forEach(function(block, idx){
-    if(!block.dataset.blockUid){ block.dataset.blockUid = 'b' + (idx + 1); }
-    if(block.parentElement && block.parentElement.classList.contains('block-audio-row')) return;
-
-    const row = document.createElement('div');
-    row.className = 'block-audio-row';
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'block-play-btn';
-    btn.setAttribute('aria-label', 'Play from this passage');
-    btn.textContent = '▶';
-    btn.addEventListener('click', function(event){
-      event.stopPropagation();
-      const start = parseFloat(block.dataset.audioStart || '0') || 0;
-      try{ audio.currentTime = Math.max(0, start); }catch(e){}
-      const p = audio.play();
-      if(p && typeof p.catch === 'function'){ p.catch(function(){}); }
-    });
-
-    const parent = block.parentNode;
-    parent.insertBefore(row, block);
-    row.appendChild(btn);
-    row.appendChild(block);
-  });
-}
-
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
-document.addEventListener('DOMContentLoaded',function(){
-loadPrefs();
-document.querySelectorAll('article').forEach(function(article){
-  attachBlockPlayButtons(article);
-  setupArticleShadowing(article);
-});
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){
-    if(reg&&reg.update){reg.update();}
-  }).catch(function(){});
-}
-forceFreshReloadCheck();
-setInterval(forceFreshReloadCheck,120000);
-document.querySelectorAll('.title-toggle').forEach(function(title){
-  title.addEventListener('click',function(){
-    const tr=title.nextElementSibling;
-    if(!tr||!tr.classList.contains('title-translation'))return;
-    tr.style.display=tr.style.display==='block'?'none':'block';
-  });
-});
-document.querySelectorAll('.dict-word').forEach(function(el){
-  el.addEventListener('click',function(event){
-    event.stopPropagation();
-    showDictPopup(el);
-  });
-});
-document.addEventListener('click',function(){closeDictPopup();});
-document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){
-  const jpBlock=trBlock.previousElementSibling;
-  if(!jpBlock)return;
-  jpBlock.style.cursor='pointer';
-  jpBlock.addEventListener('click',function(event){
-    if(event.target.closest('.dict-word') || event.target.closest('.block-play-btn')) return;
-    trBlock.classList.toggle('is-visible');
-  });
-});
-});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
+document.addEventListener('DOMContentLoaded',function(){loadPrefs();document.querySelectorAll('article').forEach(function(article){setupArticleShadowing(article);});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || '')).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
 </html>"""
-    html = html.replace("{build_version}", str(build_version)).replace("{build_code}", str(build_code)).replace("{generated_at}", str(generated_at))
     return html
 
 def write_pwa_files(output_dir, build_version=""):
@@ -2008,8 +1920,6 @@ def main():
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     build_version = str(int(time.time()))
-    build_code = build_version[-4:] if len(build_version) >= 4 else build_version
-    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     output_dir = os.path.dirname(args.output)
     if output_dir:
@@ -2074,7 +1984,7 @@ def main():
 
     save_seen_words(anki_seen_words_path, seen_words)
 
-    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code, generated_at=generated_at)
+    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
