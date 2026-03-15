@@ -7,7 +7,6 @@ on:
     - cron: "0 16 * * *"
   workflow_dispatch:
 
-env:
 jobs:
   build:
     runs-on: ubuntu-latest
