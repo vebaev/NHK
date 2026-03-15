@@ -112,8 +112,9 @@ GRAMMAR_RULES = [
     {"id": "beki_datta", "label": "〜べきだった", "explanation_bg": "Трябвало е да...", "explanation_en": ""},
     {"id": "beshi", "label": "〜べし", "explanation_bg": "Трябва / следва (книжовно).", "explanation_en": ""},
     {"id": "mono_da", "label": "〜ものだ", "explanation_bg": "По принцип така е / естествено е / подобава.", "explanation_en": ""},
-    {"id": "kamoshirenai", "label": "〜かもしれない", "explanation_bg": "Може би...", "explanation_en": ""},
+    {"id": "kamoshirenai", "label": "〜かもしれない / 〜かもしれません", "explanation_bg": "Може би... / възможно е...", "explanation_en": ""},
     {"id": "kamo", "label": "〜かも", "explanation_bg": "Може би... (разговорно).", "explanation_en": ""},
+    {"id": "nikui", "label": "〜にくい", "explanation_bg": "Трудно е да се... / не е лесно да...", "explanation_en": ""},
     {"id": "koro", "label": "〜ころ", "explanation_bg": "Около даден момент / по времето, когато...", "explanation_en": ""},
     {"id": "goro", "label": "〜ごろ", "explanation_bg": "Около (час/период).", "explanation_en": ""},
     {"id": "kurai_gurai", "label": "〜くらい / 〜ぐらい", "explanation_bg": "Около / приблизително / до такава степен.", "explanation_en": ""},
@@ -1464,8 +1465,9 @@ def detect_grammar_in_sentence(sentence: str):
             if _s(tokens, i + 1) == "だっ" and _s(tokens, i + 2) == "た": found.add("beki_datta")
         if s == "べし": found.add("beshi")
         if s == "もの" and _s(tokens, i + 1) == "だ": found.add("mono_da")
-        if s == "かも" and _s(tokens, i + 1) == "しれ" and _s(tokens, i + 2) == "ない": found.add("kamoshirenai")
+        if s == "かも" and _s(tokens, i + 1) == "しれ" and (_s(tokens, i + 2) == "ない" or (_s(tokens, i + 2) == "ませ" and _s(tokens, i + 3) == "ん")): found.add("kamoshirenai")
         elif s == "かも": found.add("kamo")
+        if s == "にくい" or l in {"にくい", "難い"}: found.add("nikui")
         if s == "ころ": found.add("koro")
         if s == "ごろ": found.add("goro")
         if s in {"くらい", "ぐらい"}: found.add("kurai_gurai")
