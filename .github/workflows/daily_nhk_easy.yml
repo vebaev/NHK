@@ -8,9 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  JMDICT_VERSION: dict-v1
-  JMDICT_URL: https://github.com/vebaev/NHK/releases/download/dict-v1/jmdict.db
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -37,20 +34,26 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Ensure data directory exists
-        run: mkdir -p data
+      - name: Resolve kotobase database paths
+        run: |
+          python - <<'PY' >> "$GITHUB_ENV"
+          from kotobase.db_builder.config import DATABASE_PATH, DB_BUILD_LOG_PATH
+          print(f"KOTOBASE_DB_PATH={DATABASE_PATH}")
+          print(f"KOTOBASE_LOG_PATH={DB_BUILD_LOG_PATH}")
+          PY
 
-      - name: Cache JMdict
+      - name: Cache kotobase database
         uses: actions/cache@v4
         with:
-          path: data/jmdict.db
-          key: jmdict-cache-${{ runner.os }}-${{ env.JMDICT_VERSION }}
+          path: |
+            ${{ env.KOTOBASE_DB_PATH }}
+            ${{ env.KOTOBASE_LOG_PATH }}
+          key: kotobase-cache-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
-      - name: Download dictionary if missing
+      - name: Download kotobase database if missing
         run: |
-          if [ ! -f data/jmdict.db ]; then
-            echo "Downloading JMdict ${JMDICT_VERSION}..."
-            curl -L "$JMDICT_URL" -o data/jmdict.db
+          if [ ! -f "$KOTOBASE_DB_PATH" ]; then
+            python -m kotobase.cli pull-db
           else
             echo "Dictionary already exists."
           fi
@@ -62,6 +65,7 @@ jobs:
         run: timeout 18m python nhk_easy_pipeline.py --output docs/index.html --count 4
 
       - name: Commit updated page
+        if: github.event_name != 'push'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"

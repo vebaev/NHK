@@ -16,7 +16,6 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup, NavigableString
 from googletrans import Translator
-import sqlite3
 
 try:
     import fugashi
@@ -27,6 +26,14 @@ try:
     import genanki
 except Exception:
     genanki = None
+
+try:
+    from kotobase import Kotobase
+except Exception as exc:
+    Kotobase = None
+    _KOTOBASE_IMPORT_ERROR = exc
+else:
+    _KOTOBASE_IMPORT_ERROR = None
 
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
@@ -47,7 +54,7 @@ _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _MECAB_TAGGER = None
 _WORD_GLOSSARY = None
-_JMDICT_DB = None
+_KOTOBASE = None
 _THREAD_LOCAL = threading.local()
 _TRANSLATION_CACHE_DIRTY = False
 
@@ -221,34 +228,91 @@ def load_word_glossary():
     _WORD_GLOSSARY = {}
     return _WORD_GLOSSARY
 
-def get_jmdict_db_path():
-    candidates = [
-        os.environ.get("JMDICT_DB", "").strip(),
-        "data/jmdict.db",
-        "jmdict.db",
-        os.path.join(os.path.dirname(__file__), "data", "jmdict.db"),
-        os.path.join(os.path.dirname(__file__), "jmdict.db"),
-    ]
-    for path in candidates:
-        if path and os.path.exists(path):
-            return path
-    return ""
-
-
-def get_jmdict_connection():
-    global _JMDICT_DB
-    if _JMDICT_DB is not None:
-        return _JMDICT_DB
-    db_path = get_jmdict_db_path()
-    if not db_path:
+def get_kotobase_client():
+    global _KOTOBASE
+    if _KOTOBASE is not None:
+        return _KOTOBASE
+    if Kotobase is None:
         return None
     try:
-        _JMDICT_DB = sqlite3.connect(db_path)
-        _JMDICT_DB.row_factory = sqlite3.Row
-        return _JMDICT_DB
+        _KOTOBASE = Kotobase()
     except Exception:
-        _JMDICT_DB = None
+        _KOTOBASE = None
+    return _KOTOBASE
+
+
+def _extract_kotobase_entry(dto, requested_word: str = "", requested_reading: str = ""):
+    kanji = [str(v).strip() for v in getattr(dto, "kanji", []) if str(v).strip()]
+    kana = [normalize_katakana_to_hiragana(str(v).strip()) for v in getattr(dto, "kana", []) if str(v).strip()]
+    glosses = []
+    pos_tags = []
+    for sense in getattr(dto, "senses", []) or []:
+        gloss = (sense.get("gloss") or "").strip()
+        pos = (sense.get("pos") or "").strip()
+        if gloss and gloss not in glosses:
+            glosses.append(gloss)
+        if pos and pos not in pos_tags:
+            pos_tags.append(pos)
+
+    requested_reading = normalize_katakana_to_hiragana((requested_reading or "").strip())
+    surface = requested_word if requested_word and (requested_word in kanji or requested_word in kana) else ""
+    if not surface:
+        surface = kanji[0] if kanji else (kana[0] if kana else requested_word)
+
+    reading = ""
+    if requested_reading and requested_reading in kana:
+        reading = requested_reading
+    elif kana:
+        reading = kana[0]
+
+    return {
+        "surface": surface.strip(),
+        "reading": reading.strip(),
+        "gloss": "; ".join(glosses[:2]).strip(),
+        "pos": "; ".join(pos_tags[:2]).strip(),
+        "priority": int(getattr(dto, "rank", 0) or 0),
+    }
+
+
+def _score_kotobase_entry(dto, word: str = "", reading: str = ""):
+    word = (word or "").strip()
+    reading = normalize_katakana_to_hiragana((reading or "").strip())
+    kanji = [str(v).strip() for v in getattr(dto, "kanji", []) if str(v).strip()]
+    kana = [normalize_katakana_to_hiragana(str(v).strip()) for v in getattr(dto, "kana", []) if str(v).strip()]
+
+    score = 0
+    if word:
+        if word in kanji:
+            score += 6
+        if word in kana:
+            score += 5
+    if reading:
+        if reading in kana:
+            score += 8
+        elif kana and kana[0] == reading:
+            score += 6
+    if not kanji and kana:
+        score += 1
+    return (score, -int(getattr(dto, "rank", 1_000_000) or 1_000_000))
+
+
+@lru_cache(maxsize=8192)
+def _lookup_kotobase_entry(query: str, reading: str = ""):
+    query = (query or "").strip()
+    if not query:
         return None
+    kb = get_kotobase_client()
+    if kb is None:
+        return None
+    try:
+        result = kb.lookup(query, sentence_limit=0, entry_limit=8)
+    except Exception:
+        return None
+    entries = [dto for dto in (getattr(result, "entries", None) or []) if hasattr(dto, "senses")]
+    if not entries:
+        return None
+    best = max(entries, key=lambda dto: _score_kotobase_entry(dto, query, reading))
+    return _extract_kotobase_entry(best, requested_word=query, requested_reading=reading)
 
 
 @lru_cache(maxsize=8192)
@@ -258,47 +322,8 @@ def lookup_dictionary_meaning(word: str, reading: str = "") -> str:
         return glossary[word]
     if reading and reading in glossary:
         return glossary[reading]
-
-    conn = get_jmdict_connection()
-    if conn is None:
-        return ""
-
-    queries = []
-    if word:
-        queries.append(("surface", word))
-        lemma = to_dictionary_form(word)
-        if lemma and lemma != word:
-            queries.append(("surface", lemma))
-    if reading:
-        queries.append(("reading", reading))
-
-    seen = set()
-    for mode, value in queries:
-        if not value or (mode, value) in seen:
-            continue
-        seen.add((mode, value))
-        try:
-            if mode == "surface":
-                rows = conn.execute(
-                    "SELECT gloss FROM entries WHERE surface = ? ORDER BY priority DESC, length(surface) DESC LIMIT 3",
-                    (value,)
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT gloss FROM entries WHERE reading = ? ORDER BY priority DESC LIMIT 3",
-                    (value,)
-                ).fetchall()
-            if rows:
-                glosses = []
-                for row in rows:
-                    gloss = (row["gloss"] or "").strip()
-                    if gloss and gloss not in glosses:
-                        glosses.append(gloss)
-                if glosses:
-                    return "; ".join(glosses[:2])
-        except Exception:
-            continue
-    return ""
+    entry = lookup_dictionary_entry(word, reading=reading)
+    return (entry or {}).get("gloss", "").strip()
 
 
 @lru_cache(maxsize=8192)
@@ -309,46 +334,23 @@ def lookup_dictionary_entry(word: str, reading: str = ""):
     if reading and reading in glossary:
         return {"gloss": glossary[reading], "reading": reading}
 
-    conn = get_jmdict_connection()
-    if conn is None:
-        return None
-
     queries = []
     if word:
-        queries.append(("surface", word))
+        queries.append(word)
         lemma = to_dictionary_form(word)
         if lemma and lemma != word:
-            queries.append(("surface", lemma))
+            queries.append(lemma)
     if reading:
-        queries.append(("reading", reading))
+        queries.append(reading)
 
     seen = set()
-    for mode, value in queries:
-        if not value or (mode, value) in seen:
+    for value in queries:
+        if not value or value in seen:
             continue
-        seen.add((mode, value))
-        try:
-            if mode == "surface":
-                rows = conn.execute(
-                    "SELECT surface, reading, gloss, pos, priority FROM entries WHERE surface = ? ORDER BY priority DESC, length(surface) DESC LIMIT 5",
-                    (value,),
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT surface, reading, gloss, pos, priority FROM entries WHERE reading = ? ORDER BY priority DESC, length(surface) DESC LIMIT 5",
-                    (value,),
-                ).fetchall()
-            if rows:
-                row = rows[0]
-                return {
-                    "surface": (row["surface"] or "").strip(),
-                    "reading": (row["reading"] or "").strip(),
-                    "gloss": (row["gloss"] or "").strip(),
-                    "pos": (row["pos"] or "").strip(),
-                    "priority": int(row["priority"] or 0),
-                }
-        except Exception:
-            continue
+        seen.add(value)
+        entry = _lookup_kotobase_entry(value, reading=reading)
+        if entry and entry.get("gloss"):
+            return entry
     return None
 
 
@@ -483,7 +485,7 @@ def translate_word_lang(word: str, reading: str = "", dest: str = "bg") -> str:
         result = gloss if dest == "en" else (translate_text(gloss, dest=dest) or gloss)
         return cache_translation_result(cache_key, result)
 
-    # Fallback path for words missing from JMdict:
+    # Fallback path for words missing from the dictionary:
     # JP -> EN is often more reliable than JP -> BG, so bridge through EN for BG.
     direct = translate_text(word, dest=dest)
     if direct and direct.strip() != word:
