@@ -1,7 +1,6 @@
 name: NHK Easy Daily
 
 on:
-  push:
   schedule:
     - cron: "0 12 * * *"
     - cron: "0 16 * * *"
@@ -14,6 +13,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     permissions:
       contents: write
@@ -58,10 +58,9 @@ jobs:
         run: mkdir -p docs
 
       - name: Run generator
-        run: python nhk_easy_pipeline.py --output docs/index.html --count 4
+        run: timeout 18m python nhk_easy_pipeline.py --output docs/index.html --count 4
 
       - name: Commit updated page
-        if: github.event_name != 'push'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
