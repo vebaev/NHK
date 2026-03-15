@@ -6,25 +6,25 @@
 <ruby>ピョンチャン大会<rt>ぴょんちゃんたいかい</rt></ruby>	Pyeongchang tournament
 <ruby>ホルムズ海峡<rt>ほるむずかいきょう</rt></ruby>	Strait of Hormuz
 <ruby>一番<rt>いちばん</rt></ruby>	number one
-<ruby>上げた<rt>あげた</rt></ruby>	raised
+<ruby>上げる<rt>あげた</rt></ruby>	increase
 <ruby>下駄<rt>げた</rt></ruby>	geta
-<ruby>乗った<rt>のった</rt></ruby>	rode
 <ruby>乗り<rt>のり</rt></ruby>	ride
+<ruby>乗る<rt>のった</rt></ruby>	get on
 <ruby>事故<rt>じこ</rt></ruby>	accident
 <ruby>付く<rt>つい</rt></ruby>	attached
 <ruby>件ある<rt>けんある</rt></ruby>	There are cases
-<ruby>似ていますが<rt>にていますが</rt></ruby>	Although it is similar
+<ruby>似いる<rt>にていますが</rt></ruby>	similar
 <ruby>似る<rt>に</rt></ruby>	similar
 <ruby>使う<rt>つかう</rt></ruby>	use
 <ruby>値段<rt>ねだん</rt></ruby>	price
 <ruby>免許<rt>めんきょ</rt></ruby>	driver licence
 <ruby>入る<rt>いる</rt></ruby>	enter
-<ruby>入れた<rt>いれた</rt></ruby>	I put it in
+<ruby>入れる<rt>いれた</rt></ruby>	put in
 <ruby>全部<rt>ぜんぶ</rt></ruby>	all
-<ruby>円-助数詞<rt>えん</rt></ruby>	circle-counterpart
-<ruby>円ぐらいになるよう<rt>えんぐらいになるよう</rt></ruby>	It should be about yen
-<ruby>出すことができたと<rt>だすことができたと</rt></ruby>	I was able to get it out
-<ruby>出すことを<rt>だすことを</rt></ruby>	to put out
+<ruby>円なるよう<rt>えんぐらいになるよう</rt></ruby>	So that it becomes a circle
+<ruby>円助数詞<rt>えん</rt></ruby>	circle-counterpart
+<ruby>出すこと<rt>だすことを</rt></ruby>	to put out
+<ruby>出すことできる<rt>だすことができたと</rt></ruby>	can be released
 <ruby>出する<rt>だする</rt></ruby>	give out
 <ruby>出る<rt>で</rt></ruby>	come out
 <ruby>出来る<rt>でき</rt></ruby>	I can do it
@@ -47,11 +47,10 @@
 <ruby>大統領<rt>だいとうりょう</rt></ruby>	president
 <ruby>女子<rt>じょし</rt></ruby>	girls
 <ruby>女子大<rt>じょしだい</rt></ruby>	women's university
-<ruby>季節<rt>きせつ</rt></ruby>	season
-<ruby>季節なので<rt>きせつなので</rt></ruby>	Because it's the season
+<ruby>季節<rt>きせつなので</rt></ruby>	season
 <ruby>居る<rt>いる</rt></ruby>	be there
 <ruby>市場<rt>しじょう</rt></ruby>	market
-<ruby>座って<rt>すわって</rt></ruby>	sit down
+<ruby>座る<rt>すわって</rt></ruby>	sit
 <ruby>強い<rt>つよ</rt></ruby>	strong
 <ruby>強くなる<rt>つよくなる</rt></ruby>	become stronger
 <ruby>得意<rt>とくい</rt></ruby>	good at
@@ -59,10 +58,9 @@
 <ruby>必要<rt>ひつよう</rt></ruby>	need
 <ruby>思う<rt>おもう</rt></ruby>	think
 <ruby>恣意<rt>しい</rt></ruby>	wanton
-<ruby>悔しい<rt>かいしい</rt></ruby>	regrettable
-<ruby>悔しいです<rt>くやしいです</rt></ruby>	It's frustrating
+<ruby>悔しい<rt>くやしいです</rt></ruby>	regrettable
 <ruby>成る<rt>なっ</rt></ruby>	become; save
-<ruby>戦いが<rt>たたかいが</rt></ruby>	the battle
+<ruby>戦い<rt>たたかいが</rt></ruby>	fight
 <ruby>持たなぐ<rt>もたなぐ</rt></ruby>	don't have
 <ruby>持つ<rt>もっ</rt></ruby>	have
 <ruby>攻撃<rt>こうげき</rt></ruby>	attack
@@ -87,8 +85,7 @@
 <ruby>法律<rt>ほうりつ</rt></ruby>	law
 <ruby>海峡<rt>かいきょう</rt></ruby>	strait
 <ruby>滋賀県大津市<rt>しがけんおおつし</rt></ruby>	Otsu City, Shiga Prefecture
-<ruby>滑ったあと<rt>すべったあと</rt></ruby>	After slipping
-<ruby>滑りましたが<rt>すべりましたが</rt></ruby>	I slipped but
+<ruby>滑っあと<rt>すべったあと</rt></ruby>	A slip mark
 <ruby>滑る<rt>すべる</rt></ruby>	slide
 <ruby>目指<rt>めゆび</rt></ruby>	aim
 <ruby>目指する<rt>めざする</rt></ruby>	aim
@@ -102,23 +99,22 @@
 <ruby>良い<rt>よかっ</rt></ruby>	good
 <ruby>補助<rt>ほじょ</rt></ruby>	auxiliary
 <ruby>言う<rt>いう</rt></ruby>	say
-<ruby>言る<rt>いる</rt></ruby>	say
 <ruby>許し<rt>ゆるし</rt></ruby>	forgiveness
 <ruby>許す<rt>ゆるさないと</rt></ruby>	forgive
 <ruby>話す<rt>はなす</rt></ruby>	talk
 <ruby>読み<rt>よみ</rt></ruby>	reading
 <ruby>読む<rt>よむ</rt></ruby>	read
 <ruby>買い<rt>かい</rt></ruby>	Buy
-<ruby>買うときは<rt>かうときは</rt></ruby>	When buying
-<ruby>走ることができませ<rt>はしることができませ</rt></ruby>	can't run
+<ruby>買うとき<rt>かうときは</rt></ruby>	when buying
+<ruby>走ることできる<rt>はしることができませ</rt></ruby>	can run
 <ruby>近く<rt>きんくに</rt></ruby>	nearby
 <ruby>近くある<rt>ちかくにある</rt></ruby>	It's nearby
 <ruby>通ること<rt>とおることを</rt></ruby>	passing through
 <ruby>運転<rt>うんてん</rt></ruby>	driving
 <ruby>運転免許<rt>うんてんめんきょ</rt></ruby>	driving license
-<ruby>違いはわかりにくい<rt>ちがいはわかりにくい</rt></ruby>	It's hard to tell the difference
+<ruby>違いわかりにくい<rt>ちがいはわかりにくい</rt></ruby>	Difficult to understand the difference
 <ruby>違反<rt>いはん</rt></ruby>	violation
-<ruby>選んでほしいです<rt>えらんでほしいです</rt></ruby>	I want you to choose
+<ruby>選んほしい<rt>えらんでほしいです</rt></ruby>	I want you to choose
 <ruby>選手<rt>せんしゅ</rt></ruby>	player
 <ruby>金メダル<rt>きんめだる</rt></ruby>	gold medal
 <ruby>銀メダル<rt>ぎんめだる</rt></ruby>	silver medal
