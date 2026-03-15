@@ -6,4 +6,3 @@ fugashi
 unidic-lite
 genanki
 weasyprint
-kotobase

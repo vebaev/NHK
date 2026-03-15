@@ -27,14 +27,6 @@ try:
 except Exception:
     genanki = None
 
-try:
-    from kotobase import Kotobase
-except Exception as exc:
-    Kotobase = None
-    _KOTOBASE_IMPORT_ERROR = exc
-else:
-    _KOTOBASE_IMPORT_ERROR = None
-
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
@@ -54,7 +46,6 @@ _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _MECAB_TAGGER = None
 _WORD_GLOSSARY = None
-_KOTOBASE = None
 _THREAD_LOCAL = threading.local()
 _TRANSLATION_CACHE_DIRTY = False
 
@@ -228,130 +219,26 @@ def load_word_glossary():
     _WORD_GLOSSARY = {}
     return _WORD_GLOSSARY
 
-def get_kotobase_client():
-    global _KOTOBASE
-    if _KOTOBASE is not None:
-        return _KOTOBASE
-    if Kotobase is None:
-        return None
-    try:
-        _KOTOBASE = Kotobase()
-    except Exception:
-        _KOTOBASE = None
-    return _KOTOBASE
-
-
-def _extract_kotobase_entry(dto, requested_word: str = "", requested_reading: str = ""):
-    kanji = [str(v).strip() for v in getattr(dto, "kanji", []) if str(v).strip()]
-    kana = [normalize_katakana_to_hiragana(str(v).strip()) for v in getattr(dto, "kana", []) if str(v).strip()]
-    glosses = []
-    pos_tags = []
-    for sense in getattr(dto, "senses", []) or []:
-        gloss = (sense.get("gloss") or "").strip()
-        pos = (sense.get("pos") or "").strip()
-        if gloss and gloss not in glosses:
-            glosses.append(gloss)
-        if pos and pos not in pos_tags:
-            pos_tags.append(pos)
-
-    requested_reading = normalize_katakana_to_hiragana((requested_reading or "").strip())
-    surface = requested_word if requested_word and (requested_word in kanji or requested_word in kana) else ""
-    if not surface:
-        surface = kanji[0] if kanji else (kana[0] if kana else requested_word)
-
-    reading = ""
-    if requested_reading and requested_reading in kana:
-        reading = requested_reading
-    elif kana:
-        reading = kana[0]
-
-    return {
-        "surface": surface.strip(),
-        "reading": reading.strip(),
-        "gloss": "; ".join(glosses[:2]).strip(),
-        "pos": "; ".join(pos_tags[:2]).strip(),
-        "priority": int(getattr(dto, "rank", 0) or 0),
-    }
-
-
-def _score_kotobase_entry(dto, word: str = "", reading: str = ""):
-    word = (word or "").strip()
-    reading = normalize_katakana_to_hiragana((reading or "").strip())
-    kanji = [str(v).strip() for v in getattr(dto, "kanji", []) if str(v).strip()]
-    kana = [normalize_katakana_to_hiragana(str(v).strip()) for v in getattr(dto, "kana", []) if str(v).strip()]
-
-    score = 0
-    if word:
-        if word in kanji:
-            score += 6
-        if word in kana:
-            score += 5
-    if reading:
-        if reading in kana:
-            score += 8
-        elif kana and kana[0] == reading:
-            score += 6
-    if not kanji and kana:
-        score += 1
-    return (score, -int(getattr(dto, "rank", 1_000_000) or 1_000_000))
-
-
-@lru_cache(maxsize=8192)
-def _lookup_kotobase_entry(query: str, reading: str = ""):
-    query = (query or "").strip()
-    if not query:
-        return None
-    kb = get_kotobase_client()
-    if kb is None:
-        return None
-    try:
-        result = kb.lookup(query, sentence_limit=0, entry_limit=8)
-    except Exception:
-        return None
-    entries = [dto for dto in (getattr(result, "entries", None) or []) if hasattr(dto, "senses")]
-    if not entries:
-        return None
-    best = max(entries, key=lambda dto: _score_kotobase_entry(dto, query, reading))
-    return _extract_kotobase_entry(best, requested_word=query, requested_reading=reading)
-
-
 @lru_cache(maxsize=8192)
 def lookup_dictionary_meaning(word: str, reading: str = "") -> str:
-    glossary = load_word_glossary()
-    if word in glossary:
-        return glossary[word]
-    if reading and reading in glossary:
-        return glossary[reading]
-    entry = lookup_dictionary_entry(word, reading=reading)
-    return (entry or {}).get("gloss", "").strip()
+    return translate_word_lang(word, reading=reading, dest="en")
 
 
 @lru_cache(maxsize=8192)
 def lookup_dictionary_entry(word: str, reading: str = ""):
-    glossary = load_word_glossary()
-    if word in glossary:
-        return {"gloss": glossary[word], "reading": reading}
-    if reading and reading in glossary:
-        return {"gloss": glossary[reading], "reading": reading}
-
-    queries = []
-    if word:
-        queries.append(word)
-        lemma = to_dictionary_form(word)
-        if lemma and lemma != word:
-            queries.append(lemma)
-    if reading:
-        queries.append(reading)
-
-    seen = set()
-    for value in queries:
-        if not value or value in seen:
-            continue
-        seen.add(value)
-        entry = _lookup_kotobase_entry(value, reading=reading)
-        if entry and entry.get("gloss"):
-            return entry
-    return None
+    word = (word or "").strip()
+    reading = normalize_katakana_to_hiragana((reading or "").strip())
+    lemma = to_dictionary_form(word) if word else ""
+    base = lemma or word
+    if not base and not reading:
+        return None
+    return {
+        "surface": base or reading,
+        "reading": reading,
+        "gloss": translate_text(base or reading, dest="en"),
+        "pos": "",
+        "priority": 0,
+    }
 
 
 def merge_compound_nouns(tokens):
@@ -478,29 +365,8 @@ def translate_word_lang(word: str, reading: str = "", dest: str = "bg") -> str:
     cache_key = ("word_lang", word, reading, dest)
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
-
-    entry = lookup_dictionary_entry(word, reading=reading)
-    if entry and entry.get("gloss"):
-        gloss = entry["gloss"].strip()
-        result = gloss if dest == "en" else (translate_text(gloss, dest=dest) or gloss)
-        return cache_translation_result(cache_key, result)
-
-    # Fallback path for words missing from the dictionary:
-    # JP -> EN is often more reliable than JP -> BG, so bridge through EN for BG.
-    direct = translate_text(word, dest=dest)
-    if direct and direct.strip() != word:
-        return cache_translation_result(cache_key, direct.strip())
-
-    en_guess = translate_text(word, dest="en")
-    if en_guess and en_guess.strip() != word:
-        if dest == "en":
-            return cache_translation_result(cache_key, en_guess.strip())
-        bridged = translate_text(en_guess, dest=dest)
-        if bridged and bridged.strip() != en_guess:
-            return cache_translation_result(cache_key, bridged.strip())
-        return cache_translation_result(cache_key, en_guess.strip())
-
-    return cache_translation_result(cache_key, "")
+    translated = translate_text(to_dictionary_form(word) or word, dest=dest)
+    return cache_translation_result(cache_key, translated.strip())
 
 
 def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: str = "", reading_lemma: str = "", form_label_bg: str = "", form_label_en: str = ""):
@@ -979,13 +845,8 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     form_bg = (analysis.get("form_bg") or "форма в текста").strip()
     form_en = (analysis.get("form_en") or "form in context").strip()
 
-    lemma_entry = lookup_dictionary_entry(lemma, reading=reading_lemma) or lookup_dictionary_entry(lemma)
-    lemma_gloss_en = ((lemma_entry or {}).get("gloss") or "").strip()
-    lemma_meaning_en = lemma_gloss_en
-
-    if lemma == surface:
-        reading_lemma = ""
-        lemma_meaning_en = ""
+    lemma_meaning_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en")
+    lemma_meaning_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg")
 
     span["data-surface"] = surface
     span["data-lemma"] = lemma
@@ -993,6 +854,7 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     span["data-reading-lemma"] = reading_lemma
     span["data-form-bg"] = form_bg
     span["data-form-en"] = form_en
+    span["data-meaning-lemma-bg"] = lemma_meaning_bg
     span["data-meaning-lemma-en"] = lemma_meaning_en
 
     if "<" not in inner_html and ">" not in inner_html:
@@ -1865,7 +1727,7 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ml=(el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelInText=(lang==='en'?'In text':'В текста');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no JMdict entry':'няма JMdict запис');let html='<div class="dw">'+labelInText+': '+surface+(rs?' ['+rs+']':'')+'</div><div class="dm">'+labelForm+': '+form+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelInText=(lang==='en'?'In text':'В текста');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');let html='<div class="dw">'+labelInText+': '+surface+(rs?' ['+rs+']':'')+'</div><div class="dm">'+labelForm+': '+form+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
