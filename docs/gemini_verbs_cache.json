@@ -1,4 +1,61 @@
 {
+  "af53df3189f372a0f42eb5e7cd726015ab72a28c": [
+    {
+      "explanation_bg": "Използва се за цитиране на думи, мисли или писания на някого. 「〜と 言 っています」 означава „казва, че…“, 「〜と 思 います」 означава „мисля, че…“.",
+      "explanation_en": "Used to quote someone's words, thoughts, or writings. 「〜と 言 っています」 means \"is saying that...\", 「〜と 思 います」 means \"I think that...\".",
+      "label": "〜と 言う / 思う など"
+    },
+    {
+      "explanation_bg": "Изразява възможност или предположение, означава „може би“, „вероятно е“.",
+      "explanation_en": "Expresses possibility or conjecture, meaning \"maybe\", \"it might be\".",
+      "label": "〜かもしれません"
+    },
+    {
+      "explanation_bg": "Използва се за изброяване на примери или за означаване на „и така нататък“, „и други“.",
+      "explanation_en": "Used to list examples or to mean \"etc.\", \"and others\".",
+      "label": "〜など"
+    },
+    {
+      "explanation_bg": "Използва се за изброяване на няколко примера или възможности, често неформално, означава „като... и...“, „или... или...“.",
+      "explanation_en": "Used to list several examples or alternatives, often informally, meaning \"things like... and...\", \"or... or...\".",
+      "label": "〜とか〜とか"
+    },
+    {
+      "explanation_bg": "Означава „прилича на“, „сходен е с“.",
+      "explanation_en": "Means \"to resemble\", \"to be similar to\".",
+      "label": "〜に 似 ている"
+    },
+    {
+      "explanation_bg": "Означава „същото като“, „идентичен с“.",
+      "explanation_en": "Means \"the same as\", \"identical to\".",
+      "label": "〜と 同 じ"
+    },
+    {
+      "explanation_bg": "Означава „когато“ или „по време на“, използва се за обозначаване на времето, когато се случва нещо.",
+      "explanation_en": "Means \"when\" or \"at the time of\", used to indicate the time at which something occurs.",
+      "label": "〜ときは"
+    },
+    {
+      "explanation_bg": "Изразява желанието говорителят да иска някой друг да направи нещо, означава „искам (да направиш/направи)“.",
+      "explanation_en": "Expresses the speaker's desire for someone else to do something, meaning \"I want (you/them) to do...\".",
+      "label": "〜てほしい"
+    },
+    {
+      "explanation_bg": "Използва се след бройно число, за да се посочи редът или поредността на нещо, означава „N-ти“.",
+      "explanation_en": "Used after a counter to indicate the order or sequence of something, meaning \"N-th\".",
+      "label": "〜目 (め) の"
+    },
+    {
+      "explanation_bg": "Означава „стремейки се към“, „целейки се към“, показва цел или посока.",
+      "explanation_en": "Means \"aiming for\", \"heading towards\", indicates a goal or direction.",
+      "label": "〜を 目指 して"
+    },
+    {
+      "explanation_bg": "Поставя контекст или област, в която се прави изявление, означава „в (контекста на)“, „що се отнася до“.",
+      "explanation_en": "Sets the context or scope in which a statement is made, meaning \"in (the context of)\", \"as for\".",
+      "label": "〜では (context)"
+    }
+  ],
   "d9e34732623c29f97cd01dd5916aed33af662dae": {
     "article_1": [
       {
