@@ -52,6 +52,7 @@ _TRANSLATION_CACHE_DIRTY = False
 PARTICLE_PREFIXES = ("が", "を", "に", "で", "は", "と", "へ", "や", "も", "の")
 GODAN_I_TO_U = {"い":"う","き":"く","ぎ":"ぐ","し":"す","ち":"つ","に":"ぬ","び":"ぶ","み":"む","り":"る"}
 GODAN_A_TO_U = {"わ":"う","か":"く","が":"ぐ","さ":"す","た":"つ","な":"ぬ","ば":"ぶ","ま":"む","ら":"る"}
+GODAN_U_TO_I = {"う":"い","く":"き","ぐ":"ぎ","す":"し","つ":"ち","ぬ":"に","ぶ":"び","む":"み","る":"り"}
 
 GRAMMAR_RULES = [
     {"id": "kedo", "label": "けど / けれど", "explanation_bg": "Съюз за противопоставяне: но / обаче.", "explanation_en": ""},
@@ -571,6 +572,24 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
     def out(bg: str, en: str):
         return {"bg": bg, "en": en}
 
+    def masu_stem(word: str) -> str:
+        word = (word or "").strip()
+        if not word:
+            return ""
+        if word.endswith("する"):
+            return word[:-2] + "し"
+        if word.endswith("くる"):
+            return word[:-2] + "き"
+        if word.endswith("来る"):
+            return word[:-2] + "来"
+        if word.endswith("る") and len(word) >= 2:
+            prev = word[-2]
+            if prev in "えけげせぜてでねへべぺめれいきぎしじちぢにひびぴみり":
+                return word[:-1]
+        if word[-1] in GODAN_U_TO_I:
+            return word[:-1] + GODAN_U_TO_I[word[-1]]
+        return word
+
     if s == l:
         return out(l, l)
 
@@ -594,24 +613,25 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
         if s.endswith(suffix) and len(s) > len(suffix):
             return out(formula, formula)
 
+    stem = masu_stem(l)
     if s.endswith("ましょう") and len(s) > 4:
-        return out(f"{l} -> stem + ましょう", f"{l} -> stem + ましょう")
+        return out(f"{l} -> {stem} + ましょう", f"{l} -> {stem} + ましょう")
     if s.endswith("ました") and len(s) > 3:
-        return out(f"{l} -> stem + ました", f"{l} -> stem + ました")
+        return out(f"{l} -> {stem} + ました", f"{l} -> {stem} + ました")
     if s.endswith("ません") and len(s) > 3:
-        return out(f"{l} -> stem + ません", f"{l} -> stem + ません")
+        return out(f"{l} -> {stem} + ません", f"{l} -> {stem} + ません")
     if s.endswith("ます") and len(s) > 2:
-        return out(f"{l} -> stem + ます", f"{l} -> stem + ます")
+        return out(f"{l} -> {stem} + ます", f"{l} -> {stem} + ます")
     if s.endswith("なかった") and len(s) > 4:
         return out(f"{l} + なかった", f"{l} + なかった")
     if s.endswith("ない") and len(s) > 2:
         return out(f"{l} + ない", f"{l} + ない")
     if s.endswith("たかった") and len(s) > 4:
-        return out(f"{l} -> stem + たかった", f"{l} -> stem + たかった")
+        return out(f"{l} -> {stem} + たかった", f"{l} -> {stem} + たかった")
     if s.endswith("たくない") and len(s) > 4:
-        return out(f"{l} -> stem + たくない", f"{l} -> stem + たくない")
+        return out(f"{l} -> {stem} + たくない", f"{l} -> {stem} + たくない")
     if s.endswith("たい") and len(s) > 2:
-        return out(f"{l} -> stem + たい", f"{l} -> stem + たい")
+        return out(f"{l} -> {stem} + たい", f"{l} -> {stem} + たい")
     if s.endswith(("れる", "られる")) and len(s) > 2:
         return out(f"{l} + れる/られる", f"{l} + れる/られる")
     if "使役" in (ctype or "") or s.endswith(("せる", "させる")):
@@ -657,7 +677,8 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
                 if len(tokens) == 1:
                     tok = tokens[0]
                     feat = token_feature(tok)
-                    lemma = token_lemma(tok).strip() or to_dictionary_form(surface) or lemma_hint or surface
+                    raw_lemma = token_lemma(tok).strip() or lemma_hint or surface
+                    lemma = to_dictionary_form(raw_lemma) or to_dictionary_form(surface) or raw_lemma or surface
                     reading_surface = normalize_katakana_to_hiragana(feature_reading(tok).strip() or reading_hint)
                     info["lemma"] = lemma
                     info["reading_surface"] = reading_surface
@@ -667,7 +688,7 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
                     info["ctype"] = safe_feature_value(feat, "cType", "ctype", "conjType", "inflectionType")
                     info["cform"] = safe_feature_value(feat, "cForm", "cform", "conjForm", "inflectionForm")
                 else:
-                    token_lemmas = [token_lemma(t).strip() or token_surface(t).strip() for t in tokens]
+                    token_lemmas = [to_dictionary_form(token_lemma(t).strip() or token_surface(t).strip()) for t in tokens]
                     derived = to_dictionary_form(surface)
                     non_aux_lemmas = [x for x in token_lemmas if x not in {"て", "で", "いる", "居る", "ます", "です", "ん", "ない"}]
                     if derived and derived != surface:
@@ -681,8 +702,7 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
                     info["reading_surface"] = normalize_katakana_to_hiragana("".join(feature_reading(t).strip() for t in tokens) or reading_hint)
         except Exception:
             pass
-    if not info["lemma"] or info["lemma"] == surface:
-        info["lemma"] = to_dictionary_form(surface) or lemma_hint or surface
+    info["lemma"] = to_dictionary_form(info["lemma"]) or to_dictionary_form(surface) or lemma_hint or surface
     if not info["reading_surface"]:
         info["reading_surface"] = reading_hint
     if not info["reading_lemma"]:
