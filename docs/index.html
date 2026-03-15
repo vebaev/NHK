@@ -9,12 +9,12 @@
 <meta http-equiv="refresh" content="7200">
 <title>最新ニュース</title>
 <meta name="theme-color" content="#0f1115">
-<meta name="app-version" content="1773591684">
-<link rel="manifest" href="manifest.webmanifest?v=1773591684">
-<link rel="icon" type="image/x-icon" href="favicon.ico?v=1773591684">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=1773591684">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1773591684">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1773591684">
+<meta name="app-version" content="1773598397">
+<link rel="manifest" href="manifest.webmanifest?v=1773598397">
+<link rel="icon" type="image/x-icon" href="favicon.ico?v=1773598397">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=1773598397">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1773598397">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1773598397">
 <style>
 :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
@@ -66,7 +66,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 </head>
 <body class="theme-dark">
 <div class="wrap">
-<img class="site-logo" src="android-chrome-192x192.png?v=1773591684" alt="NHK logo" loading="lazy">
+<img class="site-logo" src="android-chrome-192x192.png?v=1773598397" alt="NHK logo" loading="lazy">
 <h1>最新ニュース</h1>
 <div class="lang-top">
   <div class="control-label" data-ui="translation_language"></div>
@@ -87,7 +87,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
   </div>
 </div>
 <div class='contacts'>vebaev.github.io</div>
-<div class='build-marker'>Generated: 2026-03-15 16:21:24 UTC</div>
+<div class='build-marker'>Generated: 2026-03-15 18:13:17 UTC</div>
 </div>
 <script>
 const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху дума за значение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",vocab_apkg:"Свали Anki речник (.apkg)",vocab_tsv:"Свали речник TSV",grammar_apkg:"Свали Anki граматика (.apkg)",grammar_tsv:"Свали граматика TSV"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a word for its meaning.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",vocab_apkg:"Download Anki vocabulary (.apkg)",vocab_tsv:"Download vocabulary TSV",grammar_apkg:"Download Anki grammar (.apkg)",grammar_tsv:"Download grammar TSV"}};
@@ -101,7 +101,7 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ml=(el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelInText=(lang==='en'?'In text':'В текста');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');let html='<div class="dw">'+labelInText+': '+surface+(rs?' ['+rs+']':'')+'</div><div class="dm">'+labelForm+': '+form+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'');if(ml){html+=' - '+ml;}html+='</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ml=(el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelInText=(lang==='en'?'In text':'В текста');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no JMdict entry':'няма JMdict запис');let html='<div class="dw">'+labelInText+': '+surface+(rs?' ['+rs+']':'')+'</div><div class="dm">'+labelForm+': '+form+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
