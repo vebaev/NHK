@@ -1,4 +1,51 @@
-- name: Download dictionary
-  run: |
-    mkdir -p data
-    curl -L https://github.com/vebaev/NHK/releases/download/dict/jmdict.db -o data/jmdict.db
+name: NHK Easy Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Ensure data directory exists
+        run: mkdir -p data
+
+      - name: Cache JMdict
+        uses: actions/cache@v4
+        with:
+          path: data/jmdict.db
+          key: jmdict-cache-v1
+
+      - name: Download dictionary if missing
+        run: |
+          if [ ! -f data/jmdict.db ]; then
+            echo "Downloading JMdict..."
+            curl -L https://github.com/vebaev/NHK/releases/download/dict/jmdict.db -o data/jmdict.db
+          else
+            echo "Dictionary already exists."
+          fi
+
+      - name: Ensure docs directory exists
+        run: mkdir -p docs
+
+      - name: Run generator
+        run: python nhk_easy_pipeline.py --output docs/index.html --count 4
