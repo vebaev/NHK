@@ -1449,6 +1449,24 @@ def parse_article_from_nhk_easy(link: str):
     vocab = extract_vocab_from_blocks(filtered_blocks)
     article = {"title": title, "title_html": title_html, "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": filtered_blocks, "vocab": vocab}
     return prepare_article_render_data(article)
+
+
+def build_article_from_fallback(link: str, fallback: dict):
+    if not fallback or not fallback.get("blocks"):
+        return None
+    title = (fallback.get("title") or "NHK Easy Article").strip()
+    article = {
+        "title": title,
+        "title_html": title,
+        "link": link,
+        "image_url": (fallback.get("image_url") or "").strip(),
+        "audio_url": (fallback.get("audio_url") or "").strip(),
+        "blocks": [{"html": b["html"], "text": b["text"]} for b in fallback.get("blocks") or [] if (b.get("text") or "").strip()],
+        "vocab": extract_vocab_from_blocks(fallback.get("blocks") or []),
+    }
+    return prepare_article_render_data(article)
+
+
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
@@ -1462,10 +1480,10 @@ def get_articles(n=4):
         futures = {executor.submit(parse_article_from_nhk_easy, link): link for link in links}
         for future in as_completed(futures):
             link = futures[future]
+            ne_id = extract_ne_id(link)
+            fallback = nhkeasier_items.get(ne_id)
             try:
                 article = future.result()
-                ne_id = extract_ne_id(link)
-                fallback = nhkeasier_items.get(ne_id)
                 if article and fallback and fallback.get("blocks"):
                     article["blocks"] = [{"html": b["html"], "text": b["text"]} for b in fallback["blocks"]]
                     article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
@@ -1474,9 +1492,17 @@ def get_articles(n=4):
                     if fallback.get("image_url"):
                         article["image_url"] = fallback["image_url"]
                     prepare_article_render_data(article)
-                if article and article.get("blocks") and article.get("vocab"):
+                if not article and fallback:
+                    article = build_article_from_fallback(link, fallback)
+                if article and article.get("blocks"):
                     articles.append(article)
             except Exception as e:
+                if fallback:
+                    article = build_article_from_fallback(link, fallback)
+                    if article and article.get("blocks"):
+                        articles.append(article)
+                        print(f"Used nhkeasier fallback for {link} after error: {e}")
+                        continue
                 print(f"Skipping article because of error: {e}")
                 continue
     articles.sort(key=lambda item: links.index(item.get("link", "")) if item.get("link") in links else len(links))
