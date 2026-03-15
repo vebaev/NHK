@@ -1,20 +1,25 @@
 {
-  "name": "最新ニュース",
-  "short_name": "最新ニュース",
-  "start_url": "./index.html",
-  "scope": "./",
+  "name": "NHK Easy News",
+  "id": "./?v=1773604574",
+  "short_name": "NHK Easy",
+  "start_url": "./index.html?v=1773604574",
   "display": "standalone",
   "background_color": "#0f1115",
   "theme_color": "#0f1115",
   "icons": [
     {
-      "src": "./android-chrome-192x192.png",
+      "src": "android-chrome-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "./android-chrome-512x512.png",
+      "src": "android-chrome-512x512.png",
       "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
       "type": "image/png"
     }
   ]

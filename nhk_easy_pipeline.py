@@ -561,6 +561,75 @@ def classify_japanese_form(surface: str, lemma: str = "", pos1: str = "", pos2: 
         return {"bg": "форма на прилагателно", "en": "adjective form"}
     return {"bg": "форма в текста", "en": "form in context"}
 
+
+def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", pos2: str = "", ctype: str = "", cform: str = ""):
+    s = (surface or "").strip()
+    l = (lemma or "").strip() or s
+    if not s:
+        return {"bg": "", "en": ""}
+
+    def out(bg: str, en: str):
+        return {"bg": bg, "en": en}
+
+    if s == l:
+        return out(l, l)
+
+    te_iru_map = [
+        ("ていませんでした", "te-form + いませんでした"),
+        ("でいませんでした", "de-form + いませんでした"),
+        ("ていました", "te-form + いました"),
+        ("でいました", "de-form + いました"),
+        ("ていません", "te-form + いません"),
+        ("でいません", "de-form + いません"),
+        ("ていない", "te-form + いない"),
+        ("でいない", "de-form + いない"),
+        ("ています", "te-form + います"),
+        ("でいます", "de-form + います"),
+        ("ていた", "te-form + いた"),
+        ("でいた", "de-form + いた"),
+        ("ている", "te-form + いる"),
+        ("でいる", "de-form + いる"),
+    ]
+    for suffix, formula in te_iru_map:
+        if s.endswith(suffix) and len(s) > len(suffix):
+            return out(formula, formula)
+
+    if s.endswith("ましょう") and len(s) > 4:
+        return out(f"{l} -> stem + ましょう", f"{l} -> stem + ましょう")
+    if s.endswith("ました") and len(s) > 3:
+        return out(f"{l} -> stem + ました", f"{l} -> stem + ました")
+    if s.endswith("ません") and len(s) > 3:
+        return out(f"{l} -> stem + ません", f"{l} -> stem + ません")
+    if s.endswith("ます") and len(s) > 2:
+        return out(f"{l} -> stem + ます", f"{l} -> stem + ます")
+    if s.endswith("なかった") and len(s) > 4:
+        return out(f"{l} + なかった", f"{l} + なかった")
+    if s.endswith("ない") and len(s) > 2:
+        return out(f"{l} + ない", f"{l} + ない")
+    if s.endswith("たかった") and len(s) > 4:
+        return out(f"{l} -> stem + たかった", f"{l} -> stem + たかった")
+    if s.endswith("たくない") and len(s) > 4:
+        return out(f"{l} -> stem + たくない", f"{l} -> stem + たくない")
+    if s.endswith("たい") and len(s) > 2:
+        return out(f"{l} -> stem + たい", f"{l} -> stem + たい")
+    if s.endswith(("れる", "られる")) and len(s) > 2:
+        return out(f"{l} + れる/られる", f"{l} + れる/られる")
+    if "使役" in (ctype or "") or s.endswith(("せる", "させる")):
+        return out(f"{l} + せる/させる", f"{l} + せる/させる")
+    if s.endswith("くない") and len(s) > 3 and pos1 == "形容詞":
+        return out(f"{l[:-1] if l.endswith('い') else l} + くない", f"{l[:-1] if l.endswith('い') else l} + くない")
+    if s.endswith("かった") and len(s) > 3 and pos1 == "形容詞":
+        return out(f"{l[:-1] if l.endswith('い') else l} + かった", f"{l[:-1] if l.endswith('い') else l} + かった")
+    if s.endswith("くて") and len(s) > 2 and pos1 == "形容詞":
+        return out(f"{l[:-1] if l.endswith('い') else l} + くて", f"{l[:-1] if l.endswith('い') else l} + くて")
+    if s.endswith(("て", "で")) and len(s) > 1:
+        return out(f"{l} -> te-form", f"{l} -> te-form")
+    if s.endswith(("た", "だ")) and len(s) > 1:
+        return out(f"{l} -> past form", f"{l} -> past form")
+    if s.endswith(("よう", "おう")) and len(s) > 2:
+        return out(f"{l} -> volitional", f"{l} -> volitional")
+    return out(f"{l} -> {s}", f"{l} -> {s}")
+
 @lru_cache(maxsize=8192)
 def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str = ""):
     surface = (surface or "").strip()
@@ -577,6 +646,8 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
         "cform": "",
         "form_bg": "форма в текста",
         "form_en": "form in context",
+        "formula_bg": "",
+        "formula_en": "",
     }
     tagger = get_mecab_tagger()
     if tagger is not None and surface:
@@ -622,6 +693,9 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
     form_labels = classify_japanese_form(info["surface"], info["lemma"], info["pos1"], info["pos2"], info["ctype"], info["cform"])
     info["form_bg"] = form_labels["bg"]
     info["form_en"] = form_labels["en"]
+    formulas = build_japanese_form_formula(info["surface"], info["lemma"], info["pos1"], info["pos2"], info["ctype"], info["cform"])
+    info["formula_bg"] = formulas["bg"]
+    info["formula_en"] = formulas["en"]
     return info
 
 @lru_cache(maxsize=16384)
@@ -844,6 +918,8 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
         reading_lemma = reading_surface if lemma == surface else get_reading_for_word(lemma, fallback="")
     form_bg = (analysis.get("form_bg") or "форма в текста").strip()
     form_en = (analysis.get("form_en") or "form in context").strip()
+    formula_bg = (analysis.get("formula_bg") or "").strip()
+    formula_en = (analysis.get("formula_en") or "").strip()
 
     lemma_meaning_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en")
     lemma_meaning_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg")
@@ -854,6 +930,8 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     span["data-reading-lemma"] = reading_lemma
     span["data-form-bg"] = form_bg
     span["data-form-en"] = form_en
+    span["data-formula-bg"] = formula_bg
+    span["data-formula-en"] = formula_en
     span["data-meaning-lemma-bg"] = lemma_meaning_bg
     span["data-meaning-lemma-en"] = lemma_meaning_en
 
@@ -1757,7 +1835,7 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelInText=(lang==='en'?'In text':'В текста');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');let html='<div class="dw">'+labelInText+': '+surface+(rs?' ['+rs+']':'')+'</div><div class="dm">'+labelForm+': '+form+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg)||el.dataset.formulaBg||el.dataset.formulaEn||'';const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelFormula=(lang==='en'?'Formation':'Образуване');const labelInText=(lang==='en'?'In text':'В текста');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');let html='<div class="dw">'+labelInText+': '+surface+(rs?' ['+rs+']':'')+'</div><div class="dm">'+labelForm+': '+form+'</div>';if(formula)html+='<div class="dm">'+labelFormula+': '+formula+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
