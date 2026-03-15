@@ -64,7 +64,6 @@ jobs:
         run: timeout 18m python nhk_easy_pipeline.py --output docs/index.html --count 4
 
       - name: Commit updated page
-        if: github.event_name != 'push'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
