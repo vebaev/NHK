@@ -235,7 +235,7 @@ def lookup_dictionary_entry(word: str, reading: str = ""):
     return {
         "surface": base or reading,
         "reading": reading,
-        "gloss": translate_text(base or reading, dest="en"),
+        "gloss": "",
         "pos": "",
         "priority": 0,
     }
@@ -845,8 +845,12 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     form_bg = (analysis.get("form_bg") or "форма в текста").strip()
     form_en = (analysis.get("form_en") or "form in context").strip()
 
-    lemma_meaning_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en")
-    lemma_meaning_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg")
+    lemma_meaning_en = (item.get("meaning_en") or "").strip()
+    lemma_meaning_bg = (item.get("meaning_bg") or "").strip()
+    if not lemma_meaning_en:
+        lemma_meaning_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en")
+    if not lemma_meaning_bg:
+        lemma_meaning_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg")
 
     span["data-surface"] = surface
     span["data-lemma"] = lemma
@@ -922,10 +926,14 @@ def extract_vocab_from_blocks(blocks):
                 reading = "".join(x[1] for x in compound).strip()
                 if not is_suspicious_vocab_word(word) and word not in vocab_map:
                     vocab_map[word] = reading
+    words = list(vocab_map.keys())
+    meaning_bg_map = translate_texts(words, dest="bg")
+    meaning_en_map = translate_texts(words, dest="en")
+
     vocab = []
     for word, reading in vocab_map.items():
-        meaning_bg = translate_word_lang(word, reading, dest="bg")
-        meaning_en = translate_word_lang(word, reading, dest="en")
+        meaning_bg = (meaning_bg_map.get(word) or "").strip()
+        meaning_en = (meaning_en_map.get(word) or "").strip()
         vocab.append({"word": word, "reading": reading, "meaning_bg": meaning_bg, "meaning_en": meaning_en, "meaning": meaning_bg})
     vocab.sort(key=lambda x: (-len(x["word"]), x["word"]))
     return vocab[:80]
