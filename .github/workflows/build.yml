@@ -4,6 +4,10 @@ on:
   push:
   workflow_dispatch:
 
+env:
+  JMDICT_VERSION: dict-v1
+  JMDICT_URL: https://github.com/vebaev/NHK/releases/download/dict-v1/jmdict.db
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,13 +37,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/jmdict.db
-          key: jmdict-cache-v1
+          key: jmdict-cache-${{ runner.os }}-${{ env.JMDICT_VERSION }}
 
       - name: Download dictionary if missing
         run: |
           if [ ! -f data/jmdict.db ]; then
-            echo "Downloading JMdict..."
-            curl -L https://github.com/vebaev/NHK/releases/download/dict/jmdict.db -o data/jmdict.db
+            echo "Downloading JMdict ${JMDICT_VERSION}..."
+            curl -L "$JMDICT_URL" -o data/jmdict.db
           else
             echo "Dictionary already exists."
           fi
