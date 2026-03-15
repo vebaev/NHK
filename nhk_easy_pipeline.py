@@ -577,6 +577,11 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
     def out(bg: str, en: str):
         return {"bg": bg, "en": en}
 
+    def chain(*parts: str):
+        cleaned = [p for p in parts if (p or "").strip()]
+        text = " -> ".join(cleaned)
+        return out(text, text)
+
     def masu_stem(word: str) -> str:
         word = (word or "").strip()
         if not word:
@@ -636,11 +641,10 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
 
     if "よかった" in s and ("ば" in s or "仮定形" in cform):
         ba = ba_form(l)
-        tail = s[len(ba):] if ba and s.startswith(ba) else "よかった"
-        return out(f"{l} -> {ba} + {tail}", f"{l} -> {ba} + {tail}")
+        return chain(l, ba, s)
     if "仮定形" in cform or s.endswith("れば") or s.endswith("ば"):
         ba = ba_form(l)
-        return out(f"{l} -> {ba}", f"{l} -> {ba}")
+        return chain(l, ba)
 
     te_iru_map = [
         ("ていませんでした", "te-form + いませんでした"),
@@ -660,27 +664,27 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
     ]
     for suffix, formula in te_iru_map:
         if s.endswith(suffix) and len(s) > len(suffix):
-            return out(formula, formula)
+            return chain(l, "te-form", s)
 
     stem = masu_stem(l)
     if s.endswith("ましょう") and len(s) > 4:
-        return out(f"{l} -> {stem} + ましょう", f"{l} -> {stem} + ましょう")
+        return chain(l, stem, s)
     if s.endswith("ました") and len(s) > 3:
-        return out(f"{l} -> {stem} + ました", f"{l} -> {stem} + ました")
+        return chain(l, stem, s)
     if s.endswith("ません") and len(s) > 3:
-        return out(f"{l} -> {stem} + ません", f"{l} -> {stem} + ません")
+        return chain(l, stem, s)
     if s.endswith("ます") and len(s) > 2:
-        return out(f"{l} -> {stem} + ます", f"{l} -> {stem} + ます")
+        return chain(l, stem, s)
     if s.endswith("なかった") and len(s) > 4:
         return out(f"{l} + なかった", f"{l} + なかった")
     if s.endswith("ない") and len(s) > 2:
         return out(f"{l} + ない", f"{l} + ない")
     if s.endswith("たかった") and len(s) > 4:
-        return out(f"{l} -> {stem} + たかった", f"{l} -> {stem} + たかった")
+        return chain(l, stem, s)
     if s.endswith("たくない") and len(s) > 4:
-        return out(f"{l} -> {stem} + たくない", f"{l} -> {stem} + たくない")
+        return chain(l, stem, s)
     if s.endswith("たい") and len(s) > 2:
-        return out(f"{l} -> {stem} + たい", f"{l} -> {stem} + たい")
+        return chain(l, stem, s)
     if s.endswith(("れる", "られる")) and len(s) > 2:
         return out(f"{l} + れる/られる", f"{l} + れる/られる")
     if "使役" in (ctype or "") or s.endswith(("せる", "させる")):
