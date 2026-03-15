@@ -27,6 +27,18 @@ try:
 except Exception:
     genanki = None
 
+try:
+    from sudachipy import dictionary as sudachi_dictionary
+    from sudachipy import tokenizer as sudachi_tokenizer
+except Exception:
+    sudachi_dictionary = None
+    sudachi_tokenizer = None
+
+try:
+    from jinf import Jinf
+except Exception:
+    Jinf = None
+
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
@@ -45,6 +57,8 @@ DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
 _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _MECAB_TAGGER = None
+_SUDACHI_TOKENIZER = None
+_JINF = None
 _WORD_GLOSSARY = None
 _THREAD_LOCAL = threading.local()
 _TRANSLATION_CACHE_DIRTY = False
@@ -136,6 +150,32 @@ def get_http_session():
     return session
 
 
+def get_sudachi_tokenizer():
+    global _SUDACHI_TOKENIZER
+    if _SUDACHI_TOKENIZER is not None:
+        return _SUDACHI_TOKENIZER
+    if sudachi_dictionary is None or sudachi_tokenizer is None:
+        return None
+    try:
+        _SUDACHI_TOKENIZER = sudachi_dictionary.Dictionary().create()
+    except Exception:
+        _SUDACHI_TOKENIZER = None
+    return _SUDACHI_TOKENIZER
+
+
+def get_jinf():
+    global _JINF
+    if _JINF is not None:
+        return _JINF
+    if Jinf is None:
+        return None
+    try:
+        _JINF = Jinf()
+    except Exception:
+        _JINF = None
+    return _JINF
+
+
 def get_translation_cache_path(output_path: str = "") -> str:
     candidates = []
     if output_path:
@@ -222,6 +262,80 @@ def load_word_glossary():
                 pass
     _WORD_GLOSSARY = {}
     return _WORD_GLOSSARY
+
+
+def sudachi_tokenize(text: str):
+    tokenizer = get_sudachi_tokenizer()
+    if tokenizer is None or not text:
+        return []
+    try:
+        return list(tokenizer.tokenize(text, sudachi_tokenizer.Tokenizer.SplitMode.C))
+    except Exception:
+        return []
+
+
+def sudachi_feature(m):
+    pos = tuple(m.part_of_speech()) if hasattr(m, "part_of_speech") else ()
+    return {
+        "pos1": pos[0] if len(pos) > 0 else "",
+        "pos2": pos[1] if len(pos) > 1 else "",
+        "ctype": pos[4] if len(pos) > 4 else "",
+        "cform": pos[5] if len(pos) > 5 else "",
+    }
+
+
+def sudachi_reading(m) -> str:
+    try:
+        return normalize_katakana_to_hiragana((m.reading_form() or "").strip())
+    except Exception:
+        return ""
+
+
+def sudachi_dictionary_form(m) -> str:
+    try:
+        return (m.dictionary_form() or "").strip()
+    except Exception:
+        return ""
+
+
+def sudachi_surface(m) -> str:
+    try:
+        return (m.surface() or "").strip()
+    except Exception:
+        return ""
+
+
+def sudachi_content_tokens(tokens):
+    return [m for m in tokens if sudachi_feature(m)["pos1"] not in {"助詞", "助動詞", "補助記号"}]
+
+
+def choose_sudachi_core_token(tokens):
+    content = sudachi_content_tokens(tokens)
+    if not content:
+        return tokens[0] if tokens else None
+    conditional = next((m for m in content if "仮定形" in sudachi_feature(m)["cform"]), None)
+    if conditional is not None:
+        return conditional
+    for m in reversed(content):
+        if sudachi_feature(m)["pos1"] in {"動詞", "形容詞"}:
+            return m
+    return content[0]
+
+
+def build_sudachi_compound_lemma(surface: str, tokens):
+    derived = to_dictionary_form(surface)
+    if derived and derived != surface:
+        return derived
+    content = sudachi_content_tokens(tokens)
+    if not content:
+        return derived or surface
+    if len(content) == 1:
+        return sudachi_dictionary_form(content[0]) or derived or surface
+    prefix = "".join(sudachi_surface(m) for m in content[:-1]).strip()
+    tail = sudachi_dictionary_form(content[-1]).strip()
+    if prefix and tail:
+        return prefix + tail
+    return tail or derived or surface
 
 @lru_cache(maxsize=8192)
 def lookup_dictionary_meaning(word: str, reading: str = "") -> str:
@@ -473,6 +587,11 @@ def get_reading_for_word(word: str, fallback: str = "") -> str:
     entry = lookup_dictionary_entry(word)
     if entry and (entry.get("reading") or "").strip():
         return normalize_katakana_to_hiragana((entry.get("reading") or "").strip())
+    sudachi_tokens = sudachi_tokenize(word)
+    if sudachi_tokens:
+        reading = "".join(sudachi_reading(t) for t in sudachi_tokens).strip()
+        if reading:
+            return reading
     tagger = get_mecab_tagger()
     if tagger is not None:
         try:
@@ -586,10 +705,40 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
         text = " -> ".join(cleaned)
         return out(text, text)
 
+    def jinf_inf_type(word: str, inf_type: str) -> str:
+        inf_type = (inf_type or "").strip()
+        word = (word or "").strip()
+        if inf_type.startswith("五段-"):
+            return f"子音動詞{inf_type.split('五段-', 1)[1]}"
+        if inf_type.startswith("上一段") or inf_type.startswith("下一段"):
+            return "母音動詞"
+        if inf_type.startswith("カ行変格"):
+            return "カ変動詞来" if word in {"来る", "くる"} else "カ変動詞"
+        if inf_type.startswith("サ行変格"):
+            return "サ変動詞"
+        if inf_type == "形容詞" and word.endswith("い"):
+            return "イ形容詞イ段"
+        return ""
+
+    def jinf_convert(word: str, inf_type: str, target_form: str) -> str:
+        engine = get_jinf()
+        mapped_type = jinf_inf_type(word, inf_type)
+        if engine is None or not mapped_type:
+            return ""
+        try:
+            if not engine.is_valid_type(mapped_type) or not engine.is_valid_form(mapped_type, target_form):
+                return ""
+            return (engine.convert(word, mapped_type, "基本形", target_form) or "").strip()
+        except Exception:
+            return ""
+
     def masu_stem(word: str) -> str:
         word = (word or "").strip()
         if not word:
             return ""
+        via_jinf = jinf_convert(word, ctype, "基本連用形")
+        if via_jinf:
+            return via_jinf
         if word.endswith("する"):
             return word[:-2] + "し"
         if word.endswith("くる"):
@@ -608,6 +757,9 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
         word = (word or "").strip()
         if not word:
             return ""
+        via_jinf = jinf_convert(word, ctype, "基本条件形")
+        if via_jinf:
+            return via_jinf
         if word.endswith("する"):
             return word[:-2] + "すれば"
         if word.endswith("くる"):
@@ -726,8 +878,18 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
         "formula_bg": "",
         "formula_en": "",
     }
+    sudachi_tokens = sudachi_tokenize(surface)
+    if sudachi_tokens:
+        core = choose_sudachi_core_token(sudachi_tokens)
+        core_feat = sudachi_feature(core) if core is not None else {}
+        info["lemma"] = build_sudachi_compound_lemma(surface, sudachi_tokens) or lemma_hint or surface
+        info["reading_surface"] = "".join(sudachi_reading(t) for t in sudachi_tokens).strip() or reading_hint
+        info["pos1"] = core_feat.get("pos1", "")
+        info["pos2"] = core_feat.get("pos2", "")
+        info["ctype"] = core_feat.get("ctype", "")
+        info["cform"] = core_feat.get("cform", "")
     tagger = get_mecab_tagger()
-    if tagger is not None and surface:
+    if not sudachi_tokens and tagger is not None and surface:
         try:
             tokens = list(tagger(surface))
             if tokens:
@@ -800,6 +962,9 @@ def lemmatize_japanese(word: str) -> str:
     w = (word or "").strip()
     if not w:
         return w
+    sudachi_tokens = sudachi_tokenize(w)
+    if sudachi_tokens:
+        return build_sudachi_compound_lemma(w, sudachi_tokens)
     tagger = get_mecab_tagger()
     if tagger is None:
         return to_dictionary_form(w)
