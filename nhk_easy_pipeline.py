@@ -1483,6 +1483,21 @@ def sanitize_gemini_verb_item(item):
     }
 
 
+def sanitize_gemini_grammar_item(item):
+    if not isinstance(item, dict):
+        return None
+    label = (item.get("label") or "").strip()
+    explanation_bg = (item.get("explanation_bg") or "").strip()
+    explanation_en = (item.get("explanation_en") or "").strip()
+    if not label or not explanation_bg:
+        return None
+    return {
+        "label": label,
+        "explanation_bg": explanation_bg,
+        "explanation_en": explanation_en or translate_text(explanation_bg, dest="en") or explanation_bg,
+    }
+
+
 def normalize_gemini_match_key(value: str) -> str:
     return re.sub(r"\s+", "", (value or "").strip()).lower()
 
@@ -1636,6 +1651,72 @@ def analyze_articles_with_gemini(articles):
     for article in articles or []:
         attach_gemini_to_wrapped_blocks(article)
     return articles
+
+
+def analyze_grammar_points_with_gemini(articles, existing_grammar_points=None):
+    existing_grammar_points = existing_grammar_points or []
+    if not articles or not GEMINI_API_KEY or genai is None:
+        return []
+
+    article_payload = []
+    for index, article in enumerate(articles, start=1):
+        text = article_text_for_gemini(article)
+        if not text:
+            continue
+        article_payload.append(
+            {
+                "article_id": f"article_{index}",
+                "title": (article.get("title") or "").strip(),
+                "text": text,
+            }
+        )
+    if not article_payload:
+        return []
+
+    existing_labels = [((g.get("label") or "").replace(" (AI)", "").strip()) for g in existing_grammar_points if (g.get("label") or "").strip()]
+    cache_payload = {"model": GEMINI_MODEL, "task": "grammar_ai", "articles": article_payload, "existing": existing_labels}
+    cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    cached = _GEMINI_CACHE.get(cache_key)
+    if isinstance(cached, list):
+        return [item for item in (sanitize_gemini_grammar_item(v) for v in cached) if item]
+
+    prompt = (
+        "Analyze the 4 Japanese NHK Easy articles below and identify additional grammar constructions or particles worth showing in a learner-facing "
+        "\"Grammar in the texts\" summary.\n"
+        "Return JSON only.\n"
+        "Do not repeat items that are already covered by this existing list:\n"
+        f"{json.dumps(existing_labels, ensure_ascii=False)}\n"
+        "Return only a compact list of additional useful constructions actually present in the texts.\n"
+        "Each item must have:\n"
+        "- label: Japanese grammar form or particle pattern\n"
+        "- explanation_bg: short Bulgarian explanation including how it is used and its meaning/translation\n"
+        "- explanation_en: short English explanation including usage and meaning/translation\n"
+        "Keep labels short. Prefer patterns like 〜として, 〜により, 〜わけではない, etc.\n"
+        "Return this JSON shape exactly:\n"
+        "{\"items\":[{\"label\":\"...\",\"explanation_bg\":\"...\",\"explanation_en\":\"...\"}]}\n"
+        f"Articles:\n{json.dumps(article_payload, ensure_ascii=False, indent=2)}"
+    )
+
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config={"response_mime_type": "application/json"},
+        )
+        parsed = extract_json_object(getattr(response, "text", ""))
+    except Exception as e:
+        print(f"Gemini grammar analysis failed: {e}")
+        return []
+
+    if not isinstance(parsed, dict):
+        print("Gemini grammar analysis returned invalid JSON.")
+        return []
+
+    items = [item for item in (sanitize_gemini_grammar_item(v) for v in (parsed.get("items") or [])) if item]
+    if items:
+        cache_gemini_result(cache_key, items)
+    return items
 
 
 def contains_digit(word: str) -> bool:
@@ -2672,6 +2753,22 @@ def main():
         raise RuntimeError("No articles were extracted.")
 
     grammar_points = extract_grammar_points(articles)
+    ai_grammar_points = analyze_grammar_points_with_gemini(articles, grammar_points)
+    existing_grammar_keys = {normalize_for_compare((g.get("label") or "").replace(" (AI)", "")) for g in grammar_points}
+    for item in ai_grammar_points:
+        base_label = (item.get("label") or "").replace(" (AI)", "").strip()
+        if not base_label:
+            continue
+        if normalize_for_compare(base_label) in existing_grammar_keys:
+            continue
+        grammar_points.append(
+            {
+                "label": f"{base_label} (AI)",
+                "explanation_bg": item.get("explanation_bg", ""),
+                "explanation_en": item.get("explanation_en", ""),
+            }
+        )
+        existing_grammar_keys.add(normalize_for_compare(base_label))
     analyze_articles_with_gemini(articles)
 
     vocab_tsv_filename = DEFAULT_ANKI_FILENAME
