@@ -1665,7 +1665,8 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None)
 
         item = None
         analysis = None
-        for cand in unique_keep_order(candidates + build_lookup_candidates(base + okurigana if okurigana else base, reading=ruby_reading)):
+        ruby_candidates = list(build_lookup_candidates(base + okurigana if okurigana else base, reading=ruby_reading))
+        for cand in unique_keep_order(candidates + ruby_candidates):
             if cand in vocab_lookup:
                 item = vocab_lookup[cand]
                 analysis = analyze_japanese_word(base + okurigana if okurigana else base, reading_hint=(ruby_reading + okurigana).strip() if okurigana else ruby_reading, lemma_hint=(item.get("word") or "").strip())
