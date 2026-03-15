@@ -82,6 +82,7 @@ GRAMMAR_RULES = [
     {"id": "nakereba_naranai", "label": "〜なければならない", "explanation_bg": "Трябва да...", "explanation_en": ""},
     {"id": "nakereba_ikenai", "label": "〜なければいけない", "explanation_bg": "Трябва да...", "explanation_en": ""},
     {"id": "nakutewa_naranai", "label": "〜なくてはならない", "explanation_bg": "Трябва да...", "explanation_en": ""},
+    {"id": "ba_yokatta", "label": "〜ばよかった", "explanation_bg": "Трябваше / искаше ми се да бях...; израз на съжаление за пропусната добра възможност.", "explanation_en": ""},
     {"id": "tari_tari", "label": "〜たり〜たりする", "explanation_bg": "Правя разни неща като...", "explanation_en": ""},
     {"id": "dake", "label": "〜だけ", "explanation_bg": "Само / единствено.", "explanation_en": ""},
     {"id": "nomi", "label": "〜のみ", "explanation_bg": "Само / единствено (по-формално).", "explanation_en": ""},
@@ -506,6 +507,10 @@ def classify_japanese_form(surface: str, lemma: str = "", pos1: str = "", pos2: 
     l = (lemma or "").strip()
     low = (ctype + " " + cform).lower()
 
+    if "仮定形" in cform or s.endswith("れば") or s.endswith("ば"):
+        if "よかった" in s:
+            return {"bg": "условна форма (-ば) + よかった", "en": "conditional (-ba) + yokatta"}
+        return {"bg": "условна форма (-ば)", "en": "conditional (-ba) form"}
     if s and l and s == l:
         return {"bg": "речникова форма", "en": "dictionary form"}
     if s.endswith(("ていません", "でいません")):
@@ -590,8 +595,52 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
             return word[:-1] + GODAN_U_TO_I[word[-1]]
         return word
 
+    def ba_form(word: str) -> str:
+        word = (word or "").strip()
+        if not word:
+            return ""
+        if word.endswith("する"):
+            return word[:-2] + "すれば"
+        if word.endswith("くる"):
+            return word[:-2] + "くれば"
+        if word.endswith("来る"):
+            return word[:-2] + "来れば"
+        if word.endswith("る") and len(word) >= 2:
+            prev = word[-2]
+            if prev in "えけげせぜてでねへべぺめれいきぎしじちぢにひびぴみり":
+                return word[:-1] + "れば"
+        if word.endswith("う"):
+            return word[:-1] + "えば"
+        if word.endswith("く"):
+            return word[:-1] + "けば"
+        if word.endswith("ぐ"):
+            return word[:-1] + "げば"
+        if word.endswith("す"):
+            return word[:-1] + "せば"
+        if word.endswith("つ"):
+            return word[:-1] + "てば"
+        if word.endswith("ぬ"):
+            return word[:-1] + "ねば"
+        if word.endswith("ぶ"):
+            return word[:-1] + "べば"
+        if word.endswith("む"):
+            return word[:-1] + "めば"
+        if word.endswith("る"):
+            return word[:-1] + "れば"
+        if word.endswith("い"):
+            return word[:-1] + "ければ"
+        return word + "ば"
+
     if s == l:
         return out(l, l)
+
+    if "よかった" in s and ("ば" in s or "仮定形" in cform):
+        ba = ba_form(l)
+        tail = s[len(ba):] if ba and s.startswith(ba) else "よかった"
+        return out(f"{l} -> {ba} + {tail}", f"{l} -> {ba} + {tail}")
+    if "仮定形" in cform or s.endswith("れば") or s.endswith("ば"):
+        ba = ba_form(l)
+        return out(f"{l} -> {ba}", f"{l} -> {ba}")
 
     te_iru_map = [
         ("ていませんでした", "te-form + いませんでした"),
@@ -1328,6 +1377,8 @@ def detect_grammar_in_sentence(sentence: str):
         if s == "なけれ" and _s(tokens, i + 1) == "ば":
             if _s(tokens, i + 2) == "なら" and _s(tokens, i + 3) == "ない": found.add("nakereba_naranai")
             if _s(tokens, i + 2) == "いけ" and _s(tokens, i + 3) == "ない": found.add("nakereba_ikenai")
+        if (s.endswith("ば") or s in {"ば", "れば"} or "ば" in s) and "よかっ" in "".join(surfaces[i + 1:i + 4]):
+            found.add("ba_yokatta")
         if s == "なく" and _seq(tokens, i + 1, i + 5) == ["て", "は", "なら", "ない"]: found.add("nakutewa_naranai")
         if s == "たり" and surfaces.count("たり") >= 2: found.add("tari_tari")
         if s == "だけ": found.add("dake")
