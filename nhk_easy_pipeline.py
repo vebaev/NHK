@@ -989,18 +989,32 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     form_en = (analysis.get("form_en") or "form in context").strip()
     formula_bg = (analysis.get("formula_bg") or "").strip()
     formula_en = (analysis.get("formula_en") or "").strip()
+    pos1 = (analysis.get("pos1") or "").strip()
+    show_form_details = pos1 in {"動詞", "形容詞"} and surface != lemma
 
     lemma_meaning_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en")
     lemma_meaning_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg")
+    surface_meaning_en = ""
+    surface_meaning_bg = ""
+    if surface != lemma:
+        surface_meaning_en = translate_text(surface, dest="en")
+        surface_meaning_bg = translate_text(surface, dest="bg")
+        if normalize_for_compare(surface_meaning_en) == normalize_for_compare(lemma_meaning_en):
+            surface_meaning_en = ""
+        if normalize_for_compare(surface_meaning_bg) == normalize_for_compare(lemma_meaning_bg):
+            surface_meaning_bg = ""
 
     span["data-surface"] = surface
     span["data-lemma"] = lemma
     span["data-reading-surface"] = reading_surface
     span["data-reading-lemma"] = reading_lemma
+    span["data-show-form-details"] = "1" if show_form_details else ""
     span["data-form-bg"] = form_bg
     span["data-form-en"] = form_en
     span["data-formula-bg"] = formula_bg
     span["data-formula-en"] = formula_en
+    span["data-meaning-surface-bg"] = surface_meaning_bg
+    span["data-meaning-surface-en"] = surface_meaning_en
     span["data-meaning-lemma-bg"] = lemma_meaning_bg
     span["data-meaning-lemma-en"] = lemma_meaning_en
 
@@ -1906,7 +1920,7 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg)||el.dataset.formulaBg||el.dataset.formulaEn||'';const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelFormula=(lang==='en'?'Formation':'Образуване');const labelInText=(lang==='en'?'In text':'В текста');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');let html='<div class="dw">'+labelInText+': '+surface+(rs?' ['+rs+']':'')+'</div><div class="dm">'+labelForm+': '+form+'</div>';if(formula)html+='<div class="dm">'+labelFormula+': '+formula+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const showFormDetails=el.dataset.showFormDetails==='1';const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg)||el.dataset.formulaBg||el.dataset.formulaEn||'';const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||'').trim();const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelFormula=(lang==='en'?'Formation':'Образуване');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');let html='<div class="dw">'+surface+(rs?' ['+rs+']':'')+(ms?' - '+ms:'')+'</div>';if(showFormDetails)html+='<div class="dm">'+labelForm+': '+form+'</div>';if(showFormDetails&&formula)html+='<div class="dm">'+labelFormula+': '+formula+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
