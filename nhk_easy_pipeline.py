@@ -1629,8 +1629,6 @@ def get_articles(n=4):
             except Exception as e:
                 print(f"Skipping article because of error: {e}")
                 continue
-            if len(articles) >= n:
-                break
     articles.sort(key=lambda item: links.index(item.get("link", "")) if item.get("link") in links else len(links))
     return articles[:n]
 def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None):
