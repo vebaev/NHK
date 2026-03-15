@@ -8,6 +8,7 @@ import json
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from functools import lru_cache
 import threading
 from urllib.parse import urljoin, urlparse
@@ -1747,7 +1748,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None)
             text_node.extract()
 
     return "".join(str(x) for x in soup.contents)
-def build_html(articles, grammar_points=None, build_version="", build_code=""):
+def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
     grammar_points = grammar_points or []
     html = """<!doctype html>
 <html lang=\"ja\">
@@ -1872,6 +1873,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
   </div>
 </div>
 <div class='contacts'>vebaev.github.io</div>
+<div class='build-marker'>Generated: {generated_at}</div>
 </div>
 <script>
 const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху дума за значение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",vocab_apkg:"Свали Anki речник (.apkg)",vocab_tsv:"Свали речник TSV",grammar_apkg:"Свали Anki граматика (.apkg)",grammar_tsv:"Свали граматика TSV"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a word for its meaning.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",vocab_apkg:"Download Anki vocabulary (.apkg)",vocab_tsv:"Download vocabulary TSV",grammar_apkg:"Download Anki grammar (.apkg)",grammar_tsv:"Download grammar TSV"}};
@@ -2052,6 +2054,7 @@ def main():
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
+    generated_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
     output_dir = os.path.dirname(args.output)
     translation_cache_path = get_translation_cache_path(args.output)
     load_translation_cache(translation_cache_path)
@@ -2117,7 +2120,7 @@ def main():
 
     save_seen_words(anki_seen_words_path, seen_words)
 
-    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code)
+    html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code, generated_at=generated_at)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
     save_translation_cache(translation_cache_path)
