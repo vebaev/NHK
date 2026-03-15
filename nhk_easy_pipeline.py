@@ -845,12 +845,8 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     form_bg = (analysis.get("form_bg") or "форма в текста").strip()
     form_en = (analysis.get("form_en") or "form in context").strip()
 
-    lemma_meaning_en = (item.get("meaning_en") or "").strip()
-    lemma_meaning_bg = (item.get("meaning_bg") or "").strip()
-    if not lemma_meaning_en:
-        lemma_meaning_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en")
-    if not lemma_meaning_bg:
-        lemma_meaning_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg")
+    lemma_meaning_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en")
+    lemma_meaning_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg")
 
     span["data-surface"] = surface
     span["data-lemma"] = lemma
