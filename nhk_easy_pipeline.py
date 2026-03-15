@@ -976,16 +976,10 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     form_bg = (analysis.get("form_bg") or "форма в текста").strip()
     form_en = (analysis.get("form_en") or "form in context").strip()
 
-    lemma_entry = lookup_dictionary_entry(lemma) or lookup_dictionary_entry(lemma, reading=reading_lemma)
+    lemma_entry = lookup_dictionary_entry(lemma, reading=reading_lemma) or lookup_dictionary_entry(lemma)
     lemma_gloss_en = ((lemma_entry or {}).get("gloss") or "").strip()
     lemma_meaning_en = lemma_gloss_en
     lemma_meaning_bg = (translate_text(lemma_gloss_en, dest="bg") if lemma_gloss_en else "").strip()
-
-    exact_item_match = lemma == (item.get("word") or "").strip() == surface
-    if not lemma_meaning_bg and exact_item_match and (item.get("meaning_bg") or "").strip():
-        lemma_meaning_bg = (item.get("meaning_bg") or "").strip()
-    if not lemma_meaning_en and exact_item_match and (item.get("meaning_en") or "").strip():
-        lemma_meaning_en = (item.get("meaning_en") or "").strip()
     if not lemma_meaning_bg:
         lemma_meaning_bg = lemma_meaning_en
     if not lemma_meaning_en:
@@ -999,8 +993,10 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
         form_label_bg=form_bg,
         form_label_en=form_en,
     )
-    surface_meaning_bg = (contextual.get("bg") or "").strip() or lemma_meaning_bg
-    surface_meaning_en = (contextual.get("en") or "").strip() or lemma_meaning_en
+    item_meaning_bg = (item.get("meaning_bg") or "").strip()
+    item_meaning_en = (item.get("meaning_en") or "").strip()
+    surface_meaning_bg = (contextual.get("bg") or "").strip() or item_meaning_bg or lemma_meaning_bg
+    surface_meaning_en = (contextual.get("en") or "").strip() or item_meaning_en or lemma_meaning_en
 
     if lemma == surface:
         reading_lemma = ""
@@ -1889,7 +1885,7 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||ms;const labelForm=(lang==='en'?'Form':'Форма');const line1=surface+(rs?' ['+rs+']':'')+' - '+ms;const line2=labelForm+': '+form;const line3=lemma+(rl?' ['+rl+']':'')+' - '+ml;const sameLemma=(lemma===surface);let html='<div class="dw">'+line1+'</div><div class="dm">'+line2+'</div>';if(!sameLemma){html+='<div class="dm">'+line3+'</div>';}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg)||el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||(lang==='en'?'No translation found':'Няма намерен превод');const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg)||el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'';const labelForm=(lang==='en'?'Form':'Форма');const labelInText=(lang==='en'?'In text':'В текста');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const labelLemmaMeaning=(lang==='en'?'Dictionary meaning':'Речниково значение');const sameLemma=(lemma===surface);let html='<div class="dw">'+labelInText+': '+surface+(rs?' ['+rs+']':'')+'</div><div class="dm">'+ms+'</div><div class="dm">'+labelForm+': '+form+'</div>';if(!sameLemma){html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+'</div>';}if(ml){html+='<div class="dm">'+labelLemmaMeaning+': '+ml+'</div>';}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
