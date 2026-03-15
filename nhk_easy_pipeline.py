@@ -7,6 +7,9 @@ import hashlib
 import json
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import lru_cache
+import threading
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -44,6 +47,8 @@ _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _MECAB_TAGGER = None
 _WORD_GLOSSARY = None
 _JMDICT_DB = None
+_THREAD_LOCAL = threading.local()
+_TRANSLATION_CACHE_DIRTY = False
 
 PARTICLE_PREFIXES = ("が", "を", "に", "で", "は", "と", "へ", "や", "も", "の")
 GODAN_I_TO_U = {"い":"う","き":"く","ぎ":"ぐ","し":"す","ち":"つ","に":"ぬ","び":"ぶ","み":"む","り":"る"}
@@ -118,10 +123,81 @@ GRAMMAR_RULES = [
 ]
 GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
 
+
+def get_http_session():
+    session = getattr(_THREAD_LOCAL, "http_session", None)
+    if session is None:
+        session = requests.Session()
+        session.headers.update({"User-Agent": "nhk-easy-pipeline/1.0"})
+        _THREAD_LOCAL.http_session = session
+    return session
+
+
+def get_translation_cache_path(output_path: str = "") -> str:
+    candidates = []
+    if output_path:
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            candidates.append(os.path.join(output_dir, "translations_cache.json"))
+    candidates.extend([
+        os.path.join("docs", "translations_cache.json"),
+        os.path.join(os.path.dirname(__file__), "docs", "translations_cache.json"),
+        "translations_cache.json",
+    ])
+    for path in candidates:
+        if path:
+            return path
+    return "translations_cache.json"
+
+
+def load_translation_cache(path: str):
+    global _TRANSLATION_CACHE, _TRANSLATION_CACHE_DIRTY
+    if _TRANSLATION_CACHE:
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            loaded = {}
+            for raw_key, value in data.items():
+                try:
+                    parsed_key = json.loads(raw_key)
+                except Exception:
+                    continue
+                if isinstance(parsed_key, list):
+                    loaded[tuple(parsed_key)] = str(value or "")
+            _TRANSLATION_CACHE = loaded
+    except Exception:
+        _TRANSLATION_CACHE = {}
+    _TRANSLATION_CACHE_DIRTY = False
+
+
+def save_translation_cache(path: str):
+    global _TRANSLATION_CACHE_DIRTY
+    if not _TRANSLATION_CACHE_DIRTY:
+        return
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    data = {json.dumps(list(key), ensure_ascii=False): value for key, value in _TRANSLATION_CACHE.items()}
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
+    _TRANSLATION_CACHE_DIRTY = False
+
+
+def cache_translation_result(cache_key, value: str) -> str:
+    global _TRANSLATION_CACHE_DIRTY
+    normalized = (value or "").strip()
+    if _TRANSLATION_CACHE.get(cache_key) != normalized:
+        _TRANSLATION_CACHE_DIRTY = True
+    _TRANSLATION_CACHE[cache_key] = normalized
+    return normalized
+
 def ensure_grammar_bilingual():
+    missing_bg = [rule.get("explanation_bg", "") for rule in GRAMMAR_RULES if not rule.get("explanation_en")]
+    translated = translate_texts(missing_bg, dest="en")
     for rule in GRAMMAR_RULES:
         if not rule.get("explanation_en"):
-            rule["explanation_en"] = translate_text(rule.get("explanation_bg", ""), dest="en") or rule.get("explanation_bg", "")
+            bg = rule.get("explanation_bg", "")
+            rule["explanation_en"] = translated.get(bg) or translate_text(bg, dest="en") or bg
     global GRAMMAR_RULES_BY_ID
     GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
 
@@ -174,6 +250,7 @@ def get_jmdict_connection():
         return None
 
 
+@lru_cache(maxsize=8192)
 def lookup_dictionary_meaning(word: str, reading: str = "") -> str:
     glossary = load_word_glossary()
     if word in glossary:
@@ -223,7 +300,7 @@ def lookup_dictionary_meaning(word: str, reading: str = "") -> str:
     return ""
 
 
-
+@lru_cache(maxsize=8192)
 def lookup_dictionary_entry(word: str, reading: str = ""):
     glossary = load_word_glossary()
     if word in glossary:
@@ -299,6 +376,11 @@ def contains_japanese(text: str) -> bool:
 def normalize_for_compare(text: str) -> str:
     return re.sub(r"\s+", "", (text or "").strip())
 
+
+def _deepl_target_lang(dest: str) -> str:
+    return {"en": "EN", "bg": "BG"}.get((dest or "").lower(), (dest or "").upper())
+
+
 def translate_text(text: str, dest: str = "bg") -> str:
     text = (text or "").strip()
     if not text:
@@ -312,31 +394,79 @@ def translate_text(text: str, dest: str = "bg") -> str:
             deepl_url = "https://api-free.deepl.com/v2/translate"
             if not DEEPL_API_KEY.endswith(":fx"):
                 deepl_url = "https://api.deepl.com/v2/translate"
-            resp = requests.post(deepl_url, headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"}, data={"text": text, "target_lang": dest.upper()}, timeout=20)
+            resp = get_http_session().post(
+                deepl_url,
+                headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"},
+                data={"text": text, "target_lang": _deepl_target_lang(dest)},
+                timeout=20,
+            )
             data = resp.json()
             translations = data.get("translations") or []
             if translations and translations[0].get("text"):
                 result = (translations[0]["text"] or "").strip()
+                _TRANSLATION_STATS["deepl"] += 1
         except Exception:
             result = ""
     if not result:
         try:
             result = (translator.translate(text, dest=dest).text or "").strip()
+            if result:
+                _TRANSLATION_STATS["google"] += 1
         except Exception:
             result = ""
     if not result:
-        _TRANSLATION_CACHE[cache_key] = ""
-        return ""
+        return cache_translation_result(cache_key, "")
     src_norm = normalize_for_compare(text)
     out_norm = normalize_for_compare(result)
     if out_norm == src_norm:
-        _TRANSLATION_CACHE[cache_key] = ""
-        return ""
+        return cache_translation_result(cache_key, "")
     if contains_japanese(result) and dest in {"bg", "en"}:
-        _TRANSLATION_CACHE[cache_key] = ""
-        return ""
-    _TRANSLATION_CACHE[cache_key] = result
-    return result
+        return cache_translation_result(cache_key, "")
+    return cache_translation_result(cache_key, result)
+
+
+def translate_texts(texts, dest: str = "bg"):
+    unique_texts = unique_keep_order(texts)
+    if not unique_texts:
+        return {}
+
+    results = {}
+    missing = []
+    for text in unique_texts:
+        cache_key = ("text", text, dest, bool(DEEPL_API_KEY))
+        if cache_key in _TRANSLATION_CACHE:
+            results[text] = _TRANSLATION_CACHE[cache_key]
+        else:
+            missing.append(text)
+
+    if missing and DEEPL_API_KEY:
+        try:
+            deepl_url = "https://api-free.deepl.com/v2/translate"
+            if not DEEPL_API_KEY.endswith(":fx"):
+                deepl_url = "https://api.deepl.com/v2/translate"
+            payload = [("text", text) for text in missing]
+            payload.append(("target_lang", _deepl_target_lang(dest)))
+            resp = get_http_session().post(
+                deepl_url,
+                headers={"Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}"},
+                data=payload,
+                timeout=30,
+            )
+            data = resp.json()
+            translations = data.get("translations") or []
+            if len(translations) == len(missing):
+                for text, item in zip(missing, translations):
+                    translated = (item.get("text") or "").strip()
+                    if translated:
+                        results[text] = cache_translation_result(("text", text, dest, bool(DEEPL_API_KEY)), translated)
+                        _TRANSLATION_STATS["deepl"] += 1
+                missing = [text for text in missing if text not in results]
+        except Exception:
+            pass
+
+    for text in missing:
+        results[text] = translate_text(text, dest=dest)
+    return results
 
 def translate_word_lang(word: str, reading: str = "", dest: str = "bg") -> str:
     word = (word or "").strip()
@@ -350,30 +480,24 @@ def translate_word_lang(word: str, reading: str = "", dest: str = "bg") -> str:
     if entry and entry.get("gloss"):
         gloss = entry["gloss"].strip()
         result = gloss if dest == "en" else (translate_text(gloss, dest=dest) or gloss)
-        _TRANSLATION_CACHE[cache_key] = result
-        return result
+        return cache_translation_result(cache_key, result)
 
     # Fallback path for words missing from JMdict:
     # JP -> EN is often more reliable than JP -> BG, so bridge through EN for BG.
     direct = translate_text(word, dest=dest)
     if direct and direct.strip() != word:
-        _TRANSLATION_CACHE[cache_key] = direct.strip()
-        return direct.strip()
+        return cache_translation_result(cache_key, direct.strip())
 
     en_guess = translate_text(word, dest="en")
     if en_guess and en_guess.strip() != word:
         if dest == "en":
-            _TRANSLATION_CACHE[cache_key] = en_guess.strip()
-            return en_guess.strip()
+            return cache_translation_result(cache_key, en_guess.strip())
         bridged = translate_text(en_guess, dest=dest)
         if bridged and bridged.strip() != en_guess:
-            _TRANSLATION_CACHE[cache_key] = bridged.strip()
-            return bridged.strip()
-        _TRANSLATION_CACHE[cache_key] = en_guess.strip()
-        return en_guess.strip()
+            return cache_translation_result(cache_key, bridged.strip())
+        return cache_translation_result(cache_key, en_guess.strip())
 
-    _TRANSLATION_CACHE[cache_key] = ""
-    return ""
+    return cache_translation_result(cache_key, "")
 
 
 def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: str = "", reading_lemma: str = "", form_label_bg: str = "", form_label_en: str = ""):
@@ -458,6 +582,7 @@ def feature_reading(token) -> str:
         if value and value != "*":
             return value.strip()
     return ""
+@lru_cache(maxsize=16384)
 def normalize_katakana_to_hiragana(text: str) -> str:
     result = []
     for ch in text or "":
@@ -466,6 +591,7 @@ def normalize_katakana_to_hiragana(text: str) -> str:
     return "".join(result)
 
 
+@lru_cache(maxsize=8192)
 def get_reading_for_word(word: str, fallback: str = "") -> str:
     word = (word or "").strip()
     fallback = normalize_katakana_to_hiragana((fallback or "").strip())
@@ -566,6 +692,7 @@ def classify_japanese_form(surface: str, lemma: str = "", pos1: str = "", pos2: 
         return {"bg": "форма на прилагателно", "en": "adjective form"}
     return {"bg": "форма в текста", "en": "form in context"}
 
+@lru_cache(maxsize=8192)
 def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str = ""):
     surface = (surface or "").strip()
     reading_hint = normalize_katakana_to_hiragana((reading_hint or "").strip())
@@ -628,12 +755,13 @@ def analyze_japanese_word(surface: str, reading_hint: str = "", lemma_hint: str 
     info["form_en"] = form_labels["en"]
     return info
 
+@lru_cache(maxsize=16384)
 def build_lookup_candidates(surface: str, reading: str = "", lemma: str = ""):
     surface = (surface or "").strip()
     reading = normalize_katakana_to_hiragana((reading or "").strip())
     lemma = (lemma or "").strip()
     candidates = [surface, lemma, lemmatize_japanese(surface), to_dictionary_form(surface), reading]
-    return unique_keep_order(candidates)
+    return tuple(unique_keep_order(candidates))
 
 def register_vocab_item(vocab_lookup, item, extra_keys=None):
     extra_keys = extra_keys or []
@@ -647,6 +775,7 @@ def is_target_pos(token) -> bool:
     feat = token_feature(token)
     pos1 = getattr(feat, "pos1", "") if feat is not None else ""
     return pos1 in {"動詞", "形容詞"} or "動詞" in str(feat) or "形容詞" in str(feat)
+@lru_cache(maxsize=8192)
 def lemmatize_japanese(word: str) -> str:
     w = (word or "").strip()
     if not w:
@@ -680,6 +809,7 @@ def extract_following_okurigana(ruby_tag):
             return m.group(1)
         return ""
     return ""
+@lru_cache(maxsize=8192)
 def to_dictionary_form(word: str) -> str:
     w = (word or "").strip()
     if not w:
@@ -722,30 +852,6 @@ def to_dictionary_form(word: str) -> str:
         if w.endswith(suffix) and len(w) > len(suffix):
             return te_base_to_dictionary(w[:-len(suffix)])
 
-    for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
-        if w.endswith(suffix):
-            return w[:-len(suffix)] + "する"
-    for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
-        if w.endswith(suffix):
-            return w[:-len(suffix)] + "くる"
-    for suffix in ["ました", "ます"]:
-        if w.endswith(suffix):
-            stem = w[:-len(suffix)]
-            if not stem:
-                return w
-            mapped = GODAN_I_TO_U.get(stem[-1])
-            return stem[:-1] + mapped if mapped else stem + "る"
-    if w.endswith("ない") and len(w) > 2:
-        stem = w[:-2]
-        mapped = GODAN_A_TO_U.get(stem[-1]) if stem else None
-        return stem[:-1] + mapped if mapped else stem + "る"
-    for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
-        if w.endswith(src) and len(w) > len(src):
-            return w[:-len(src)] + dst
-    for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
-        if w.endswith(src) and len(w) > len(src):
-            return w[:-len(src)] + dst
-    return w
     for suffix in ["していました", "しています", "しました", "します", "して", "した"]:
         if w.endswith(suffix):
             return w[:-len(suffix)] + "する"
@@ -912,9 +1018,12 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     span["data-meaning-lemma-bg"] = lemma_meaning_bg
     span["data-meaning-lemma-en"] = lemma_meaning_en
 
-    frag = BeautifulSoup(inner_html, "html.parser")
-    for node in list(frag.contents):
-        span.append(node)
+    if "<" not in inner_html and ">" not in inner_html:
+        span.string = inner_html
+    else:
+        frag = BeautifulSoup(inner_html, "html.parser")
+        for node in list(frag.contents):
+            span.append(node)
     return span
 
 def extract_vocab_from_blocks(blocks):
@@ -981,6 +1090,40 @@ def extract_vocab_from_blocks(blocks):
         vocab.append({"word": word, "reading": reading, "meaning_bg": meaning_bg, "meaning_en": meaning_en, "meaning": meaning_bg})
     vocab.sort(key=lambda x: (-len(x["word"]), x["word"]))
     return vocab[:80]
+
+
+def build_vocab_lookup(vocab_items):
+    vocab_lookup = {}
+    for item in vocab_items or []:
+        word = (item.get("word") or "").strip()
+        reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
+        if word and not is_suspicious_vocab_word(word):
+            register_vocab_item(vocab_lookup, item, extra_keys=build_lookup_candidates(word, reading=reading, lemma=word))
+    return vocab_lookup
+
+
+def fill_block_translations(blocks):
+    texts = [(block.get("text") or "").strip() for block in blocks or []]
+    bg_map = translate_texts(texts, dest="bg")
+    en_map = translate_texts(texts, dest="en")
+    for block in blocks or []:
+        text = (block.get("text") or "").strip()
+        block["translation_bg"] = bg_map.get(text, "")
+        block["translation_en"] = en_map.get(text, "")
+    return blocks
+
+
+def prepare_article_render_data(article):
+    if not article:
+        return article
+    title = (article.get("title") or "").strip()
+    article["title_translation_bg"] = translate_text(title, dest="bg") if title else ""
+    article["title_translation_en"] = translate_text(title, dest="en") if title else ""
+    fill_block_translations(article.get("blocks") or [])
+    vocab_lookup = build_vocab_lookup(article.get("vocab") or [])
+    for block in article.get("blocks") or []:
+        block["wrapped_html"] = wrap_vocab_words_in_html(block.get("html", ""), vocab_lookup=vocab_lookup)
+    return article
 
 
 def contains_digit(word: str) -> bool:
@@ -1313,7 +1456,7 @@ def extract_ne_id(text: str) -> str:
     m = re.search(r"(ne\d{10,})", text or "")
     return m.group(1) if m else ""
 def get_nhkeasier_items():
-    r = requests.get(NHKEASIER_FEED_URL, timeout=20)
+    r = get_http_session().get(NHKEASIER_FEED_URL, timeout=20)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "xml")
     items = {}
@@ -1360,7 +1503,7 @@ def get_nhkeasier_items():
             items[ne_id] = {"title": title, "blocks": blocks, "audio_url": audio_url, "image_url": image_url, "original_link": original_link}
     return items
 def extract_easy_article_links_from_sitemap(n=4):
-    r = requests.get(EASY_SITEMAP_URL, timeout=20)
+    r = get_http_session().get(EASY_SITEMAP_URL, timeout=20)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "xml")
     links = []
@@ -1378,7 +1521,7 @@ def extract_easy_article_links_from_sitemap(n=4):
             break
     return links
 def parse_article_from_nhk_easy(link: str):
-    page = requests.get(link, timeout=20)
+    page = get_http_session().get(link, timeout=20)
     page.raise_for_status()
     psoup = BeautifulSoup(page.text, "html.parser")
     title_tag = psoup.select_one("h1")
@@ -1457,12 +1600,8 @@ def parse_article_from_nhk_easy(link: str):
     if not filtered_blocks:
         return None
     vocab = extract_vocab_from_blocks(filtered_blocks)
-    translated_blocks = []
-    for b in filtered_blocks:
-        bg_tr = translate_text(b["text"], dest="bg")
-        en_tr = translate_text(b["text"], dest="en")
-        translated_blocks.append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
-    return {"title": title, "title_html": title_html, "title_translation_bg": translate_text(title, dest="bg"), "title_translation_en": translate_text(title, dest="en"), "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": translated_blocks, "vocab": vocab}
+    article = {"title": title, "title_html": title_html, "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": filtered_blocks, "vocab": vocab}
+    return prepare_article_render_data(article)
 def get_articles(n=4):
     links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
@@ -1471,41 +1610,40 @@ def get_articles(n=4):
     except Exception as e:
         print(f"Could not load nhkeasier fallback feed: {e}")
     articles = []
-    for link in links:
-        try:
-            article = parse_article_from_nhk_easy(link)
-            ne_id = extract_ne_id(link)
-            fallback = nhkeasier_items.get(ne_id)
-            if article and fallback and fallback.get("blocks"):
-                article["blocks"] = []
-                for b in fallback["blocks"]:
-                    bg_tr = translate_text(b["text"], dest="bg")
-                    en_tr = translate_text(b["text"], dest="en")
-                    article["blocks"].append({"html": b["html"], "text": b["text"], "translation_bg": bg_tr, "translation_en": en_tr})
-                article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
-                if fallback.get("audio_url"):
-                    article["audio_url"] = fallback["audio_url"]
-                if fallback.get("image_url"):
-                    article["image_url"] = fallback["image_url"]
-            if article and article.get("blocks") and article.get("vocab"):
-                articles.append(article)
-                if len(articles) >= n:
-                    break
-        except Exception as e:
-            print(f"Skipping article because of error: {e}")
-            continue
+    max_workers = min(8, max(1, n * 2))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(parse_article_from_nhk_easy, link): link for link in links}
+        for future in as_completed(futures):
+            link = futures[future]
+            try:
+                article = future.result()
+                ne_id = extract_ne_id(link)
+                fallback = nhkeasier_items.get(ne_id)
+                if article and fallback and fallback.get("blocks"):
+                    article["blocks"] = [{"html": b["html"], "text": b["text"]} for b in fallback["blocks"]]
+                    article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
+                    if fallback.get("audio_url"):
+                        article["audio_url"] = fallback["audio_url"]
+                    if fallback.get("image_url"):
+                        article["image_url"] = fallback["image_url"]
+                    prepare_article_render_data(article)
+                if article and article.get("blocks") and article.get("vocab"):
+                    articles.append(article)
+            except Exception as e:
+                print(f"Skipping article because of error: {e}")
+                continue
+            if len(articles) >= n:
+                break
+    articles.sort(key=lambda item: links.index(item.get("link", "")) if item.get("link") in links else len(links))
     return articles[:n]
-def wrap_vocab_words_in_html(html_fragment, vocab_items):
+def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None):
     if not html_fragment:
         return html_fragment
 
     soup = BeautifulSoup(html_fragment, "html.parser")
-    vocab_lookup = {}
-    for item in vocab_items or []:
-        word = (item.get("word") or "").strip()
-        reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
-        if word and not is_suspicious_vocab_word(word):
-            register_vocab_item(vocab_lookup, item, extra_keys=build_lookup_candidates(word, reading=reading, lemma=word))
+    vocab_lookup = dict(vocab_lookup or {})
+    if not vocab_lookup:
+        vocab_lookup = build_vocab_lookup(vocab_items or [])
 
     if not vocab_lookup:
         return html_fragment
@@ -1711,7 +1849,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
             html += f"<audio class='article-audio' controls preload='none' src='{article['audio_url']}'></audio>"
         html += "<div class='section-title' data-ui='text'></div>"
         for block in article["blocks"]:
-            wrapped_html = wrap_vocab_words_in_html(block["html"], article.get("vocab", []))
+            wrapped_html = block.get("wrapped_html") or block.get("html", "")
             html += f"<div class='jp-block'>{wrapped_html}</div>"
             block_bg = html_lib.escape(block.get('translation_bg', ''), quote=True)
             block_en = html_lib.escape(block.get('translation_en', ''), quote=True)
@@ -1918,6 +2056,8 @@ def main():
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     output_dir = os.path.dirname(args.output)
+    translation_cache_path = get_translation_cache_path(args.output)
+    load_translation_cache(translation_cache_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         write_pwa_files(output_dir, build_version=build_version)
@@ -1983,6 +2123,7 @@ def main():
     html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
+    save_translation_cache(translation_cache_path)
 
 if __name__ == "__main__":
     main()
