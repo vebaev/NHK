@@ -1470,6 +1470,7 @@ def sanitize_gemini_verb_item(item):
         return None
     return {
         "surface": surface,
+        "lemma": (item.get("lemma") or "").strip(),
         "reading": normalize_katakana_to_hiragana((item.get("reading") or "").strip()),
         "translation_bg": (item.get("translation_bg") or "").strip(),
         "translation_en": (item.get("translation_en") or "").strip(),
@@ -1480,6 +1481,67 @@ def sanitize_gemini_verb_item(item):
         "formula_bg": (item.get("formula_bg") or "").strip(),
         "formula_en": (item.get("formula_en") or "").strip(),
     }
+
+
+def normalize_gemini_match_key(value: str) -> str:
+    return re.sub(r"\s+", "", (value or "").strip()).lower()
+
+
+def find_best_gemini_verb_item(gemini_verbs, surface: str = "", reading: str = "", lemma: str = ""):
+    if not gemini_verbs:
+        return None
+    s = normalize_gemini_match_key(surface)
+    r = normalize_gemini_match_key(reading)
+    l = normalize_gemini_match_key(lemma)
+    for item in gemini_verbs:
+        if normalize_gemini_match_key(item.get("surface")) == s and (not r or normalize_gemini_match_key(item.get("reading")) == r):
+            return item
+    for item in gemini_verbs:
+        if normalize_gemini_match_key(item.get("surface")) == s:
+            return item
+    for item in gemini_verbs:
+        if l and normalize_gemini_match_key(item.get("lemma")) == l:
+            return item
+    loose = []
+    for item in gemini_verbs:
+        item_surface = normalize_gemini_match_key(item.get("surface"))
+        if item_surface and s and (item_surface in s or s in item_surface):
+            loose.append(item)
+    if loose:
+        loose.sort(key=lambda item: abs(len(item.get("surface", "")) - len(surface or "")))
+        return loose[0]
+    return None
+
+
+def attach_gemini_to_wrapped_blocks(article):
+    gemini_verbs = article.get("gemini_verbs") or []
+    if not gemini_verbs:
+        return article
+    for block in article.get("blocks") or []:
+        wrapped_html = block.get("wrapped_html") or block.get("html") or ""
+        if "dict-word" not in wrapped_html:
+            continue
+        soup = BeautifulSoup(wrapped_html, "html.parser")
+        updated = False
+        for span in soup.select(".dict-word"):
+            surface = (span.get("data-surface") or "").strip()
+            reading = normalize_katakana_to_hiragana((span.get("data-reading-surface") or "").strip())
+            lemma = (span.get("data-lemma") or "").strip()
+            match = find_best_gemini_verb_item(gemini_verbs, surface=surface, reading=reading, lemma=lemma)
+            if not match:
+                continue
+            span["data-gemini-translation-bg"] = match.get("translation_bg", "")
+            span["data-gemini-translation-en"] = match.get("translation_en", "")
+            span["data-gemini-form-type-bg"] = match.get("form_type_bg", "")
+            span["data-gemini-form-type-en"] = match.get("form_type_en", "")
+            span["data-gemini-formation-bg"] = match.get("formation_bg", "")
+            span["data-gemini-formation-en"] = match.get("formation_en", "")
+            span["data-gemini-formula-bg"] = match.get("formula_bg", "")
+            span["data-gemini-formula-en"] = match.get("formula_en", "")
+            updated = True
+        if updated:
+            block["wrapped_html"] = "".join(str(x) for x in soup.contents)
+    return article
 
 
 def analyze_articles_with_gemini(articles):
@@ -1515,6 +1577,8 @@ def analyze_articles_with_gemini(articles):
             article = articles_by_id.get(article_id)
             if article:
                 article["gemini_verbs"] = [item for item in (sanitize_gemini_verb_item(v) for v in verb_items) if item]
+        for article in articles or []:
+            attach_gemini_to_wrapped_blocks(article)
         return articles
 
     prompt = (
@@ -1569,6 +1633,8 @@ def analyze_articles_with_gemini(articles):
 
     if cached_result:
         cache_gemini_result(cache_key, cached_result)
+    for article in articles or []:
+        attach_gemini_to_wrapped_blocks(article)
     return articles
 
 
@@ -2417,7 +2483,7 @@ function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup
 function getArticleGeminiVerbs(article){if(!article)return[];if(article._geminiVerbs)return article._geminiVerbs;const node=article.querySelector('.article-gemini-data');if(!node){article._geminiVerbs=[];return article._geminiVerbs;}try{article._geminiVerbs=JSON.parse(node.textContent||'[]');}catch(_){article._geminiVerbs=[];}return article._geminiVerbs;}
 function normalizeGeminiKey(v){return (v||'').trim().toLowerCase();}
 function findGeminiVerbData(article,surface,reading){const verbs=getArticleGeminiVerbs(article);if(!verbs.length)return null;const s=normalizeGeminiKey(surface);const r=normalizeGeminiKey(reading);let exact=verbs.find(v=>normalizeGeminiKey(v.surface)===s&&(!r||normalizeGeminiKey(v.reading)===r));if(exact)return exact;exact=verbs.find(v=>normalizeGeminiKey(v.surface)===s);if(exact)return exact;const loose=verbs.filter(v=>{const vs=normalizeGeminiKey(v.surface);return vs&&s&&(vs.includes(s)||s.includes(vs));});if(!loose.length)return null;loose.sort((a,b)=>Math.abs((a.surface||'').length-surface.length)-Math.abs((b.surface||'').length-surface.length));return loose[0]||null;}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const showFormDetails=el.dataset.showFormDetails==='1';let ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||'').trim();const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelFormula=(lang==='en'?'Formation':'Образуване');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');const gemini=findGeminiVerbData(el.closest('article'),surface,rs);let geminiType='';let geminiFormation='';let geminiFormula='';if(gemini){ms=((lang==='en'?gemini.translation_en:gemini.translation_bg)||ms||'').trim();geminiType=((lang==='en'?gemini.form_type_en:gemini.form_type_bg)||'').trim();geminiFormation=((lang==='en'?gemini.formation_en:gemini.formation_bg)||'').trim();geminiFormula=((lang==='en'?gemini.formula_en:gemini.formula_bg)||'').trim();}let html='<div class="dw">'+surface+(rs?' ['+rs+']':'')+(ms?' - '+ms:'')+'</div>';if(gemini&&geminiType)html+='<div class="dm">'+labelForm+': '+geminiType+'</div>';if(gemini&&geminiFormation)html+='<div class="dm">'+labelFormula+': '+geminiFormation+'</div>';if(gemini&&geminiFormula)html+='<div class="dm">'+(lang==='en'?'Formula':'Формула')+': '+geminiFormula+'</div>';if(!gemini&&showFormDetails)html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';else html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();let ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||'').trim();const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelFormula=(lang==='en'?'Formation':'Образуване');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');let geminiType=(lang==='en'?el.dataset.geminiFormTypeEn:el.dataset.geminiFormTypeBg||'').trim();let geminiFormation=(lang==='en'?el.dataset.geminiFormationEn:el.dataset.geminiFormationBg||'').trim();let geminiFormula=(lang==='en'?el.dataset.geminiFormulaEn:el.dataset.geminiFormulaBg||'').trim();let geminiTranslation=(lang==='en'?el.dataset.geminiTranslationEn:el.dataset.geminiTranslationBg||'').trim();if(!geminiType&&!geminiFormation&&!geminiFormula&&!geminiTranslation){const gemini=findGeminiVerbData(el.closest('article'),surface,rs);if(gemini){geminiTranslation=((lang==='en'?gemini.translation_en:gemini.translation_bg)||'').trim();geminiType=((lang==='en'?gemini.form_type_en:gemini.form_type_bg)||'').trim();geminiFormation=((lang==='en'?gemini.formation_en:gemini.formation_bg)||'').trim();geminiFormula=((lang==='en'?gemini.formula_en:gemini.formula_bg)||'').trim();}}if(geminiTranslation)ms=geminiTranslation;let html='<div class="dw">'+surface+(rs?' ['+rs+']':'')+(ms?' - '+ms:'')+'</div>';if(geminiType)html+='<div class="dm">'+labelForm+': '+geminiType+'</div>';if(geminiFormation)html+='<div class="dm">'+labelFormula+': '+geminiFormation+'</div>';if(geminiFormula)html+='<div class="dm">'+(lang==='en'?'Formula':'Формула')+': '+geminiFormula+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
