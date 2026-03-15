@@ -16,6 +16,10 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup, NavigableString
 from googletrans import Translator
+try:
+    from google import genai
+except Exception:
+    genai = None
 
 try:
     import fugashi
@@ -54,14 +58,18 @@ DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
 
 translator = Translator()
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
+GEMINI_API_KEY = os.environ.get("GEMINI_API", "").strip()
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
 _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
+_GEMINI_CACHE = {}
 _MECAB_TAGGER = None
 _SUDACHI_TOKENIZER = None
 _JINF = None
 _WORD_GLOSSARY = None
 _THREAD_LOCAL = threading.local()
 _TRANSLATION_CACHE_DIRTY = False
+_GEMINI_CACHE_DIRTY = False
 
 PARTICLE_PREFIXES = ("が", "を", "に", "で", "は", "と", "へ", "や", "も", "の")
 GODAN_I_TO_U = {"い":"う","き":"く","ぎ":"ぐ","し":"す","ち":"つ","に":"ぬ","び":"ぶ","み":"む","り":"る"}
@@ -231,6 +239,23 @@ def get_translation_cache_path(output_path: str = "") -> str:
     return "translations_cache.json"
 
 
+def get_gemini_cache_path(output_path: str = "") -> str:
+    candidates = []
+    if output_path:
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            candidates.append(os.path.join(output_dir, "gemini_verbs_cache.json"))
+    candidates.extend([
+        os.path.join("docs", "gemini_verbs_cache.json"),
+        os.path.join(os.path.dirname(__file__), "docs", "gemini_verbs_cache.json"),
+        "gemini_verbs_cache.json",
+    ])
+    for path in candidates:
+        if path:
+            return path
+    return "gemini_verbs_cache.json"
+
+
 def load_translation_cache(path: str):
     global _TRANSLATION_CACHE, _TRANSLATION_CACHE_DIRTY
     if _TRANSLATION_CACHE:
@@ -253,6 +278,20 @@ def load_translation_cache(path: str):
     _TRANSLATION_CACHE_DIRTY = False
 
 
+def load_gemini_cache(path: str):
+    global _GEMINI_CACHE, _GEMINI_CACHE_DIRTY
+    if _GEMINI_CACHE:
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            _GEMINI_CACHE = {str(k): v for k, v in data.items()}
+    except Exception:
+        _GEMINI_CACHE = {}
+    _GEMINI_CACHE_DIRTY = False
+
+
 def save_translation_cache(path: str):
     global _TRANSLATION_CACHE_DIRTY
     if not _TRANSLATION_CACHE_DIRTY:
@@ -264,6 +303,16 @@ def save_translation_cache(path: str):
     _TRANSLATION_CACHE_DIRTY = False
 
 
+def save_gemini_cache(path: str):
+    global _GEMINI_CACHE_DIRTY
+    if not _GEMINI_CACHE_DIRTY:
+        return
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(_GEMINI_CACHE, f, ensure_ascii=False, indent=2, sort_keys=True)
+    _GEMINI_CACHE_DIRTY = False
+
+
 def cache_translation_result(cache_key, value: str) -> str:
     global _TRANSLATION_CACHE_DIRTY
     normalized = (value or "").strip()
@@ -271,6 +320,14 @@ def cache_translation_result(cache_key, value: str) -> str:
         _TRANSLATION_CACHE_DIRTY = True
     _TRANSLATION_CACHE[cache_key] = normalized
     return normalized
+
+
+def cache_gemini_result(cache_key: str, value):
+    global _GEMINI_CACHE_DIRTY
+    if _GEMINI_CACHE.get(cache_key) != value:
+        _GEMINI_CACHE_DIRTY = True
+    _GEMINI_CACHE[cache_key] = value
+    return value
 
 def ensure_grammar_bilingual():
     missing_bg = [rule.get("explanation_bg", "") for rule in GRAMMAR_RULES if not rule.get("explanation_en")]
@@ -1374,6 +1431,147 @@ def prepare_article_render_data(article):
     return article
 
 
+def split_sentences_for_gemini(text: str):
+    return [s.strip() for s in re.split(r"(?<=[。！？?!])\s*", text or "") if s.strip()]
+
+
+def article_text_for_gemini(article):
+    texts = []
+    for block in article.get("blocks") or []:
+        text = (block.get("text") or "").strip()
+        if text:
+            texts.append(text)
+    return "\n".join(texts).strip()
+
+
+def extract_json_object(text: str):
+    raw = (text or "").strip()
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except Exception:
+        pass
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(raw[start:end + 1])
+        except Exception:
+            return None
+    return None
+
+
+def sanitize_gemini_verb_item(item):
+    if not isinstance(item, dict):
+        return None
+    surface = (item.get("surface") or "").strip()
+    if not surface:
+        return None
+    return {
+        "surface": surface,
+        "reading": normalize_katakana_to_hiragana((item.get("reading") or "").strip()),
+        "translation_bg": (item.get("translation_bg") or "").strip(),
+        "translation_en": (item.get("translation_en") or "").strip(),
+        "form_type_bg": (item.get("form_type_bg") or "").strip(),
+        "form_type_en": (item.get("form_type_en") or "").strip(),
+        "formation_bg": (item.get("formation_bg") or "").strip(),
+        "formation_en": (item.get("formation_en") or "").strip(),
+        "formula_bg": (item.get("formula_bg") or "").strip(),
+        "formula_en": (item.get("formula_en") or "").strip(),
+    }
+
+
+def analyze_articles_with_gemini(articles):
+    for article in articles or []:
+        article["gemini_verbs"] = []
+    if not articles or not GEMINI_API_KEY or genai is None:
+        return articles
+
+    payload_articles = []
+    articles_by_id = {}
+    for index, article in enumerate(articles, start=1):
+        text = article_text_for_gemini(article)
+        if not text:
+            continue
+        article_id = f"article_{index}"
+        articles_by_id[article_id] = article
+        payload_articles.append(
+            {
+                "article_id": article_id,
+                "title": (article.get("title") or "").strip(),
+                "text": text,
+                "sentences": split_sentences_for_gemini(text),
+            }
+        )
+    if not payload_articles:
+        return articles
+
+    cache_payload = {"model": GEMINI_MODEL, "articles": payload_articles}
+    cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    cached = _GEMINI_CACHE.get(cache_key)
+    if isinstance(cached, dict):
+        for article_id, verb_items in cached.items():
+            article = articles_by_id.get(article_id)
+            if article:
+                article["gemini_verbs"] = [item for item in (sanitize_gemini_verb_item(v) for v in verb_items) if item]
+        return articles
+
+    prompt = (
+        "Analyze the Japanese news articles below and return strict JSON only.\n"
+        "Goal: for each article, extract the verb forms that actually appear in the text.\n"
+        "Deduplicate exact same encountered surface form within the same article.\n"
+        "If the predicate is a compound ending in a verb, include the full encountered verbal predicate when appropriate, "
+        "for example 多くなりました should count as one encountered verbal form.\n"
+        "Return this JSON shape exactly:\n"
+        "{\"articles\":[{\"article_id\":\"article_1\",\"verbs\":[{\"surface\":\"...\",\"reading\":\"...\","
+        "\"translation_bg\":\"...\",\"translation_en\":\"...\",\"form_type_bg\":\"...\",\"form_type_en\":\"...\","
+        "\"formation_bg\":\"...\",\"formation_en\":\"...\",\"formula_bg\":\"...\",\"formula_en\":\"...\"}]}]}\n"
+        "Field rules:\n"
+        "- surface: exact form as seen in the text\n"
+        "- reading: hiragana reading of that exact form\n"
+        "- translation_bg / translation_en: short translation of the encountered form in context\n"
+        "- form_type_bg / form_type_en: short name of the form type, tense, or construction\n"
+        "- formation_bg / formation_en: short explanation of how the form is built starting from dictionary form\n"
+        "- formula_bg / formula_en: compact formula of the form\n"
+        "Do not include nouns, particles, or plain adjectives unless they are part of a compound verbal predicate.\n"
+        f"Articles:\n{json.dumps(payload_articles, ensure_ascii=False, indent=2)}"
+    )
+
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config={"response_mime_type": "application/json"},
+        )
+        parsed = extract_json_object(getattr(response, "text", ""))
+    except Exception as e:
+        print(f"Gemini verb analysis failed: {e}")
+        return articles
+
+    if not isinstance(parsed, dict):
+        print("Gemini verb analysis returned invalid JSON.")
+        return articles
+
+    cached_result = {}
+    for article_obj in parsed.get("articles") or []:
+        if not isinstance(article_obj, dict):
+            continue
+        article_id = (article_obj.get("article_id") or "").strip()
+        if not article_id:
+            continue
+        verbs = [item for item in (sanitize_gemini_verb_item(v) for v in (article_obj.get("verbs") or [])) if item]
+        cached_result[article_id] = verbs
+        article = articles_by_id.get(article_id)
+        if article:
+            article["gemini_verbs"] = verbs
+
+    if cached_result:
+        cache_gemini_result(cache_key, cached_result)
+    return articles
+
+
 def contains_digit(word: str) -> bool:
     return any(ch.isdigit() for ch in (word or ""))
 
@@ -2120,6 +2318,12 @@ h2{margin:0 0 10px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font);l
 .grammar ul{list-style:none;padding:0;margin:10px 0 0}
 .grammar li{padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card2);margin-bottom:10px}
 .grammar-rule{font-weight:700;color:var(--accent);font-family:var(--jp-font);display:block;margin-bottom:4px}
+.verb-analysis{background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:16px}
+.verb-analysis ul{list-style:none;padding:0;margin:10px 0 0}
+.verb-analysis li{padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card);margin-bottom:10px}
+.verb-head{font-weight:700;font-size:1.02rem;font-family:var(--jp-font);line-height:1.6;word-break:break-word}
+.verb-line{margin-top:6px;color:var(--text);word-break:break-word}
+.verb-field-label{color:var(--accent);font-weight:700}
 .downloads{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:22px 0}
 .download-btn{display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card2);color:var(--text);text-decoration:none}
 .contacts{text-align:center;color:var(--muted);margin-top:10px}
@@ -2177,6 +2381,30 @@ ruby rt{font-size:.68em;color:var(--muted)}
             block_en = html_lib.escape(block.get('translation_en', ''), quote=True)
             if block_bg or block_en:
                 html += f"<div class='trans-block' data-bg='{block_bg}' data-en='{block_en}'></div>"
+        gemini_verbs = article.get("gemini_verbs") or []
+        if gemini_verbs:
+            html += "<section class='verb-analysis'><div class='section-title' data-ui='verb_forms'></div><ul>"
+            for item in gemini_verbs:
+                surface = html_lib.escape(item.get("surface", ""), quote=False)
+                reading = html_lib.escape(item.get("reading", ""), quote=False)
+                translation_bg = html_lib.escape(item.get("translation_bg", ""), quote=True)
+                translation_en = html_lib.escape(item.get("translation_en", ""), quote=True)
+                form_type_bg = html_lib.escape(item.get("form_type_bg", ""), quote=True)
+                form_type_en = html_lib.escape(item.get("form_type_en", ""), quote=True)
+                formation_bg = html_lib.escape(item.get("formation_bg", ""), quote=True)
+                formation_en = html_lib.escape(item.get("formation_en", ""), quote=True)
+                formula_bg = html_lib.escape(item.get("formula_bg", ""), quote=True)
+                formula_en = html_lib.escape(item.get("formula_en", ""), quote=True)
+                html += "<li>"
+                html += f"<div class='verb-head'>{surface}{(' [' + reading + ']') if reading else ''} - <span class='verb-text' data-bg='{translation_bg}' data-en='{translation_en}'></span></div>"
+                if form_type_bg or form_type_en:
+                    html += f"<div class='verb-line'><span class='verb-field-label' data-ui='verb_form_type'></span>: <span class='verb-text' data-bg='{form_type_bg}' data-en='{form_type_en}'></span></div>"
+                if formation_bg or formation_en:
+                    html += f"<div class='verb-line'><span class='verb-field-label' data-ui='verb_formation'></span>: <span class='verb-text' data-bg='{formation_bg}' data-en='{formation_en}'></span></div>"
+                if formula_bg or formula_en:
+                    html += f"<div class='verb-line'><span class='verb-field-label' data-ui='verb_formula'></span>: <span class='verb-text' data-bg='{formula_bg}' data-en='{formula_en}'></span></div>"
+                html += "</li>"
+            html += "</ul></section>"
         html += "</article>"
     html += "<div class='downloads'>"
     html += f"<a class='download-btn download-link' data-kind='vocab_apkg' href='{DEFAULT_ANKI_APKG_FILENAME}' download></a>"
@@ -2200,7 +2428,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class='build-marker'>Generated: __GENERATED_AT__</div>
 </div>
 <script>
-const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху дума за значение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",vocab_apkg:"Свали Anki речник (.apkg)",vocab_tsv:"Свали речник TSV",grammar_apkg:"Свали Anki граматика (.apkg)",grammar_tsv:"Свали граматика TSV"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a word for its meaning.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",vocab_apkg:"Download Anki vocabulary (.apkg)",vocab_tsv:"Download vocabulary TSV",grammar_apkg:"Download Anki grammar (.apkg)",grammar_tsv:"Download grammar TSV"}};
+const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",verb_forms:"Глаголни форми в статията",verb_form_type:"Тип",verb_formation:"Образуване",verb_formula:"Формула",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху дума за значение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",vocab_apkg:"Свали Anki речник (.apkg)",vocab_tsv:"Свали речник TSV",grammar_apkg:"Свали Anki граматика (.apkg)",grammar_tsv:"Свали граматика TSV"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",verb_forms:"Verb Forms in the Article",verb_form_type:"Type",verb_formation:"Formation",verb_formula:"Formula",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a word for its meaning.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",vocab_apkg:"Download Anki vocabulary (.apkg)",vocab_tsv:"Download vocabulary TSV",grammar_apkg:"Download Anki grammar (.apkg)",grammar_tsv:"Download grammar TSV"}};
 const FILES={bg:{vocab_apkg:"nhk_easy_vocab_bg.apkg",vocab_tsv:"anki_cards_bg.tsv",grammar_apkg:"nhk_easy_grammar_bg.apkg",grammar_tsv:"anki_grammar_bg.tsv"},en:{vocab_apkg:"nhk_easy_vocab_en.apkg",vocab_tsv:"anki_cards_en.tsv",grammar_apkg:"nhk_easy_grammar_en.apkg",grammar_tsv:"anki_grammar_en.tsv"}};
 function getContentLanguage(){return localStorage.getItem('nhk_content_lang')||'bg';}
 function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;const lang=getContentLanguage();const langSel=document.getElementById('lang-select');if(langSel)langSel.value=lang;applyContentLanguage(lang);}
@@ -2208,7 +2436,7 @@ function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk
 function applyJapaneseFont(kind){const font=kind==='gothic'?'"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif':'"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif';document.documentElement.style.setProperty('--jp-font',font);}
 function setJapaneseFont(kind){localStorage.setItem('nhk_jp_font',kind);applyJapaneseFont(kind);}
 function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);applyContentLanguage(lang);closeDictPopup();}
-function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
+function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info,.verb-text').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
 function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();const showFormDetails=el.dataset.showFormDetails==='1';const form=(lang==='en'?el.dataset.formEn:el.dataset.formBg)||el.dataset.formBg||el.dataset.formEn||(lang==='en'?'form in context':'форма в текста');const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg)||el.dataset.formulaBg||el.dataset.formulaEn||'';const ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||'').trim();const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelFormula=(lang==='en'?'Formation':'Образуване');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');let html='<div class="dw">'+surface+(rs?' ['+rs+']':'')+(ms?' - '+ms:'')+'</div>';if(showFormDetails)html+='<div class="dm">'+labelForm+': '+form+'</div>';if(showFormDetails&&formula)html+='<div class="dm">'+labelFormula+': '+formula+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
@@ -2370,20 +2598,26 @@ def write_pwa_files(output_dir, build_version=""):
         f.write(sw_js)
 
 def main():
-    global DEEPL_API_KEY
+    global DEEPL_API_KEY, GEMINI_API_KEY, GEMINI_MODEL
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
+    parser.add_argument("--gemini-key", default=os.environ.get("GEMINI_API", ""))
+    parser.add_argument("--gemini-model", default=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"))
     args = parser.parse_args()
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
+    GEMINI_API_KEY = (args.gemini_key or "").strip()
+    GEMINI_MODEL = (args.gemini_model or "gemini-2.5-flash").strip() or "gemini-2.5-flash"
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     generated_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
     output_dir = os.path.dirname(args.output)
     translation_cache_path = get_translation_cache_path(args.output)
+    gemini_cache_path = get_gemini_cache_path(args.output)
     load_translation_cache(translation_cache_path)
+    load_gemini_cache(gemini_cache_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         write_pwa_files(output_dir, build_version=build_version)
@@ -2394,6 +2628,7 @@ def main():
         raise RuntimeError("No articles were extracted.")
 
     grammar_points = extract_grammar_points(articles)
+    analyze_articles_with_gemini(articles)
 
     vocab_tsv_filename = DEFAULT_ANKI_FILENAME
     vocab_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
@@ -2450,6 +2685,7 @@ def main():
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
     save_translation_cache(translation_cache_path)
+    save_gemini_cache(gemini_cache_path)
 
 if __name__ == "__main__":
     main()
