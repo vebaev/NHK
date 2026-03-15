@@ -1761,12 +1761,12 @@ def build_html(articles, grammar_points=None, build_version="", build_code="", g
 <meta http-equiv=\"refresh\" content=\"7200\">
 <title>最新ニュース</title>
 <meta name=\"theme-color\" content=\"#0f1115\">
-<meta name=\"app-version\" content=\"{build_version}\">
-<link rel=\"manifest\" href=\"manifest.webmanifest?v={build_version}\">
-<link rel=\"icon\" type=\"image/x-icon\" href=\"favicon.ico?v={build_version}\">
-<link rel=\"icon\" type=\"image/png\" sizes=\"16x16\" href=\"favicon-16x16.png?v={build_version}\">
-<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"favicon-32x32.png?v={build_version}\">
-<link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png?v={build_version}\">
+<meta name=\"app-version\" content=\"__BUILD_VERSION__\">
+<link rel=\"manifest\" href=\"manifest.webmanifest?v=__BUILD_VERSION__\">
+<link rel=\"icon\" type=\"image/x-icon\" href=\"favicon.ico?v=__BUILD_VERSION__\">
+<link rel=\"icon\" type=\"image/png\" sizes=\"16x16\" href=\"favicon-16x16.png?v=__BUILD_VERSION__\">
+<link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"favicon-32x32.png?v=__BUILD_VERSION__\">
+<link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png?v=__BUILD_VERSION__\">
 <style>
 :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
@@ -1818,7 +1818,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 </head>
 <body class=\"theme-dark\">
 <div class=\"wrap\">
-<img class=\"site-logo\" src=\"android-chrome-192x192.png?v={build_version}\" alt=\"NHK logo\" loading=\"lazy\">
+<img class=\"site-logo\" src=\"android-chrome-192x192.png?v=__BUILD_VERSION__\" alt=\"NHK logo\" loading=\"lazy\">
 <h1>最新ニュース</h1>
 <div class=\"lang-top\">
   <div class=\"control-label\" data-ui=\"translation_language\"></div>
@@ -1873,7 +1873,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
   </div>
 </div>
 <div class='contacts'>vebaev.github.io</div>
-<div class='build-marker'>Generated: {generated_at}</div>
+<div class='build-marker'>Generated: __GENERATED_AT__</div>
 </div>
 <script>
 const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху дума за значение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",vocab_apkg:"Свали Anki речник (.apkg)",vocab_tsv:"Свали речник TSV",grammar_apkg:"Свали Anki граматика (.apkg)",grammar_tsv:"Свали граматика TSV"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a word for its meaning.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",vocab_apkg:"Download Anki vocabulary (.apkg)",vocab_tsv:"Download vocabulary TSV",grammar_apkg:"Download Anki grammar (.apkg)",grammar_tsv:"Download grammar TSV"}};
@@ -2017,7 +2017,9 @@ function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encode
 document.addEventListener('DOMContentLoaded',function(){loadPrefs();document.querySelectorAll('article').forEach(function(article){setupArticleShadowing(article);});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || ''),{updateViaCache:'none'}).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
-</html>""".format(build_version=html_lib.escape(build_version, quote=True), generated_at=html_lib.escape(generated_at, quote=True))
+</html>"""
+    html = html.replace("__BUILD_VERSION__", html_lib.escape(build_version, quote=True))
+    html = html.replace("__GENERATED_AT__", html_lib.escape(generated_at, quote=True))
     return html
 
 def write_pwa_files(output_dir, build_version=""):
