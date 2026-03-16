@@ -1,7 +1,6 @@
 requests
 beautifulsoup4
 lxml
-google-genai
 googletrans==4.0.0rc1
 genanki
 weasyprint

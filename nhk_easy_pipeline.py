@@ -15,7 +15,10 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup, NavigableString
-from googletrans import Translator
+try:
+    from googletrans import Translator
+except Exception:
+    Translator = None
 try:
     from google import genai
 except Exception:
@@ -50,10 +53,12 @@ DEFAULT_ANKI_FILENAME = "anki_cards_bg.tsv"
 DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_elements_bg.apkg"
 DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
 
-translator = Translator()
+translator = Translator() if Translator is not None else None
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
-GEMINI_API_KEY = os.environ.get("GEMINI_API", "").strip()
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "qwen/qwen3-32b").strip() or "qwen/qwen3-32b"
+GEMINI_API_KEY = ""
+GEMINI_MODEL = ""
 _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _GEMINI_CACHE = {}
@@ -506,6 +511,8 @@ def translate_text(text: str, dest: str = "bg") -> str:
             result = ""
     if not result:
         try:
+            if translator is None:
+                raise RuntimeError("googletrans unavailable")
             result = (translator.translate(text, dest=dest).text or "").strip()
             if result:
                 _TRANSLATION_STATS["google"] += 1
@@ -1381,12 +1388,71 @@ def build_vocab_lookup(vocab_items):
 
 
 def build_analysis_lookup(items):
+    def richness(item):
+        if not isinstance(item, dict):
+            return -1
+        score = 0
+        for key in (
+            "category_bg",
+            "translation_bg",
+            "translation_en",
+            "formation_bg",
+            "formula_bg",
+            "usage_bg",
+        ):
+            if (item.get(key) or "").strip():
+                score += 1
+        return score
     lookup = {}
     for item in items or []:
         surface = (item.get("surface") or "").strip()
-        if surface and surface not in lookup:
+        if not surface:
+            continue
+        existing = lookup.get(surface)
+        if existing is None or richness(item) >= richness(existing):
             lookup[surface] = item
     return lookup
+
+
+def build_baseline_analysis_items_from_blocks(blocks):
+    items = []
+    seen = set()
+    for block in blocks or []:
+        soup = BeautifulSoup(block.get("html", ""), "html.parser")
+        for ruby in soup.find_all("ruby"):
+            base = ruby_base_text(ruby)
+            reading = normalize_katakana_to_hiragana("".join(rt.get_text("", strip=True) for rt in ruby.find_all("rt")).strip())
+            okurigana = extract_following_okurigana(ruby)
+            surface = (base + okurigana).strip() if okurigana else (base or "").strip()
+            if not surface or not contains_japanese(surface):
+                continue
+            key = normalize_for_compare(surface)
+            if key in seen:
+                continue
+            seen.add(key)
+            meaning_bg = translate_text(surface, dest="bg") or ""
+            meaning_en = translate_text(surface, dest="en") or ""
+            items.append(
+                {
+                    "surface": surface,
+                    "lemma": surface,
+                    "reading": reading,
+                    "item_type": "compound",
+                    "category_bg": "елемент",
+                    "category_en": "text item",
+                    "translation_bg": meaning_bg,
+                    "translation_en": meaning_en,
+                    "meaning_bg": meaning_bg,
+                    "meaning_en": meaning_en,
+                    "formation_bg": "",
+                    "formation_en": "",
+                    "formula_bg": "",
+                    "formula_en": "",
+                    "usage_bg": "",
+                    "usage_en": "",
+                }
+            )
+    return items
 
 
 def fill_block_translations(blocks):
@@ -1445,6 +1511,47 @@ def extract_json_object(text: str):
     return None
 
 
+def groq_chat_completion(prompt: str) -> str:
+    if not GROQ_API_KEY:
+        raise RuntimeError("Missing GROQ_API_KEY")
+    last_error = None
+    for attempt in range(6):
+        response = None
+        try:
+            response = get_http_session().post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": GROQ_MODEL,
+                    "messages": [
+                        {"role": "system", "content": "Return only the requested content. Prefer strict JSON when asked."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "temperature": 0.1,
+                    "max_completion_tokens": 6000,
+                },
+                timeout=180,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            choices = payload.get("choices") or []
+            if not choices:
+                return ""
+            message = choices[0].get("message") or {}
+            return (message.get("content") or "").strip()
+        except Exception as e:
+            last_error = e
+            status = getattr(response, "status_code", None)
+            if status == 429 and attempt < 5:
+                time.sleep(12 * (attempt + 1))
+                continue
+            break
+    raise last_error
+
+
 def sanitize_gemini_analysis_item(item):
     if not isinstance(item, dict):
         return None
@@ -1452,6 +1559,8 @@ def sanitize_gemini_analysis_item(item):
     if not surface or not contains_japanese(surface):
         return None
     item_type = (item.get("item_type") or "").strip().lower()
+    if item_type == "particle":
+        item_type = "grammar"
     if item_type not in {"verb", "noun", "adjective", "compound", "grammar"}:
         return None
     lemma = (item.get("lemma") or item.get("dictionary_form") or "").strip() or surface
@@ -1511,6 +1620,26 @@ def normalize_gemini_match_key(value: str) -> str:
     return re.sub(r"\s+", "", (value or "").strip()).lower()
 
 
+def chunk_sentences_for_gemini(sentences, max_chars: int = 220, max_sentences: int = 2):
+    chunks = []
+    current = []
+    current_len = 0
+    for sentence in sentences or []:
+        s = (sentence or "").strip()
+        if not s:
+            continue
+        projected = current_len + len(s) + (1 if current else 0)
+        if current and (len(current) >= max_sentences or projected > max_chars):
+            chunks.append(current)
+            current = []
+            current_len = 0
+        current.append(s)
+        current_len += len(s) + (1 if current_len else 0)
+    if current:
+        chunks.append(current)
+    return chunks
+
+
 def find_best_gemini_item(gemini_items, surface: str = "", reading: str = "", lemma: str = ""):
     if not gemini_items:
         return None
@@ -1537,98 +1666,117 @@ def find_best_gemini_item(gemini_items, surface: str = "", reading: str = "", le
     return None
 
 
-def analyze_articles_with_gemini(articles):
-    for article in articles or []:
-        article["analysis_items"] = []
-    if not articles or not GEMINI_API_KEY or genai is None:
-        return articles
-
-    payload_articles = []
-    articles_by_id = {}
-    for index, article in enumerate(articles, start=1):
-        text = article_text_for_gemini(article)
-        if not text:
-            continue
-        article_id = f"article_{index}"
-        articles_by_id[article_id] = article
-        payload_articles.append(
-            {
-                "article_id": article_id,
-                "title": (article.get("title") or "").strip(),
-                "text": text,
-                "sentences": split_sentences_for_gemini(text),
-            }
-        )
-    if not payload_articles:
-        return articles
-
-    cache_payload = {"model": GEMINI_MODEL, "task": "article_elements_v2", "articles": payload_articles}
+def analyze_article_block_with_groq(article_id: str, block_id: int, title: str, text: str):
+    if not text:
+        return []
+    cache_payload = {
+        "model": GROQ_MODEL,
+        "task": "article_elements_groq_block_v1",
+        "article_id": article_id,
+        "block_id": block_id,
+        "title": title,
+        "text": text,
+    }
     cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     cached = _GEMINI_CACHE.get(cache_key)
-    if isinstance(cached, dict):
-        for article_id, items in cached.items():
-            article = articles_by_id.get(article_id)
-            if article:
-                article["analysis_items"] = [item for item in (sanitize_gemini_analysis_item(v) for v in items) if item]
-        return articles
+    if isinstance(cached, list):
+        return [item for item in (sanitize_gemini_analysis_item(v) for v in cached) if item]
 
     prompt = (
-        "Analyze the 4 Japanese NHK Easy articles below and return strict JSON only.\n"
-        "Goal: for each article, extract learner-useful language elements that actually appear in the text.\n"
-        "Include nouns, adjectives, verb predicates, useful compounds, and grammar constructions.\n"
-        "Deduplicate exact same encountered surface form within the same article.\n"
-        "Prefer exact surface spans as they appear in the text.\n"
-        "Include around 12 to 24 items per article, prioritizing useful study items.\n"
+        "Analyze this short Japanese NHK Easy paragraph and return strict JSON only.\n"
+        "Be exhaustive rather than selective.\n"
+        "Extract as many learner-relevant language elements as possible that actually appear in the text.\n"
+        "Include nouns, katakana words, adjectives, conjugated verb forms, useful compounds, particles as grammar, auxiliary patterns, and grammar constructions.\n"
+        "Use exact surface spans from the paragraph.\n"
+        "Deduplicate only exact same encountered surface form within this paragraph.\n"
+        "Cover the whole paragraph and do not stop after only a few examples.\n"
         "Return this JSON shape exactly:\n"
-        "{\"articles\":[{\"article_id\":\"article_1\",\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\","
-        "\"item_type\":\"noun|adjective|verb|compound|grammar\",\"translation_bg\":\"...\",\"translation_en\":\"...\","
+        "{\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\","
+        "\"item_type\":\"noun|adjective|verb|compound|grammar|particle\",\"translation_bg\":\"...\",\"translation_en\":\"...\","
         "\"meaning_bg\":\"...\",\"meaning_en\":\"...\",\"formation_bg\":\"...\",\"formation_en\":\"...\","
-        "\"formula_bg\":\"...\",\"formula_en\":\"...\",\"usage_bg\":\"...\",\"usage_en\":\"...\"}]}]}\n"
-        "Field rules:\n"
-        "- surface: exact form as seen in the text\n"
-        "- lemma: dictionary form, base adjective form, or canonical grammar pattern such as 〜ことになる\n"
-        "- reading: hiragana reading of the surface\n"
-        "- item_type: one of noun, adjective, verb, compound, grammar\n"
-        "- translation_bg / translation_en: short contextual translation of the surface form\n"
-        "- meaning_bg / meaning_en: short base meaning of the word/construction\n"
-        "- For adjectives or verbs that are not in dictionary form, fill formation_* and formula_* with how the form is built\n"
-        "- For grammar items, fill usage_* with meaning and how the pattern is used, and fill formula_* with a compact pattern formula\n"
-        "- For nouns and compounds, formation_* and formula_* may be empty unless especially useful\n"
-        "Use concise learner-facing explanations.\n"
-        f"Articles:\n{json.dumps(payload_articles, ensure_ascii=False, indent=2)}"
+        "\"formula_bg\":\"...\",\"formula_en\":\"...\",\"usage_bg\":\"...\",\"usage_en\":\"...\"}]}\n"
+        "Rules:\n"
+        "- surface: exact form as written in the paragraph\n"
+        "- lemma: dictionary/base form or canonical grammar pattern\n"
+        "- reading: hiragana reading of the exact surface whenever possible; if uncertain, still provide the other fields\n"
+        "- Include short grammar elements if they are genuinely useful to explain\n"
+        "- Include katakana loanwords and named concepts if present\n"
+        "- For adjectives and verbs not in dictionary form, explain formation and formula\n"
+        "- For grammar items, explain meaning, usage, and compact formula\n"
+        "- Do not invent anything not literally present in the paragraph\n"
+        "- Aim for 15 to 50 items when possible\n"
+        "- It is better to return many correct items than only a few polished ones\n"
+        f"Article title: {title}\n"
+        f"Paragraph text:\n{text}"
     )
-
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config={"response_mime_type": "application/json"},
-        )
-        parsed = extract_json_object(getattr(response, "text", ""))
-    except Exception as e:
-        print(f"Gemini article analysis failed: {e}")
-        return articles
-
+    parsed = extract_json_object(groq_chat_completion(prompt))
     if not isinstance(parsed, dict):
-        print("Gemini article analysis returned invalid JSON.")
+        return []
+    items = [item for item in (sanitize_gemini_analysis_item(v) for v in (parsed.get("items") or [])) if item]
+    cache_gemini_result(cache_key, items)
+    return items
+
+
+def analyze_articles_with_groq(articles):
+    for article in articles or []:
+        article["analysis_items"] = []
+    if not articles or not GROQ_API_KEY:
         return articles
-
-    cached_result = {}
-    for article_obj in parsed.get("articles") or []:
-        if not isinstance(article_obj, dict):
-            continue
-        article_id = (article_obj.get("article_id") or "").strip()
-        if not article_id:
-            continue
-        items = [item for item in (sanitize_gemini_analysis_item(v) for v in (article_obj.get("items") or [])) if item]
-        cached_result[article_id] = items
-        article = articles_by_id.get(article_id)
-        if article:
-            article["analysis_items"] = items
-
-    if cached_result:
-        cache_gemini_result(cache_key, cached_result)
+    for index, article in enumerate((articles or [])[:4], start=1):
+        title = (article.get("title") or "").strip()
+        article_id = f"article_{index}"
+        merged = {}
+        baseline_items = build_baseline_analysis_items_from_blocks(article.get("blocks") or [])
+        for item in baseline_items:
+            key = (
+                normalize_gemini_match_key(item.get("surface")),
+                normalize_gemini_match_key(item.get("lemma")),
+                normalize_gemini_match_key(item.get("item_type")),
+            )
+            merged[key] = item
+        for block_id, block in enumerate((article.get("blocks") or []), start=1):
+            text = (block.get("text") or "").strip()
+            if not text:
+                continue
+            try:
+                items = analyze_article_block_with_groq(article_id, block_id, title, text)
+            except Exception as e:
+                print(f"Groq article analysis failed for {article_id} block {block_id}: {e}")
+                items = []
+            for item in items:
+                key = (
+                    normalize_gemini_match_key(item.get("surface")),
+                    normalize_gemini_match_key(item.get("lemma")),
+                    normalize_gemini_match_key(item.get("item_type")),
+                )
+                existing = merged.get(key)
+                if existing is None:
+                    merged[key] = item
+                    continue
+                for field in (
+                    "reading",
+                    "translation_bg",
+                    "translation_en",
+                    "meaning_bg",
+                    "meaning_en",
+                    "formation_bg",
+                    "formation_en",
+                    "formula_bg",
+                    "formula_en",
+                    "usage_bg",
+                    "usage_en",
+                    "category_bg",
+                    "category_en",
+                ):
+                    if not existing.get(field) and item.get(field):
+                        existing[field] = item[field]
+        try:
+            article["analysis_items"] = list(merged.values())
+        except Exception:
+            article["analysis_items"] = baseline_items
+        if index < min(4, len(articles or [])):
+            # Groq rate limits aggressively on back-to-back long completions.
+            time.sleep(5)
     return articles
 
 
@@ -1681,7 +1829,6 @@ def analyze_grammar_points_with_gemini(articles, existing_grammar_points=None):
         response = client.models.generate_content(
             model=GEMINI_MODEL,
             contents=prompt,
-            config={"response_mime_type": "application/json"},
         )
         parsed = extract_json_object(getattr(response, "text", ""))
     except Exception as e:
@@ -2158,6 +2305,7 @@ def get_nhkeasier_items():
     items = {}
     for item in soup.find_all("item"):
         title = (item.title.get_text() if item.title else "").strip()
+        post_link = (item.link.get_text() if item.link else "").strip()
         desc_raw = (item.description.get_text() if item.description else "").strip()
         desc_html = html_lib.unescape(desc_raw)
         desc_soup = BeautifulSoup(desc_html, "html.parser")
@@ -2196,7 +2344,14 @@ def get_nhkeasier_items():
         if not ne_id:
             ne_id = extract_ne_id(audio_url) or extract_ne_id(image_url) or extract_ne_id(desc_html)
         if ne_id:
-            items[ne_id] = {"title": title, "blocks": blocks, "audio_url": audio_url, "image_url": image_url, "original_link": original_link}
+            items[ne_id] = {
+                "title": title,
+                "blocks": blocks,
+                "audio_url": audio_url,
+                "image_url": image_url,
+                "original_link": original_link,
+                "post_link": post_link,
+            }
     return items
 def extract_easy_article_links_from_sitemap(n=4):
     r = get_http_session().get(EASY_SITEMAP_URL, timeout=20)
@@ -2317,16 +2472,28 @@ def build_article_from_fallback(link: str, fallback: dict):
 
 
 def get_articles(n=4):
-    links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
     try:
         nhkeasier_items = get_nhkeasier_items()
     except Exception as e:
         print(f"Could not load nhkeasier fallback feed: {e}")
     articles = []
+
+    # Prefer nhkeasier feed because it contains full text blocks and mp3 audio.
+    for ne_id, fallback in list(nhkeasier_items.items())[:n]:
+        link = (fallback.get("original_link") or fallback.get("post_link") or "").strip()
+        article = build_article_from_fallback(link, fallback)
+        if article and article.get("blocks"):
+            articles.append(article)
+
+    if len(articles) >= n:
+        return articles[:n]
+
+    links = extract_easy_article_links_from_sitemap(max(n * 8, n))
+    existing_links = {(a.get("link") or "").strip() for a in articles}
     max_workers = min(8, max(1, n * 2))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(parse_article_from_nhk_easy, link): link for link in links}
+        futures = {executor.submit(parse_article_from_nhk_easy, link): link for link in links if link not in existing_links}
         for future in as_completed(futures):
             link = futures[future]
             ne_id = extract_ne_id(link)
@@ -2345,16 +2512,19 @@ def get_articles(n=4):
                     article = build_article_from_fallback(link, fallback)
                 if article and article.get("blocks"):
                     articles.append(article)
+                if len(articles) >= n:
+                    break
             except Exception as e:
                 if fallback:
                     article = build_article_from_fallback(link, fallback)
                     if article and article.get("blocks"):
                         articles.append(article)
                         print(f"Used nhkeasier fallback for {link} after error: {e}")
+                        if len(articles) >= n:
+                            break
                         continue
                 print(f"Skipping article because of error: {e}")
                 continue
-    articles.sort(key=lambda item: links.index(item.get("link", "")) if item.get("link") in links else len(links))
     return articles[:n]
 def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None):
     if not html_fragment:
@@ -2566,7 +2736,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class='build-marker'>Generated: __GENERATED_AT__</div>
 </div>
 <script>
-const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_type:"Тип",popup_translation:"Превод",popup_meaning:"Значение",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула",popup_usage:"Употреба"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_type:"Type",popup_translation:"Translation",popup_meaning:"Meaning",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula",popup_usage:"Usage"}};
+const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_type:"Тип",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_type:"Type",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula"}};
 const FILES={bg:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"},en:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"}};
 function getContentLanguage(){return localStorage.getItem('nhk_content_lang')||'bg';}
 function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;const lang=getContentLanguage();const langSel=document.getElementById('lang-select');if(langSel)langSel.value=lang;applyContentLanguage(lang);}
@@ -2579,7 +2749,7 @@ function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
 function esc(v){return (v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function popupLine(label,value){return value?'<div class="dm"><b>'+esc(label)+':</b> '+esc(value)+'</div>':'';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const category=(lang==='en'?el.dataset.categoryEn:el.dataset.categoryBg||el.dataset.categoryEn||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const meaning=(lang==='en'?el.dataset.meaningEn:el.dataset.meaningBg||el.dataset.meaningEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();const usage=(lang==='en'?el.dataset.usageEn:el.dataset.usageBg||el.dataset.usageEn||'').trim();let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_type,category);html+=popupLine(ui.popup_translation,translation);if(meaning&&meaning!==translation)html+=popupLine(ui.popup_meaning,meaning);html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);html+=popupLine(ui.popup_usage,usage);popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const category=(lang==='en'?el.dataset.categoryEn:el.dataset.categoryBg||el.dataset.categoryEn||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_type,category);html+=popupLine(ui.popup_translation,translation);html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
@@ -2738,18 +2908,18 @@ def write_pwa_files(output_dir, build_version=""):
         f.write(sw_js)
 
 def main():
-    global DEEPL_API_KEY, GEMINI_API_KEY, GEMINI_MODEL
+    global DEEPL_API_KEY, GROQ_API_KEY, GROQ_MODEL
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
-    parser.add_argument("--gemini-key", default=os.environ.get("GEMINI_API", ""))
-    parser.add_argument("--gemini-model", default=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"))
+    parser.add_argument("--groq-key", default=os.environ.get("GROQ_API_KEY", ""))
+    parser.add_argument("--groq-model", default=os.environ.get("GROQ_MODEL", "qwen/qwen3-32b"))
     args = parser.parse_args()
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
-    GEMINI_API_KEY = (args.gemini_key or "").strip()
-    GEMINI_MODEL = (args.gemini_model or "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+    GROQ_API_KEY = (args.groq_key or "").strip()
+    GROQ_MODEL = (args.groq_model or "qwen/qwen3-32b").strip() or "qwen/qwen3-32b"
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     generated_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -2766,7 +2936,7 @@ def main():
     if not articles:
         raise RuntimeError("No articles were extracted.")
 
-    analyze_articles_with_gemini(articles)
+    analyze_articles_with_groq(articles)
     for article in articles:
         prepare_article_render_data(article)
     grammar_points = build_grammar_points_from_analysis(articles)
