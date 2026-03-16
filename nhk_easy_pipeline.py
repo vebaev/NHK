@@ -56,7 +56,7 @@ DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
 translator = Translator() if Translator is not None else None
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "qwen/qwen3-32b").strip() or "qwen/qwen3-32b"
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "moonshotai/kimi-k2-instruct").strip() or "moonshotai/kimi-k2-instruct"
 GEMINI_API_KEY = ""
 GEMINI_MODEL = ""
 _TRANSLATION_CACHE = {}
@@ -2781,97 +2781,84 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None)
     if not vocab_lookup:
         return html_fragment
 
-    html_text = "".join(str(x) for x in soup.contents)
+    units = []
+    consumed_prefix = {}
+    root_nodes = list(soup.contents)
 
-    visible_chars = []
-    visible_ranges = []
-    i = 0
-    tag_stack = []
-    text_start = None
-    while i < len(html_text):
-        ch = html_text[i]
-        if ch == "<":
-            if text_start is not None:
-                current_tags = {tag for tag in tag_stack if tag}
-                chunk = html_text[text_start:i]
-                if not ({"rt", "rp", "script", "style"} & current_tags):
-                    for offset, c in enumerate(chunk):
-                        visible_chars.append(c)
-                        visible_ranges.append((text_start + offset, text_start + offset + 1))
-                text_start = None
-            end = html_text.find(">", i)
-            if end == -1:
-                break
-            raw_tag = html_text[i + 1:end].strip()
-            if raw_tag.startswith("!--"):
-                close = html_text.find("-->", i + 4)
-                if close == -1:
-                    break
-                i = close + 3
-                continue
-            tag_name = raw_tag.lstrip("/").split(None, 1)[0].rstrip("/").lower()
-            is_closing = raw_tag.startswith("/")
-            is_self_closing = raw_tag.endswith("/") or tag_name in {"br", "img", "meta", "link", "input", "source"}
-            if is_closing:
-                for idx in range(len(tag_stack) - 1, -1, -1):
-                    if tag_stack[idx] == tag_name:
-                        del tag_stack[idx]
-                        break
-            elif not is_self_closing:
-                tag_stack.append(tag_name)
-            i = end + 1
+    for idx, node in enumerate(root_nodes):
+        if isinstance(node, NavigableString):
+            raw_text = str(node)
+            skip = consumed_prefix.get(id(node), 0)
+            raw_text = raw_text[skip:] if skip else raw_text
+            for ch in raw_text:
+                units.append({"text": ch, "html": html_lib.escape(ch), "matchable": True})
             continue
-        if text_start is None:
-            text_start = i
-        i += 1
-    if text_start is not None:
-        current_tags = {tag for tag in tag_stack if tag}
-        chunk = html_text[text_start:i]
-        if not ({"rt", "rp", "script", "style"} & current_tags):
-            for offset, c in enumerate(chunk):
-                visible_chars.append(c)
-                visible_ranges.append((text_start + offset, text_start + offset + 1))
+        if getattr(node, "name", None) == "ruby":
+            okurigana = extract_following_okurigana(node)
+            if okurigana and idx + 1 < len(root_nodes) and isinstance(root_nodes[idx + 1], NavigableString):
+                consumed_prefix[id(root_nodes[idx + 1])] = max(consumed_prefix.get(id(root_nodes[idx + 1]), 0), len(okurigana))
+            units.append(
+                {
+                    "text": ruby_base_text(node) + okurigana,
+                    "html": str(node) + html_lib.escape(okurigana),
+                    "matchable": True,
+                }
+            )
+            continue
+        units.append({"text": "", "html": str(node), "matchable": False})
 
-    visible_text = "".join(visible_chars)
+    visible_text = "".join(unit["text"] for unit in units if unit["matchable"])
     if not visible_text.strip():
-        return html_text
+        return "".join(unit["html"] for unit in units)
 
     sorted_surfaces = sorted(
         [(surface, vocab_lookup[surface]) for surface in vocab_lookup.keys() if surface and contains_japanese(surface)],
         key=lambda pair: (-len(pair[0]), pair[0]),
     )
 
+    unit_start_positions = {}
+    unit_end_positions = {}
+    visible_pos = 0
+    for idx, unit in enumerate(units):
+        if not unit["matchable"]:
+            continue
+        unit_start_positions[visible_pos] = idx
+        visible_pos += len(unit["text"])
+        unit_end_positions[visible_pos] = idx + 1
+
     matches = []
     cursor = 0
     while cursor < len(visible_text):
+        if cursor not in unit_start_positions:
+            cursor += 1
+            continue
         best_surface = None
         best_item = None
         for surface, item in sorted_surfaces:
-            if visible_text.startswith(surface, cursor):
+            end_pos = cursor + len(surface)
+            if visible_text.startswith(surface, cursor) and end_pos in unit_end_positions:
                 best_surface = surface
                 best_item = item
                 break
         if best_surface is None:
             cursor += 1
             continue
-        start_html = visible_ranges[cursor][0]
-        end_html = visible_ranges[cursor + len(best_surface) - 1][1]
-        matches.append((start_html, end_html, best_item))
+        matches.append((unit_start_positions[cursor], unit_end_positions[cursor + len(best_surface)], best_item))
         cursor += len(best_surface)
 
     if not matches:
-        return html_text
+        return "".join(unit["html"] for unit in units)
 
     rebuilt = []
-    html_cursor = 0
-    for start_html, end_html, item in matches:
-        if start_html < html_cursor:
+    unit_cursor = 0
+    for start_unit, end_unit, item in matches:
+        if start_unit < unit_cursor:
             continue
-        rebuilt.append(html_text[html_cursor:start_html])
-        span = make_dict_span(BeautifulSoup("", "html.parser"), item, html_text[start_html:end_html])
+        rebuilt.extend(unit["html"] for unit in units[unit_cursor:start_unit])
+        span = make_dict_span(BeautifulSoup("", "html.parser"), item, "".join(unit["html"] for unit in units[start_unit:end_unit]))
         rebuilt.append(str(span))
-        html_cursor = end_html
-    rebuilt.append(html_text[html_cursor:])
+        unit_cursor = end_unit
+    rebuilt.extend(unit["html"] for unit in units[unit_cursor:])
     return "".join(rebuilt)
 def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
     grammar_points = grammar_points or []
@@ -3177,12 +3164,12 @@ def main():
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
     parser.add_argument("--groq-key", default=os.environ.get("GROQ_API_KEY", ""))
-    parser.add_argument("--groq-model", default=os.environ.get("GROQ_MODEL", "qwen/qwen3-32b"))
+    parser.add_argument("--groq-model", default=os.environ.get("GROQ_MODEL", "moonshotai/kimi-k2-instruct"))
     args = parser.parse_args()
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     GROQ_API_KEY = (args.groq_key or "").strip()
-    GROQ_MODEL = (args.groq_model or "qwen/qwen3-32b").strip() or "qwen/qwen3-32b"
+    GROQ_MODEL = (args.groq_model or "moonshotai/kimi-k2-instruct").strip() or "moonshotai/kimi-k2-instruct"
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     generated_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
