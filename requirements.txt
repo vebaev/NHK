@@ -3,10 +3,5 @@ beautifulsoup4
 lxml
 google-genai
 googletrans==4.0.0rc1
-fugashi
-jinf
-sudachipy
-sudachidict_core
-unidic-lite
 genanki
 weasyprint

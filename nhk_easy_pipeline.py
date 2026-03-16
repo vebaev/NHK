@@ -47,13 +47,7 @@ EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
 DEFAULT_ANKI_FILENAME = "anki_cards_bg.tsv"
-DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_vocab_bg.apkg"
-DEFAULT_GRAMMAR_TSV_FILENAME = "anki_grammar_bg.tsv"
-DEFAULT_GRAMMAR_APKG_FILENAME = "nhk_easy_grammar_bg.apkg"
-DEFAULT_ANKI_EN_FILENAME = "anki_cards_en.tsv"
-DEFAULT_ANKI_EN_APKG_FILENAME = "nhk_easy_vocab_en.apkg"
-DEFAULT_GRAMMAR_EN_TSV_FILENAME = "anki_grammar_en.tsv"
-DEFAULT_GRAMMAR_EN_APKG_FILENAME = "nhk_easy_grammar_en.apkg"
+DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_elements_bg.apkg"
 DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
 
 translator = Translator()
@@ -1278,46 +1272,25 @@ def ruby_base_text(ruby_tag) -> str:
 def make_dict_span(soup, item, inner_html: str, analysis=None):
     span = soup.new_tag("span")
     span["class"] = "dict-word"
-
-    analysis = analysis or analyze_japanese_word((item.get("word") or "").strip(), reading_hint=(item.get("reading") or "").strip(), lemma_hint=(item.get("word") or "").strip())
-    surface = (analysis.get("surface") or item.get("word") or "").strip()
-    lemma = (analysis.get("lemma") or item.get("word") or surface).strip()
-    reading_surface = normalize_katakana_to_hiragana((analysis.get("reading_surface") or item.get("reading") or "").strip())
-    reading_lemma = normalize_katakana_to_hiragana((analysis.get("reading_lemma") or "").strip())
-    if not reading_lemma:
-        reading_lemma = reading_surface if lemma == surface else get_reading_for_word(lemma, fallback="")
-    form_bg = (analysis.get("form_bg") or "форма в текста").strip()
-    form_en = (analysis.get("form_en") or "form in context").strip()
-    formula_bg = (analysis.get("formula_bg") or "").strip()
-    formula_en = (analysis.get("formula_en") or "").strip()
-    pos1 = (analysis.get("pos1") or "").strip()
-    show_form_details = pos1 in {"動詞", "形容詞"} and surface != lemma
-
-    lemma_meaning_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en")
-    lemma_meaning_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg")
-    surface_meaning_en = ""
-    surface_meaning_bg = ""
-    if surface != lemma:
-        surface_meaning_en = translate_text(surface, dest="en")
-        surface_meaning_bg = translate_text(surface, dest="bg")
-        if normalize_for_compare(surface_meaning_en) == normalize_for_compare(lemma_meaning_en):
-            surface_meaning_en = ""
-        if normalize_for_compare(surface_meaning_bg) == normalize_for_compare(lemma_meaning_bg):
-            surface_meaning_bg = ""
-
+    surface = (item.get("surface") or item.get("word") or "").strip()
+    lemma = (item.get("lemma") or item.get("word") or surface).strip()
+    reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
     span["data-surface"] = surface
     span["data-lemma"] = lemma
-    span["data-reading-surface"] = reading_surface
-    span["data-reading-lemma"] = reading_lemma
-    span["data-show-form-details"] = "1" if show_form_details else ""
-    span["data-form-bg"] = form_bg
-    span["data-form-en"] = form_en
-    span["data-formula-bg"] = formula_bg
-    span["data-formula-en"] = formula_en
-    span["data-meaning-surface-bg"] = surface_meaning_bg
-    span["data-meaning-surface-en"] = surface_meaning_en
-    span["data-meaning-lemma-bg"] = lemma_meaning_bg
-    span["data-meaning-lemma-en"] = lemma_meaning_en
+    span["data-reading"] = reading
+    span["data-item-type"] = (item.get("item_type") or "").strip()
+    span["data-category-bg"] = (item.get("category_bg") or "").strip()
+    span["data-category-en"] = (item.get("category_en") or "").strip()
+    span["data-translation-bg"] = (item.get("translation_bg") or "").strip()
+    span["data-translation-en"] = (item.get("translation_en") or "").strip()
+    span["data-meaning-bg"] = (item.get("meaning_bg") or "").strip()
+    span["data-meaning-en"] = (item.get("meaning_en") or "").strip()
+    span["data-formation-bg"] = (item.get("formation_bg") or "").strip()
+    span["data-formation-en"] = (item.get("formation_en") or "").strip()
+    span["data-formula-bg"] = (item.get("formula_bg") or "").strip()
+    span["data-formula-en"] = (item.get("formula_en") or "").strip()
+    span["data-usage-bg"] = (item.get("usage_bg") or "").strip()
+    span["data-usage-en"] = (item.get("usage_en") or "").strip()
 
     if "<" not in inner_html and ">" not in inner_html:
         span.string = inner_html
@@ -1407,6 +1380,15 @@ def build_vocab_lookup(vocab_items):
     return vocab_lookup
 
 
+def build_analysis_lookup(items):
+    lookup = {}
+    for item in items or []:
+        surface = (item.get("surface") or "").strip()
+        if surface and surface not in lookup:
+            lookup[surface] = item
+    return lookup
+
+
 def fill_block_translations(blocks):
     texts = [(block.get("text") or "").strip() for block in blocks or []]
     bg_map = translate_texts(texts, dest="bg")
@@ -1425,7 +1407,8 @@ def prepare_article_render_data(article):
     article["title_translation_bg"] = translate_text(title, dest="bg") if title else ""
     article["title_translation_en"] = translate_text(title, dest="en") if title else ""
     fill_block_translations(article.get("blocks") or [])
-    vocab_lookup = build_vocab_lookup(article.get("vocab") or [])
+    analysis_items = article.get("analysis_items") or []
+    vocab_lookup = build_analysis_lookup(analysis_items) if analysis_items else build_vocab_lookup(article.get("vocab") or [])
     for block in article.get("blocks") or []:
         block["wrapped_html"] = wrap_vocab_words_in_html(block.get("html", ""), vocab_lookup=vocab_lookup)
     return article
@@ -1462,24 +1445,50 @@ def extract_json_object(text: str):
     return None
 
 
-def sanitize_gemini_verb_item(item):
+def sanitize_gemini_analysis_item(item):
     if not isinstance(item, dict):
         return None
     surface = (item.get("surface") or "").strip()
-    if not surface:
+    if not surface or not contains_japanese(surface):
         return None
+    item_type = (item.get("item_type") or "").strip().lower()
+    if item_type not in {"verb", "noun", "adjective", "compound", "grammar"}:
+        return None
+    lemma = (item.get("lemma") or item.get("dictionary_form") or "").strip() or surface
+    reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
+    translation_bg = (item.get("translation_bg") or item.get("meaning_bg") or "").strip()
+    translation_en = (item.get("translation_en") or item.get("meaning_en") or "").strip()
+    category_bg_map = {
+        "verb": "глагол",
+        "noun": "съществително",
+        "adjective": "прилагателно",
+        "compound": "съчетание",
+        "grammar": "граматична конструкция",
+    }
+    category_en_map = {
+        "verb": "verb",
+        "noun": "noun",
+        "adjective": "adjective",
+        "compound": "compound",
+        "grammar": "grammar pattern",
+    }
     return {
         "surface": surface,
-        "lemma": (item.get("lemma") or "").strip(),
-        "reading": normalize_katakana_to_hiragana((item.get("reading") or "").strip()),
-        "translation_bg": (item.get("translation_bg") or "").strip(),
-        "translation_en": (item.get("translation_en") or "").strip(),
-        "form_type_bg": (item.get("form_type_bg") or "").strip(),
-        "form_type_en": (item.get("form_type_en") or "").strip(),
+        "lemma": lemma,
+        "reading": reading,
+        "item_type": item_type,
+        "category_bg": (item.get("category_bg") or "").strip() or category_bg_map[item_type],
+        "category_en": (item.get("category_en") or "").strip() or category_en_map[item_type],
+        "translation_bg": translation_bg,
+        "translation_en": translation_en,
+        "meaning_bg": (item.get("meaning_bg") or translation_bg).strip(),
+        "meaning_en": (item.get("meaning_en") or translation_en).strip(),
         "formation_bg": (item.get("formation_bg") or "").strip(),
         "formation_en": (item.get("formation_en") or "").strip(),
         "formula_bg": (item.get("formula_bg") or "").strip(),
         "formula_en": (item.get("formula_en") or "").strip(),
+        "usage_bg": (item.get("usage_bg") or "").strip(),
+        "usage_en": (item.get("usage_en") or "").strip(),
     }
 
 
@@ -1502,23 +1511,23 @@ def normalize_gemini_match_key(value: str) -> str:
     return re.sub(r"\s+", "", (value or "").strip()).lower()
 
 
-def find_best_gemini_verb_item(gemini_verbs, surface: str = "", reading: str = "", lemma: str = ""):
-    if not gemini_verbs:
+def find_best_gemini_item(gemini_items, surface: str = "", reading: str = "", lemma: str = ""):
+    if not gemini_items:
         return None
     s = normalize_gemini_match_key(surface)
     r = normalize_gemini_match_key(reading)
     l = normalize_gemini_match_key(lemma)
-    for item in gemini_verbs:
+    for item in gemini_items:
         if normalize_gemini_match_key(item.get("surface")) == s and (not r or normalize_gemini_match_key(item.get("reading")) == r):
             return item
-    for item in gemini_verbs:
+    for item in gemini_items:
         if normalize_gemini_match_key(item.get("surface")) == s:
             return item
-    for item in gemini_verbs:
+    for item in gemini_items:
         if l and normalize_gemini_match_key(item.get("lemma")) == l:
             return item
     loose = []
-    for item in gemini_verbs:
+    for item in gemini_items:
         item_surface = normalize_gemini_match_key(item.get("surface"))
         if item_surface and s and (item_surface in s or s in item_surface):
             loose.append(item)
@@ -1528,40 +1537,9 @@ def find_best_gemini_verb_item(gemini_verbs, surface: str = "", reading: str = "
     return None
 
 
-def attach_gemini_to_wrapped_blocks(article):
-    gemini_verbs = article.get("gemini_verbs") or []
-    if not gemini_verbs:
-        return article
-    for block in article.get("blocks") or []:
-        wrapped_html = block.get("wrapped_html") or block.get("html") or ""
-        if "dict-word" not in wrapped_html:
-            continue
-        soup = BeautifulSoup(wrapped_html, "html.parser")
-        updated = False
-        for span in soup.select(".dict-word"):
-            surface = (span.get("data-surface") or "").strip()
-            reading = normalize_katakana_to_hiragana((span.get("data-reading-surface") or "").strip())
-            lemma = (span.get("data-lemma") or "").strip()
-            match = find_best_gemini_verb_item(gemini_verbs, surface=surface, reading=reading, lemma=lemma)
-            if not match:
-                continue
-            span["data-gemini-translation-bg"] = match.get("translation_bg", "")
-            span["data-gemini-translation-en"] = match.get("translation_en", "")
-            span["data-gemini-form-type-bg"] = match.get("form_type_bg", "")
-            span["data-gemini-form-type-en"] = match.get("form_type_en", "")
-            span["data-gemini-formation-bg"] = match.get("formation_bg", "")
-            span["data-gemini-formation-en"] = match.get("formation_en", "")
-            span["data-gemini-formula-bg"] = match.get("formula_bg", "")
-            span["data-gemini-formula-en"] = match.get("formula_en", "")
-            updated = True
-        if updated:
-            block["wrapped_html"] = "".join(str(x) for x in soup.contents)
-    return article
-
-
 def analyze_articles_with_gemini(articles):
     for article in articles or []:
-        article["gemini_verbs"] = []
+        article["analysis_items"] = []
     if not articles or not GEMINI_API_KEY or genai is None:
         return articles
 
@@ -1584,36 +1562,39 @@ def analyze_articles_with_gemini(articles):
     if not payload_articles:
         return articles
 
-    cache_payload = {"model": GEMINI_MODEL, "articles": payload_articles}
+    cache_payload = {"model": GEMINI_MODEL, "task": "article_elements_v2", "articles": payload_articles}
     cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     cached = _GEMINI_CACHE.get(cache_key)
     if isinstance(cached, dict):
-        for article_id, verb_items in cached.items():
+        for article_id, items in cached.items():
             article = articles_by_id.get(article_id)
             if article:
-                article["gemini_verbs"] = [item for item in (sanitize_gemini_verb_item(v) for v in verb_items) if item]
-        for article in articles or []:
-            attach_gemini_to_wrapped_blocks(article)
+                article["analysis_items"] = [item for item in (sanitize_gemini_analysis_item(v) for v in items) if item]
         return articles
 
     prompt = (
-        "Analyze the Japanese news articles below and return strict JSON only.\n"
-        "Goal: for each article, extract the verb forms that actually appear in the text.\n"
+        "Analyze the 4 Japanese NHK Easy articles below and return strict JSON only.\n"
+        "Goal: for each article, extract learner-useful language elements that actually appear in the text.\n"
+        "Include nouns, adjectives, verb predicates, useful compounds, and grammar constructions.\n"
         "Deduplicate exact same encountered surface form within the same article.\n"
-        "If the predicate is a compound ending in a verb, include the full encountered verbal predicate when appropriate, "
-        "for example 多くなりました should count as one encountered verbal form.\n"
+        "Prefer exact surface spans as they appear in the text.\n"
+        "Include around 12 to 24 items per article, prioritizing useful study items.\n"
         "Return this JSON shape exactly:\n"
-        "{\"articles\":[{\"article_id\":\"article_1\",\"verbs\":[{\"surface\":\"...\",\"reading\":\"...\","
-        "\"translation_bg\":\"...\",\"translation_en\":\"...\",\"form_type_bg\":\"...\",\"form_type_en\":\"...\","
-        "\"formation_bg\":\"...\",\"formation_en\":\"...\",\"formula_bg\":\"...\",\"formula_en\":\"...\"}]}]}\n"
+        "{\"articles\":[{\"article_id\":\"article_1\",\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\","
+        "\"item_type\":\"noun|adjective|verb|compound|grammar\",\"translation_bg\":\"...\",\"translation_en\":\"...\","
+        "\"meaning_bg\":\"...\",\"meaning_en\":\"...\",\"formation_bg\":\"...\",\"formation_en\":\"...\","
+        "\"formula_bg\":\"...\",\"formula_en\":\"...\",\"usage_bg\":\"...\",\"usage_en\":\"...\"}]}]}\n"
         "Field rules:\n"
         "- surface: exact form as seen in the text\n"
-        "- reading: hiragana reading of that exact form\n"
-        "- translation_bg / translation_en: short translation of the encountered form in context\n"
-        "- form_type_bg / form_type_en: short name of the form type, tense, or construction\n"
-        "- formation_bg / formation_en: short explanation of how the form is built starting from dictionary form\n"
-        "- formula_bg / formula_en: compact formula of the form\n"
-        "Do not include nouns, particles, or plain adjectives unless they are part of a compound verbal predicate.\n"
+        "- lemma: dictionary form, base adjective form, or canonical grammar pattern such as 〜ことになる\n"
+        "- reading: hiragana reading of the surface\n"
+        "- item_type: one of noun, adjective, verb, compound, grammar\n"
+        "- translation_bg / translation_en: short contextual translation of the surface form\n"
+        "- meaning_bg / meaning_en: short base meaning of the word/construction\n"
+        "- For adjectives or verbs that are not in dictionary form, fill formation_* and formula_* with how the form is built\n"
+        "- For grammar items, fill usage_* with meaning and how the pattern is used, and fill formula_* with a compact pattern formula\n"
+        "- For nouns and compounds, formation_* and formula_* may be empty unless especially useful\n"
+        "Use concise learner-facing explanations.\n"
         f"Articles:\n{json.dumps(payload_articles, ensure_ascii=False, indent=2)}"
     )
 
@@ -1626,11 +1607,11 @@ def analyze_articles_with_gemini(articles):
         )
         parsed = extract_json_object(getattr(response, "text", ""))
     except Exception as e:
-        print(f"Gemini verb analysis failed: {e}")
+        print(f"Gemini article analysis failed: {e}")
         return articles
 
     if not isinstance(parsed, dict):
-        print("Gemini verb analysis returned invalid JSON.")
+        print("Gemini article analysis returned invalid JSON.")
         return articles
 
     cached_result = {}
@@ -1640,16 +1621,14 @@ def analyze_articles_with_gemini(articles):
         article_id = (article_obj.get("article_id") or "").strip()
         if not article_id:
             continue
-        verbs = [item for item in (sanitize_gemini_verb_item(v) for v in (article_obj.get("verbs") or [])) if item]
-        cached_result[article_id] = verbs
+        items = [item for item in (sanitize_gemini_analysis_item(v) for v in (article_obj.get("items") or [])) if item]
+        cached_result[article_id] = items
         article = articles_by_id.get(article_id)
         if article:
-            article["gemini_verbs"] = verbs
+            article["analysis_items"] = items
 
     if cached_result:
         cache_gemini_result(cache_key, cached_result)
-    for article in articles or []:
-        attach_gemini_to_wrapped_blocks(article)
     return articles
 
 
@@ -1866,6 +1845,81 @@ def build_grammar_anki_cards(grammar_points, lang="bg"):
         seen_labels.add(label)
         cards.append((label, explanation))
 
+    return cards
+
+
+def build_grammar_points_from_analysis(articles):
+    points = []
+    seen = set()
+    for article in articles or []:
+        for item in article.get("analysis_items") or []:
+            if item.get("item_type") != "grammar":
+                continue
+            label = (item.get("lemma") or item.get("surface") or "").strip()
+            if not label:
+                continue
+            key = normalize_for_compare(label)
+            if key in seen:
+                continue
+            seen.add(key)
+            points.append(
+                {
+                    "label": label,
+                    "explanation_bg": (item.get("usage_bg") or item.get("meaning_bg") or item.get("translation_bg") or "").strip(),
+                    "explanation_en": (item.get("usage_en") or item.get("meaning_en") or item.get("translation_en") or "").strip(),
+                }
+            )
+    return points
+
+
+def format_analysis_anki_back(item, lang="bg"):
+    category = (item.get("category_bg") if lang == "bg" else item.get("category_en") or "").strip()
+    translation = (item.get("translation_bg") if lang == "bg" else item.get("translation_en") or "").strip()
+    meaning = (item.get("meaning_bg") if lang == "bg" else item.get("meaning_en") or "").strip()
+    formation = (item.get("formation_bg") if lang == "bg" else item.get("formation_en") or "").strip()
+    formula = (item.get("formula_bg") if lang == "bg" else item.get("formula_en") or "").strip()
+    usage = (item.get("usage_bg") if lang == "bg" else item.get("usage_en") or "").strip()
+    lines = []
+    if category:
+        lines.append(f"<b>{'Тип' if lang == 'bg' else 'Type'}:</b> {html_lib.escape(category)}")
+    if translation:
+        lines.append(f"<b>{'Превод' if lang == 'bg' else 'Translation'}:</b> {html_lib.escape(translation)}")
+    if meaning and meaning != translation:
+        lines.append(f"<b>{'Значение' if lang == 'bg' else 'Meaning'}:</b> {html_lib.escape(meaning)}")
+    if formation:
+        lines.append(f"<b>{'Образуване' if lang == 'bg' else 'Formation'}:</b> {html_lib.escape(formation)}")
+    if formula:
+        lines.append(f"<b>{'Формула' if lang == 'bg' else 'Formula'}:</b> {html_lib.escape(formula)}")
+    if usage:
+        lines.append(f"<b>{'Употреба' if lang == 'bg' else 'Usage'}:</b> {html_lib.escape(usage)}")
+    return "<br>".join(lines)
+
+
+def build_analysis_anki_cards(articles, lang="bg"):
+    cards = []
+    seen = set()
+    for article in articles or []:
+        for item in article.get("analysis_items") or []:
+            surface = (item.get("surface") or "").strip()
+            lemma = (item.get("lemma") or surface).strip()
+            reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
+            if not surface:
+                continue
+            back = format_analysis_anki_back(item, lang=lang)
+            if not back:
+                continue
+            key = (
+                normalize_for_compare(surface),
+                normalize_for_compare(lemma),
+                normalize_for_compare(item.get("item_type") or ""),
+                lang,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            front = f"<ruby>{surface}<rt>{reading}</rt></ruby>" if reading and reading != surface else surface
+            cards.append((front, back))
+    cards.sort(key=lambda pair: pair[0])
     return cards
 def load_seen_words(path):
     if not os.path.exists(path):
@@ -2314,34 +2368,34 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None)
     if not vocab_lookup:
         return html_fragment
 
+    sorted_surfaces = sorted(
+        [surface for surface in vocab_lookup.keys() if surface and contains_japanese(surface)],
+        key=lambda value: (-len(value), value),
+    )
+
     # 1) Wrap ruby words first, so kanji + reading stay intact.
     for ruby in list(soup.find_all("ruby")):
         if ruby.find_parent(class_="dict-word"):
             continue
 
         base = ruby_base_text(ruby)
-        ruby_reading = "".join(rt.get_text("", strip=True) for rt in ruby.find_all("rt"))
         okurigana = extract_following_okurigana(ruby)
         candidates = []
         if base and okurigana:
-            surface = base + okurigana
-            candidates.extend([surface, lemmatize_japanese(surface)])
+            candidates.append(base + okurigana)
         if base:
             candidates.append(base)
 
         item = None
-        analysis = None
-        ruby_candidates = list(build_lookup_candidates(base + okurigana if okurigana else base, reading=ruby_reading))
-        for cand in unique_keep_order(candidates + ruby_candidates):
+        for cand in unique_keep_order(candidates):
             if cand in vocab_lookup:
                 item = vocab_lookup[cand]
-                analysis = analyze_japanese_word(base + okurigana if okurigana else base, reading_hint=(ruby_reading + okurigana).strip() if okurigana else ruby_reading, lemma_hint=(item.get("word") or "").strip())
                 break
         if item is None:
             continue
 
         inner_html = str(ruby) + html_lib.escape(okurigana)
-        span = make_dict_span(soup, item, inner_html, analysis=analysis)
+        span = make_dict_span(soup, item, inner_html)
         ruby.replace_with(span)
 
         nxt = span.next_sibling
@@ -2349,8 +2403,7 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None)
             rest = str(nxt)[len(okurigana):]
             nxt.replace_with(rest)
 
-    # 2) Wrap remaining plain text by MeCab token boundaries, not raw substring search.
-    tagger = get_mecab_tagger()
+    # 2) Wrap remaining plain text by longest exact Gemini surface matches.
     skip_tags = {"rt", "rp", "script", "style"}
 
     for text_node in list(soup.find_all(string=True)):
@@ -2364,52 +2417,22 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None)
         if not original.strip():
             continue
 
-        if tagger is None:
-            continue
-
-        try:
-            tokens = list(tagger(original))
-        except Exception:
-            continue
-
-        surfaces = [token_surface(t) for t in tokens]
-        if not surfaces:
-            continue
-
-        # Only rewrite node if we actually match something.
         matched_any = False
         rebuilt = []
-        i = 0
-        while i < len(surfaces):
+        cursor = 0
+        while cursor < len(original):
             best = None
-            best_item = None
-            best_analysis = None
-            max_j = min(len(surfaces), i + 5)
-            for j in range(max_j, i, -1):
-                if not is_matchable_token_span(tokens[i:j]):
-                    continue
-                candidate = "".join(surfaces[i:j]).strip()
-                candidate_reading = normalize_katakana_to_hiragana("".join(feature_reading(t).strip() for t in tokens[i:j]))
-                lemma_joined = "".join((token_lemma(t).strip() or token_surface(t).strip()) for t in tokens[i:j]).strip()
-                key_candidates = build_lookup_candidates(candidate, reading=candidate_reading, lemma=lemma_joined)
-                matched_key = None
-                for key in key_candidates:
-                    if key in vocab_lookup and not is_suspicious_vocab_word(candidate):
-                        matched_key = key
-                        break
-                if matched_key:
-                    best = candidate
-                    best_item = vocab_lookup[matched_key]
-                    best_analysis = analyze_japanese_word(candidate, reading_hint=candidate_reading, lemma_hint=(best_item.get("word") or lemma_joined or candidate))
-                    best_j = j
+            for surface in sorted_surfaces:
+                if original.startswith(surface, cursor):
+                    best = surface
                     break
             if best is not None:
                 matched_any = True
-                rebuilt.append(make_dict_span(soup, best_item, html_lib.escape(best), analysis=best_analysis))
-                i = best_j
+                rebuilt.append(make_dict_span(soup, vocab_lookup[best], html_lib.escape(best)))
+                cursor += len(best)
             else:
-                rebuilt.append(NavigableString(surfaces[i]))
-                i += 1
+                rebuilt.append(NavigableString(original[cursor]))
+                cursor += 1
 
         if matched_any:
             for node in rebuilt[::-1]:
@@ -2522,17 +2545,10 @@ ruby rt{font-size:.68em;color:var(--muted)}
             block_en = html_lib.escape(block.get('translation_en', ''), quote=True)
             if block_bg or block_en:
                 html += f"<div class='trans-block' data-bg='{block_bg}' data-en='{block_en}'></div>"
-        gemini_verbs = article.get("gemini_verbs") or []
-        if gemini_verbs:
-            html += "<script type='application/json' class='article-gemini-data'>"
-            html += html_lib.escape(json.dumps(gemini_verbs, ensure_ascii=False), quote=False)
-            html += "</script>"
         html += "</article>"
     html += "<div class='downloads'>"
-    html += f"<a class='download-btn download-link' data-kind='vocab_apkg' href='{DEFAULT_ANKI_APKG_FILENAME}' download></a>"
-    html += f"<a class='download-btn download-link' data-kind='vocab_tsv' href='{DEFAULT_ANKI_FILENAME}' download></a>"
-    html += f"<a class='download-btn download-link' data-kind='grammar_apkg' href='{DEFAULT_GRAMMAR_APKG_FILENAME}' download></a>"
-    html += f"<a class='download-btn download-link' data-kind='grammar_tsv' href='{DEFAULT_GRAMMAR_TSV_FILENAME}' download></a>"
+    html += f"<a class='download-btn download-link' data-kind='anki_apkg' href='{DEFAULT_ANKI_APKG_FILENAME}' download></a>"
+    html += f"<a class='download-btn download-link' data-kind='anki_tsv' href='{DEFAULT_ANKI_FILENAME}' download></a>"
     html += "</div>"
     if grammar_points:
         html += "<section class='grammar'><div class='section-title' data-ui='grammar_in_texts'></div><ul>"
@@ -2550,8 +2566,8 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class='build-marker'>Generated: __GENERATED_AT__</div>
 </div>
 <script>
-const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",verb_form_type:"Тип",verb_formation:"Образуване",verb_formula:"Формула",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху дума за значение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",vocab_apkg:"Свали Anki речник (.apkg)",vocab_tsv:"Свали речник TSV",grammar_apkg:"Свали Anki граматика (.apkg)",grammar_tsv:"Свали граматика TSV"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",verb_form_type:"Type",verb_formation:"Formation",verb_formula:"Formula",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a word for its meaning.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",vocab_apkg:"Download Anki vocabulary (.apkg)",vocab_tsv:"Download vocabulary TSV",grammar_apkg:"Download Anki grammar (.apkg)",grammar_tsv:"Download grammar TSV"}};
-const FILES={bg:{vocab_apkg:"nhk_easy_vocab_bg.apkg",vocab_tsv:"anki_cards_bg.tsv",grammar_apkg:"nhk_easy_grammar_bg.apkg",grammar_tsv:"anki_grammar_bg.tsv"},en:{vocab_apkg:"nhk_easy_vocab_en.apkg",vocab_tsv:"anki_cards_en.tsv",grammar_apkg:"nhk_easy_grammar_en.apkg",grammar_tsv:"anki_grammar_en.tsv"}};
+const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_type:"Тип",popup_translation:"Превод",popup_meaning:"Значение",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула",popup_usage:"Употреба"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_type:"Type",popup_translation:"Translation",popup_meaning:"Meaning",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula",popup_usage:"Usage"}};
+const FILES={bg:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"},en:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"}};
 function getContentLanguage(){return localStorage.getItem('nhk_content_lang')||'bg';}
 function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;const lang=getContentLanguage();const langSel=document.getElementById('lang-select');if(langSel)langSel.value=lang;applyContentLanguage(lang);}
 function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk_theme',theme);const meta=document.querySelector('meta[name="theme-color"]');if(meta){meta.setAttribute('content',theme==='theme-light'?'#f7f7f5':theme==='theme-sepia'?'#f3eadb':'#0f1115');}}
@@ -2561,14 +2577,13 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function getArticleGeminiVerbs(article){if(!article)return[];if(article._geminiVerbs)return article._geminiVerbs;const node=article.querySelector('.article-gemini-data');if(!node){article._geminiVerbs=[];return article._geminiVerbs;}try{article._geminiVerbs=JSON.parse(node.textContent||'[]');}catch(_){article._geminiVerbs=[];}return article._geminiVerbs;}
-function normalizeGeminiKey(v){return (v||'').trim().toLowerCase();}
-function findGeminiVerbData(article,surface,reading){const verbs=getArticleGeminiVerbs(article);if(!verbs.length)return null;const s=normalizeGeminiKey(surface);const r=normalizeGeminiKey(reading);let exact=verbs.find(v=>normalizeGeminiKey(v.surface)===s&&(!r||normalizeGeminiKey(v.reading)===r));if(exact)return exact;exact=verbs.find(v=>normalizeGeminiKey(v.surface)===s);if(exact)return exact;const loose=verbs.filter(v=>{const vs=normalizeGeminiKey(v.surface);return vs&&s&&(vs.includes(s)||s.includes(vs));});if(!loose.length)return null;loose.sort((a,b)=>Math.abs((a.surface||'').length-surface.length)-Math.abs((b.surface||'').length-surface.length));return loose[0]||null;}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();let ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||'').trim();const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelFormula=(lang==='en'?'Formation':'Образуване');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');let geminiType=(lang==='en'?el.dataset.geminiFormTypeEn:el.dataset.geminiFormTypeBg||'').trim();let geminiFormation=(lang==='en'?el.dataset.geminiFormationEn:el.dataset.geminiFormationBg||'').trim();let geminiFormula=(lang==='en'?el.dataset.geminiFormulaEn:el.dataset.geminiFormulaBg||'').trim();let geminiTranslation=(lang==='en'?el.dataset.geminiTranslationEn:el.dataset.geminiTranslationBg||'').trim();if(!geminiType&&!geminiFormation&&!geminiFormula&&!geminiTranslation){const gemini=findGeminiVerbData(el.closest('article'),surface,rs);if(gemini){geminiTranslation=((lang==='en'?gemini.translation_en:gemini.translation_bg)||'').trim();geminiType=((lang==='en'?gemini.form_type_en:gemini.form_type_bg)||'').trim();geminiFormation=((lang==='en'?gemini.formation_en:gemini.formation_bg)||'').trim();geminiFormula=((lang==='en'?gemini.formula_en:gemini.formula_bg)||'').trim();}}if(geminiTranslation)ms=geminiTranslation;let html='<div class="dw">'+surface+(rs?' ['+rs+']':'')+(ms?' - '+ms:'')+'</div>';if(geminiType)html+='<div class="dm">'+labelForm+': '+geminiType+'</div>';if(geminiFormation)html+='<div class="dm">'+labelFormula+': '+geminiFormation+'</div>';if(geminiFormula)html+='<div class="dm">'+(lang==='en'?'Formula':'Формула')+': '+geminiFormula+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function esc(v){return (v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function popupLine(label,value){return value?'<div class="dm"><b>'+esc(label)+':</b> '+esc(value)+'</div>':'';}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const category=(lang==='en'?el.dataset.categoryEn:el.dataset.categoryBg||el.dataset.categoryEn||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const meaning=(lang==='en'?el.dataset.meaningEn:el.dataset.meaningBg||el.dataset.meaningEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();const usage=(lang==='en'?el.dataset.usageEn:el.dataset.usageBg||el.dataset.usageEn||'').trim();let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_type,category);html+=popupLine(ui.popup_translation,translation);if(meaning&&meaning!==translation)html+=popupLine(ui.popup_meaning,meaning);html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);html+=popupLine(ui.popup_usage,usage);popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
-  return (text || '').split(/(?<=[。！？?!])\s*/).filter(function(s){return s && s.trim();});
+  return (text || '').split(/(?<=[。！？?!])\\s*/).filter(function(s){return s && s.trim();});
 }
 
 function wrapBlockSentences(block){
@@ -2597,7 +2612,7 @@ function wrapBlockSentences(block){
     }
     parts.forEach(function(part){
       current.appendChild(document.createTextNode(part));
-      if(/[。！？?!]\s*$/.test(part)){
+      if(/[。！？?!]\\s*$/.test(part)){
         flushCurrent();
       }
     });
@@ -2610,7 +2625,7 @@ function wrapBlockSentences(block){
       const clone = node.cloneNode(true);
       current.appendChild(clone);
       const t = (current.textContent || '').trim();
-      if(/[。！？?!]\s*$/.test(t)){
+      if(/[。！？?!]\\s*$/.test(t)){
         flushCurrent();
       }
     }
@@ -2747,78 +2762,36 @@ def main():
         os.makedirs(output_dir, exist_ok=True)
         write_pwa_files(output_dir, build_version=build_version)
 
-    ensure_grammar_bilingual()
     articles = get_articles(args.count)
     if not articles:
         raise RuntimeError("No articles were extracted.")
 
-    grammar_points = extract_grammar_points(articles)
-    ai_grammar_points = analyze_grammar_points_with_gemini(articles, grammar_points)
-    existing_grammar_keys = {normalize_for_compare((g.get("label") or "").replace(" (AI)", "")) for g in grammar_points}
-    for item in ai_grammar_points:
-        base_label = (item.get("label") or "").replace(" (AI)", "").strip()
-        if not base_label:
-            continue
-        if normalize_for_compare(base_label) in existing_grammar_keys:
-            continue
-        grammar_points.append(
-            {
-                "label": f"{base_label} (AI)",
-                "explanation_bg": item.get("explanation_bg", ""),
-                "explanation_en": item.get("explanation_en", ""),
-            }
-        )
-        existing_grammar_keys.add(normalize_for_compare(base_label))
     analyze_articles_with_gemini(articles)
+    for article in articles:
+        prepare_article_render_data(article)
+    grammar_points = build_grammar_points_from_analysis(articles)
 
     vocab_tsv_filename = DEFAULT_ANKI_FILENAME
     vocab_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
-    grammar_tsv_filename = DEFAULT_GRAMMAR_TSV_FILENAME
-    grammar_apkg_filename = DEFAULT_GRAMMAR_APKG_FILENAME
-    vocab_tsv_en_filename = DEFAULT_ANKI_EN_FILENAME
-    vocab_apkg_en_filename = DEFAULT_ANKI_EN_APKG_FILENAME
-    grammar_tsv_en_filename = DEFAULT_GRAMMAR_EN_TSV_FILENAME
-    grammar_apkg_en_filename = DEFAULT_GRAMMAR_EN_APKG_FILENAME
     anki_seen_words_filename = DEFAULT_ANKI_SEEN_WORDS_FILENAME
 
     if output_dir:
         vocab_tsv_path = os.path.join(output_dir, vocab_tsv_filename)
         vocab_apkg_path = os.path.join(output_dir, vocab_apkg_filename)
-        grammar_tsv_path = os.path.join(output_dir, grammar_tsv_filename)
-        grammar_apkg_path = os.path.join(output_dir, grammar_apkg_filename)
-        vocab_tsv_en_path = os.path.join(output_dir, vocab_tsv_en_filename)
-        vocab_apkg_en_path = os.path.join(output_dir, vocab_apkg_en_filename)
-        grammar_tsv_en_path = os.path.join(output_dir, grammar_tsv_en_filename)
-        grammar_apkg_en_path = os.path.join(output_dir, grammar_apkg_en_filename)
         anki_seen_words_path = os.path.join(output_dir, anki_seen_words_filename)
     else:
         vocab_tsv_path = vocab_tsv_filename
         vocab_apkg_path = vocab_apkg_filename
-        grammar_tsv_path = grammar_tsv_filename
-        grammar_apkg_path = grammar_apkg_filename
-        vocab_tsv_en_path = vocab_tsv_en_filename
-        vocab_apkg_en_path = vocab_apkg_en_filename
-        grammar_tsv_en_path = grammar_tsv_en_filename
-        grammar_apkg_en_path = grammar_apkg_en_filename
         anki_seen_words_path = anki_seen_words_filename
 
     seen_words = load_seen_words(anki_seen_words_path)
     add_known_progress_to_articles(articles, seen_words)
 
-    vocab_cards = build_vocab_anki_cards(articles, lang="bg")
-    vocab_cards_en = build_vocab_anki_cards(articles, lang="en")
-    grammar_cards = build_grammar_anki_cards(grammar_points, lang="bg")
-    grammar_cards_en = build_grammar_anki_cards(grammar_points, lang="en")
+    vocab_cards = build_analysis_anki_cards(articles, lang="bg")
 
     save_anki_tsv(vocab_cards, vocab_tsv_path)
-    save_anki_tsv(vocab_cards_en, vocab_tsv_en_path)
-    save_anki_tsv(grammar_cards, grammar_tsv_path)
-    save_anki_tsv(grammar_cards_en, grammar_tsv_en_path)
 
-    build_anki_apkg(vocab_cards, vocab_apkg_path, deck_name="NHK Easy Vocabulary BG")
-    build_anki_apkg(vocab_cards_en, vocab_apkg_en_path, deck_name="NHK Easy Vocabulary EN")
-    build_anki_apkg(grammar_cards, grammar_apkg_path, deck_name="NHK Easy Grammar BG")
-    build_anki_apkg(grammar_cards_en, grammar_apkg_en_path, deck_name="NHK Easy Grammar EN")
+    build_anki_apkg(vocab_cards, vocab_apkg_path, deck_name="NHK Easy Elements BG")
 
     save_seen_words(anki_seen_words_path, seen_words)
 
