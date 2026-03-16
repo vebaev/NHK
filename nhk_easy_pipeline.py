@@ -66,7 +66,6 @@ _GEMINI_CACHE = {}
 _MECAB_TAGGER = None
 _SUDACHI_TOKENIZER = None
 _JINF = None
-_WORD_GLOSSARY = None
 _EXTERNAL_GRAMMAR_PATTERNS = None
 _THREAD_LOCAL = threading.local()
 _TRANSLATION_CACHE_DIRTY = False
@@ -337,6 +336,7 @@ def cache_gemini_result(cache_key: str, value):
     _GEMINI_CACHE[cache_key] = value
     return value
 
+
 def ensure_grammar_bilingual():
     missing_bg = [rule.get("explanation_bg", "") for rule in GRAMMAR_RULES if not rule.get("explanation_en")]
     translated = translate_texts(missing_bg, dest="en")
@@ -346,25 +346,6 @@ def ensure_grammar_bilingual():
             rule["explanation_en"] = translated.get(bg) or translate_text(bg, dest="en") or bg
     global GRAMMAR_RULES_BY_ID
     GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
-
-
-def load_word_glossary():
-    global _WORD_GLOSSARY
-    if _WORD_GLOSSARY is not None:
-        return _WORD_GLOSSARY
-    candidates = ["glossary_overrides.json", os.path.join(os.path.dirname(__file__), "glossary_overrides.json")]
-    for path in candidates:
-        if os.path.exists(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if isinstance(data, dict):
-                    _WORD_GLOSSARY = {str(k).strip(): str(v).strip() for k, v in data.items() if str(k).strip()}
-                    return _WORD_GLOSSARY
-            except Exception:
-                pass
-    _WORD_GLOSSARY = {}
-    return _WORD_GLOSSARY
 
 
 def load_external_grammar_patterns(path: str = EXTERNAL_GRAMMAR_FILE):
@@ -2110,6 +2091,9 @@ def build_analysis_lookup(items):
         surface = (item.get("surface") or "").strip()
         if not surface:
             continue
+        if not (item.get("translation_bg") or item.get("translation_en") or item.get("meaning_bg") or item.get("meaning_en")):
+            if len(surface) <= 2:
+                continue
         keys = build_lookup_candidates(surface, reading=item.get("reading", ""), lemma=item.get("lemma", ""))
         for key in keys:
             if not key:
@@ -2409,6 +2393,41 @@ def prepare_article_render_data(article):
         analysis_items.append(item)
     for item in build_local_analysis_items_from_blocks(article.get("blocks") or []):
         analysis_items.append(item)
+    if GROQ_API_KEY:
+        article_id = extract_ne_id(article.get("link") or "") or hashlib.sha1((article.get("title") or "").encode("utf-8")).hexdigest()[:10]
+        for block_id, block in enumerate((article.get("blocks") or []), start=1):
+            block_text = (block.get("text") or "").strip()
+            if not block_text:
+                continue
+            targets = []
+            for item in analysis_items:
+                surface = (item.get("surface") or "").strip()
+                if not surface or surface not in block_text:
+                    continue
+                if should_request_contextual_popup_translation(item):
+                    targets.append(surface)
+            if not targets:
+                continue
+            try:
+                contextual_map = analyze_contextual_popup_translations_with_groq(article_id, block_id, block_text, targets[:12])
+            except Exception as e:
+                print(f"Groq contextual popup translation failed for {article_id} block {block_id}: {e}")
+                contextual_map = {}
+            if not contextual_map:
+                continue
+            for item in analysis_items:
+                surface = (item.get("surface") or "").strip()
+                contextual = contextual_map.get(surface)
+                if not contextual:
+                    continue
+                if (contextual.get("translation_bg") or "").strip():
+                    item["translation_bg"] = contextual["translation_bg"].strip()
+                if (contextual.get("translation_en") or "").strip():
+                    item["translation_en"] = contextual["translation_en"].strip()
+                if not (item.get("meaning_bg") or "").strip() and (contextual.get("translation_bg") or "").strip():
+                    item["meaning_bg"] = contextual["translation_bg"].strip()
+                if not (item.get("meaning_en") or "").strip() and (contextual.get("translation_en") or "").strip():
+                    item["meaning_en"] = contextual["translation_en"].strip()
     article["analysis_items"] = analysis_items
     analysis_lookup = build_analysis_lookup(analysis_items) if analysis_items else {}
     vocab_lookup = build_vocab_lookup(article.get("vocab") or [])
@@ -2792,6 +2811,76 @@ def find_best_gemini_item(gemini_items, surface: str = "", reading: str = "", le
         loose.sort(key=lambda item: abs(len(item.get("surface", "")) - len(surface or "")))
         return loose[0]
     return None
+
+
+def sanitize_contextual_translation_item(item):
+    if not isinstance(item, dict):
+        return None
+    surface = (item.get("surface") or "").strip()
+    if not surface or not contains_japanese(surface):
+        return None
+    bg = (item.get("translation_bg") or item.get("bg") or "").strip()
+    en = (item.get("translation_en") or item.get("en") or "").strip()
+    return {
+        "surface": surface,
+        "translation_bg": bg,
+        "translation_en": en,
+    }
+
+
+def should_request_contextual_popup_translation(item) -> bool:
+    if not isinstance(item, dict):
+        return False
+    surface = (item.get("surface") or "").strip()
+    item_type = (item.get("item_type") or "").strip().lower()
+    translation_bg = (item.get("translation_bg") or "").strip()
+    if not surface or not contains_japanese(surface):
+        return False
+    if not translation_bg:
+        return True
+    if len(surface) == 1 and re.search(r"[一-龯々]", surface):
+        return True
+    if item_type in {"noun", "compound"} and len(surface) <= 2 and re.search(r"[一-龯々]", surface):
+        return True
+    return False
+
+
+def analyze_contextual_popup_translations_with_groq(article_id: str, block_id: int, text: str, targets):
+    targets = [t for t in unique_keep_order(targets) if t]
+    if not GROQ_API_KEY or not text or not targets:
+        return {}
+    cache_payload = {
+        "model": GROQ_MODEL,
+        "task": "contextual_popup_translation_v1",
+        "article_id": article_id,
+        "block_id": block_id,
+        "text": text,
+        "targets": targets,
+    }
+    cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    cached = _GEMINI_CACHE.get(cache_key)
+    if isinstance(cached, list):
+        cleaned = [v for v in (sanitize_contextual_translation_item(x) for x in cached) if v]
+        return {v["surface"]: v for v in cleaned}
+
+    prompt = (
+        "Analyze this Japanese paragraph and provide learner-friendly contextual translations only for the exact target items.\n"
+        "Return strict JSON only in this shape:\n"
+        "{\"items\":[{\"surface\":\"...\",\"translation_bg\":\"...\",\"translation_en\":\"...\"}]}\n"
+        "Rules:\n"
+        "- Translate each target according to how it is used in this paragraph, not by its most generic dictionary sense.\n"
+        "- Use short learner-friendly translations.\n"
+        "- Do not translate the whole sentence.\n"
+        "- Keep each surface exactly as given in the targets list.\n"
+        f"Targets: {json.dumps(targets, ensure_ascii=False)}\n"
+        f"Paragraph:\n{text}"
+    )
+    parsed = extract_json_object(groq_chat_completion(prompt, max_completion_tokens=min(450, GROQ_GRAMMAR_MAX_COMPLETION_TOKENS)))
+    if not isinstance(parsed, dict):
+        return {}
+    items = [v for v in (sanitize_contextual_translation_item(x) for x in (parsed.get("items") or [])) if v]
+    cache_gemini_result(cache_key, items)
+    return {v["surface"]: v for v in items}
 
 
 def analyze_article_block_with_groq(article_id: str, block_id: int, title: str, text: str):

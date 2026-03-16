@@ -1,4 +1,4 @@
-const CACHE_NAME='nhk-easy-'+('1773703596'||Date.now());
+const CACHE_NAME='nhk-easy-'+('1773704931'||Date.now());
 const RUNTIME_HTML_CACHE=CACHE_NAME+'-html';
 self.addEventListener('install',e=>{self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME&&k!==RUNTIME_HTML_CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

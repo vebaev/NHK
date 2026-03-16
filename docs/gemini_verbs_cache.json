@@ -7819,6 +7819,38 @@
       "label": "そうに・そうな"
     }
   ],
+  "56af9ee3ded5f6a9a8a590baf05c4a13a01efbcb": [
+    {
+      "explanation_bg": "Използва се за изразяване на възможност или предположение за бъдещо събитие. означава 'може би' или 'възможно е'.",
+      "explanation_en": "Used to express possibility or conjecture about a future event. means 'maybe' or 'possibly'.",
+      "label": "〜かもしれません"
+    },
+    {
+      "explanation_bg": "Използва се за вземане на решение относно действие, което ще бъде извършено. означава 'реши да' или 'направи така че'.",
+      "explanation_en": "Used to express a decision about an action to be taken. means 'decided to' or 'make it so that'.",
+      "label": "〜ことにした"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на възможност или вероятност за бъдещо събитие. означава 'изглежда че' или 'вероятно е'.",
+      "explanation_en": "Used to express possibility or likelihood about a future event. means 'it seems that' or 'likely to'.",
+      "label": "〜そうだ"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на необходимост или задължение. означава 'трябва да' или 'необходимо е'.",
+      "explanation_en": "Used to express necessity or obligation. means 'have to' or 'need to'.",
+      "label": "なくちゃ"
+    },
+    {
+      "explanation_bg": "Използва се за обяснение или изясняване на ситуация. означава 'защото' или 'това е причината'.",
+      "explanation_en": "Used to explain or clarify a situation. means 'because' or 'that's why'.",
+      "label": "んです"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на намерение или цел. означава 'да се опитам да' или 'да направя така че'.",
+      "explanation_en": "Used to express intention or goal. means 'try to' or 'make it so that'.",
+      "label": "〜ようにする"
+    }
+  ],
   "5752df383af117a4fbbe587fadec522a47bafa89": [
     {
       "category_bg": "съществително",
