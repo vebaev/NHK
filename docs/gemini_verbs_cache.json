@@ -3930,6 +3930,43 @@
       "label": "の中で[A]が一番"
     }
   ],
+  "28c7e78c981813592aade88d5210caa68880a44c": [
+    {
+      "explanation_bg": "Използва се за изразяване на благодарност за нещо, което се е случило поради някаква причина.",
+      "explanation_en": "Used to express gratitude for something that happened due to a certain reason.",
+      "label": "〜おかげで"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на голяма степен или екстремна ситуация.",
+      "explanation_en": "Used to express a great degree or extreme situation.",
+      "label": "たって"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на цел или намерение.",
+      "explanation_en": "Used to express a goal or intention.",
+      "label": "ために"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на ограничение или липса на избор.",
+      "explanation_en": "Used to express a limitation or lack of choice.",
+      "label": "しかない"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на яснота или обяснение.",
+      "explanation_en": "Used to express clarity or explanation.",
+      "label": "すなわち"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на повторяеми действия.",
+      "explanation_en": "Used to express repetitive actions.",
+      "label": "たびに"
+    },
+    {
+      "explanation_bg": "Използва се за потвърждение или съгласие.",
+      "explanation_en": "Used to confirm or agree.",
+      "label": "確かに"
+    }
+  ],
   "2a8822c89746afcfb47a5e9035d3fc20649bef1f": [
     {
       "explanation_bg": "Използва се за изразяване на решение или намерение за извършване на действие. означава 'реших да направя нещо'",
@@ -10576,6 +10613,33 @@
       "label": "ておく"
     }
   ],
+  "897cac756ef86023302de1dc86258e8cb6aca82d": [
+    {
+      "explanation_bg": "Използва се за изразяване на изненада или неочакваност относно степента или количеството на нещо. Означава 'относително' или 'сравнително'.",
+      "explanation_en": "Used to express surprise or unexpectedness regarding the degree or amount of something. Means 'relatively' or 'comparatively'.",
+      "label": "〜わりに"
+    },
+    {
+      "explanation_bg": "Използва се за отричане на очевиден извод или предположение. Означава 'не е така че' или 'не означава че'.",
+      "explanation_en": "Used to deny an obvious inference or assumption. Means 'it's not that' or 'it doesn't mean that'.",
+      "label": "〜わけではない"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на външен вид или впечатление. Означава 'изглежда като' или 'прилича на'.",
+      "explanation_en": "Used to express appearance or impression. Means 'looks like' or 'seems like'.",
+      "label": "〜ように見える"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на увереност или очакване. Означава 'трябва да бъде' или 'сигурно е че'.",
+      "explanation_en": "Used to express confidence or expectation. Means 'must be' or 'surely'.",
+      "label": "〜はずだ"
+    },
+    {
+      "explanation_bg": "Използва се за изразяване на решение или споразумение. Означава 'решено е че' или 'споразумение е че'.",
+      "explanation_en": "Used to express a decision or agreement. Means 'it is decided that' or 'it is agreed that'.",
+      "label": "〜ことになる"
+    }
+  ],
   "8a5f06cbf9340c36db0b4af10105f066ee587d4a": [
     {
       "explanation_bg": "「ことにする」означава „реши се да се направи нещо“. В текста: ためていた石油を出すことにした – „реши се да се пусне складираната нефт“.",
@@ -16711,6 +16775,152 @@
       "label": "じゃない"
     }
   ],
+  "ce309db4576cdcb24ca6f6eb5bed37daf4327ef0": [
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "アメリカ",
+      "meaning_bg": "САЩ",
+      "meaning_en": "the United States",
+      "reading": "amerika",
+      "surface": "アメリカ",
+      "translation_bg": "Америка",
+      "translation_en": "America",
+      "usage_bg": "",
+      "usage_en": ""
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "grammar",
+      "lemma": "など",
+      "meaning_bg": "упоминание других подобных случаев",
+      "meaning_en": "and so on",
+      "reading": "nado",
+      "surface": "など",
+      "translation_bg": "и т.н.",
+      "translation_en": "etc.",
+      "usage_bg": "указывает на наличие других подобных случаев",
+      "usage_en": "indicates other similar cases exist"
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "grammar",
+      "lemma": "と",
+      "meaning_bg": "соединение",
+      "meaning_en": "conjunction",
+      "reading": "to",
+      "surface": "と",
+      "translation_bg": "и",
+      "translation_en": "and",
+      "usage_bg": "соединяет слова или фразы",
+      "usage_en": "connects words or phrases"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "イラン",
+      "meaning_bg": "страна на Ближнем Востоке",
+      "meaning_en": "a country in the Middle East",
+      "reading": "iran",
+      "surface": "イラン",
+      "translation_bg": "Иран",
+      "translation_en": "Iran",
+      "usage_bg": "",
+      "usage_en": ""
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "grammar",
+      "lemma": "の",
+      "meaning_bg": "притяжательное местоимение",
+      "meaning_en": "possessive pronoun",
+      "reading": "no",
+      "surface": "の",
+      "translation_bg": "притяжательное",
+      "translation_en": "possessive",
+      "usage_bg": "указывает на принадлежность",
+      "usage_en": "indicates possession"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "戦い",
+      "meaning_bg": "действие по глаголу 戦う",
+      "meaning_en": "action of the verb 戦う",
+      "reading": "tatakai",
+      "surface": "戦い",
+      "translation_bg": "борьба",
+      "translation_en": "fight",
+      "usage_bg": "",
+      "usage_en": ""
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "grammar",
+      "lemma": "が",
+      "meaning_bg": "маркер подлежащего",
+      "meaning_en": "subject marker",
+      "reading": "ga",
+      "surface": "が",
+      "translation_bg": "субъект",
+      "translation_en": "subject",
+      "usage_bg": "указывает на подлежащее",
+      "usage_en": "indicates the subject"
+    },
+    {
+      "category_bg": "глагол",
+      "category_en": "verb",
+      "formation_bg": "-te imasu (продолжающееся действие)",
+      "formation_en": "-te imasu (continuative form)",
+      "formula_bg": "Verb stem + -te + imasu",
+      "formula_en": "Verb stem + -te + imasu",
+      "item_type": "verb",
+      "lemma": "続く",
+      "meaning_bg": "действие по глаголу 続く",
+      "meaning_en": "action of the verb 続く",
+      "reading": "tsudukite imasu",
+      "surface": "続いています",
+      "translation_bg": "продолжаются",
+      "translation_en": "continue",
+      "usage_bg": "описывает продолжающееся действие",
+      "usage_en": "describes an ongoing action"
+    }
+  ],
   "cf0bfc0d0dfb5055e2f4710e9070bd6fe40d975b": [
     {
       "category_bg": "съществително",
@@ -17071,6 +17281,28 @@
       "translation_en": "athlete",
       "usage_bg": "уточнява ролята на индивида",
       "usage_en": "specifies the role of the individual"
+    }
+  ],
+  "cf16abd236ae2c0b22daf3821516b1dced8fa4ac": [
+    {
+      "explanation_bg": "Тази структура означава, че нещо се е случило благодарение на нещо друго. Използва се за изразяване на положителен резултат.",
+      "explanation_en": "This structure means that something happened thanks to something else. It is used to express a positive outcome.",
+      "label": "〜おかげで"
+    },
+    {
+      "explanation_bg": "Тази структура означава, че нещо се отнася до нещо друго. Използва се за изразяване на връзка между две неща.",
+      "explanation_en": "This structure means that something relates to something else. It is used to express a relationship between two things.",
+      "label": "〜に対して"
+    },
+    {
+      "explanation_bg": "Тази структура означава, че информацията е получена от някакъв източник. Използва се за цитиране на информация.",
+      "explanation_en": "This structure means that the information comes from a certain source. It is used to cite information.",
+      "label": "〜によると /によれば"
+    },
+    {
+      "explanation_bg": "Тази структура означава, че нещо се случва докато нещо друго се случва. Използва се за изразяване на едновременност.",
+      "explanation_en": "This structure means that something happens while something else is happening. It is used to express simultaneity.",
+      "label": "〜最中に"
     }
   ],
   "d0c7707a066952f3c3ec75b1228851920bd9b7a9": [

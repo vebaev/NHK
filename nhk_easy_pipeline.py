@@ -703,6 +703,26 @@ def should_skip_particle_tailed_compound(item) -> bool:
     return (analysis.get("pos1") or "").strip() == "名詞"
 
 
+def derive_particle_stripped_popup_item(item):
+    if not isinstance(item, dict):
+        return None
+    surface = (item.get("surface") or "").strip()
+    stripped = strip_trailing_particles(surface)
+    if not surface or not stripped or stripped == surface:
+        return None
+    analysis = analyze_japanese_word(stripped)
+    pos1 = (analysis.get("pos1") or "").strip()
+    if pos1 != "名詞" and not re.search(r"[一-龯々]", stripped):
+        return None
+    derived = dict(item)
+    derived["surface"] = stripped
+    derived["lemma"] = (analysis.get("lemma") or stripped).strip()
+    derived["reading"] = get_reading_for_word(stripped, fallback="")
+    if not (derived.get("item_type") or "").strip():
+        derived["item_type"] = "noun"
+    return derived
+
+
 def extract_predicate_tail_from_compound(surface: str) -> str:
     surface = (surface or "").strip()
     if not surface or len(surface) < 4:
@@ -1508,14 +1528,15 @@ def should_attach_ruby_suffix(base_text: str, suffix: str) -> bool:
     suffix = (suffix or "").strip()
     if not base_text or not suffix:
         return False
-    if any(suffix.startswith(p) for p in ("には", "では", "から", "まで", "より")):
-        analysis = analyze_japanese_word(base_text)
-        if (analysis.get("pos1") or "").strip() == "名詞":
-            return False
-    if suffix.startswith(PARTICLE_PREFIXES):
-        analysis = analyze_japanese_word(base_text)
-        if (analysis.get("pos1") or "").strip() == "名詞":
-            return False
+    analysis = analyze_japanese_word(base_text)
+    pos1 = (analysis.get("pos1") or "").strip()
+    has_kanji = bool(re.search(r"[一-龯々]", base_text))
+    has_kana = bool(re.search(r"[ぁ-んァ-ヶー]", base_text))
+    noun_like_base = pos1 == "名詞" or (has_kanji and not has_kana and pos1 not in {"動詞", "形容詞"})
+    if noun_like_base and any(suffix.startswith(p) for p in ("には", "では", "から", "まで", "より")):
+        return False
+    if noun_like_base and suffix.startswith(PARTICLE_PREFIXES):
+        return False
     return True
 @lru_cache(maxsize=8192)
 def to_dictionary_form(word: str) -> str:
@@ -2074,6 +2095,9 @@ def build_analysis_lookup(items):
     for item in items or []:
         if should_skip_particle_tailed_compound(item):
             continue
+        stripped_item = derive_particle_stripped_popup_item(item)
+        if stripped_item is not None:
+            item = stripped_item
         predicate_tail = extract_predicate_tail_from_compound((item or {}).get("surface") or "")
         if predicate_tail:
             derived = dict(item)
