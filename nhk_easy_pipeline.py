@@ -2250,6 +2250,73 @@ LOCAL_GRAMMAR_PATTERNS = [
 ]
 
 
+GRAMMAR_SENTENCE_FALLBACK_PATTERNS = [
+    ("kamoshirenai", re.compile(r"かもしれ(?:ない|ません)")),
+    ("koto_ni_suru", re.compile(r"ことに(?:する|した|して|します|しました|しよう|したい)")),
+    ("koto_ni_naru", re.compile(r"ことに(?:なる|なった|なって|なります|なりました)")),
+    ("koto_ga_aru", re.compile(r"ことがある")),
+    ("koto_ga_dekiru", re.compile(r"ことができる")),
+    ("koto_nominalizer", re.compile(r"こと")),
+    ("you_ni_suru", re.compile(r"ように(?:する|した|して|します|しました|したい)")),
+    ("you_ni_naru", re.compile(r"ように(?:なる|なった|なって|なります|なりました)")),
+    ("you_ni", re.compile(r"ように")),
+    ("souda", re.compile(r"そう(?:だ|です)")),
+    ("nikui", re.compile(r"にくい")),
+    ("yasui", re.compile(r"やすい")),
+    ("te_iru", re.compile(r"て(?:い|お)る|で(?:い|お)る|ています|ていた|ている|でいます|でいた|でいる")),
+    ("te_kara", re.compile(r"てから|でから")),
+    ("te_miru", re.compile(r"てみる|でみる")),
+    ("te_shimau", re.compile(r"てしま(?:う|った|います|いました)|でしま(?:う|った|います|いました)")),
+    ("te_oku", re.compile(r"てお(?:く|き|いた)|でお(?:く|き|いた)")),
+    ("temo", re.compile(r"ても|でも")),
+    ("temo_ii", re.compile(r"てもいい|でもいい")),
+    ("te_ii", re.compile(r"ていい|でいい")),
+    ("naide", re.compile(r"ないで")),
+    ("nakute", re.compile(r"なくて")),
+    ("zu", re.compile(r"ずに|ず")),
+    ("node", re.compile(r"ので")),
+    ("kara_reason", re.compile(r"から")),
+    ("noni", re.compile(r"のに")),
+    ("to_shite", re.compile(r"として")),
+    ("ni_tsuite", re.compile(r"について")),
+    ("ni_taishite", re.compile(r"に対して")),
+    ("ni_yoru_to", re.compile(r"によると")),
+    ("ni_yotte", re.compile(r"によって")),
+    ("ni_yori", re.compile(r"により")),
+    ("ni_oite", re.compile(r"において")),
+    ("ni_mukete", re.compile(r"に向けて")),
+    ("ni_awasete", re.compile(r"に合わせて")),
+    ("to_tomo_ni", re.compile(r"とともに")),
+    ("to_naru", re.compile(r"となる")),
+    ("ni_naru", re.compile(r"になる")),
+    ("towa_kagiranai", re.compile(r"とは限らない")),
+    ("wake_dewa_nai", re.compile(r"わけではない")),
+    ("youda_mitaida", re.compile(r"ようだ|みたいだ")),
+    ("beki", re.compile(r"べき")),
+    ("hazu", re.compile(r"はず")),
+    ("rashii", re.compile(r"らしい")),
+    ("ppoi", re.compile(r"っぽい")),
+    ("tari_tari", re.compile(r"たり.*たり")),
+    ("dake", re.compile(r"だけ")),
+    ("bakari", re.compile(r"ばかり")),
+    ("shika_nai", re.compile(r"しか.*ない")),
+    ("mada", re.compile(r"まだ")),
+    ("mou", re.compile(r"もう")),
+    ("mata", re.compile(r"また")),
+]
+
+
+def detect_grammar_in_sentence_fallback(sentence: str):
+    found = set()
+    text = (sentence or "").strip()
+    if not text:
+        return found
+    for rule_id, pattern in GRAMMAR_SENTENCE_FALLBACK_PATTERNS:
+        if pattern.search(text):
+            found.add(rule_id)
+    return found
+
+
 def build_local_analysis_items_from_blocks(blocks):
     items = []
     seen = set()
@@ -2751,6 +2818,13 @@ def should_keep_external_grammar_label(label: str) -> bool:
         "づらい", "ても", "ては", "なくては", "なければ", "れる", "られる", "せる", "させる",
     )):
         return False
+    short_whitelist = {
+        "〜て", "〜で", "〜と", "〜に", "〜を", "〜が", "〜は", "〜へ", "〜の", "〜から", "〜まで",
+        "〜より", "〜ので", "〜のに", "〜だけ", "〜しか", "〜など", "〜でも", "〜ても", "〜たり",
+        "〜そう", "〜たい", "〜中", "〜後", "〜前",
+    }
+    if normalize_for_compare(label) in {normalize_for_compare(v) for v in short_whitelist}:
+        return True
     if len(label) <= 3:
         return False
     return True
@@ -3306,6 +3380,17 @@ def build_grammar_points_from_analysis(articles):
         )
 
     for article in articles or []:
+        for block in article.get("blocks") or []:
+            for sentence in split_japanese_sentences(block.get("text", "")):
+                for rule_id in detect_grammar_in_sentence(sentence):
+                    rule = GRAMMAR_RULES_BY_ID.get(rule_id)
+                    if not rule:
+                        continue
+                    add_point(
+                        (rule.get("label") or "").strip(),
+                        (rule.get("explanation_bg") or "").strip(),
+                        (rule.get("explanation_en") or "").strip(),
+                    )
         for item in article.get("analysis_items") or []:
             if item.get("item_type") != "grammar":
                 continue
@@ -3466,11 +3551,11 @@ def detect_grammar_in_sentence(sentence: str):
     tagger = get_mecab_tagger()
     found = set()
     if tagger is None:
-        return found
+        return detect_grammar_in_sentence_fallback(sentence)
     try:
         tokens = list(tagger(sentence))
     except Exception:
-        return found
+        return detect_grammar_in_sentence_fallback(sentence)
     surfaces = [token_surface(t) for t in tokens]
     lemmas = [token_lemma(t) for t in tokens]
     for i in range(len(tokens)):
@@ -3595,6 +3680,7 @@ def detect_grammar_in_sentence(sentence: str):
         if s == "ほど": found.add("hodo")
         if s == "以上": found.add("ijo")
         if l == "過ぎる" or s == "すぎる": found.add("sugiru")
+    found.update(detect_grammar_in_sentence_fallback(sentence))
     return found
 def extract_grammar_details(articles):
     details = []
