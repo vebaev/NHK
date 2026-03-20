@@ -9820,6 +9820,63 @@
       "translation_en": "arrived (stem form of 着く)"
     }
   ],
+  "5b3ea870a0bd73e559247d3f2f238ce3bd8dc8b7": [
+    {
+      "surface": "話",
+      "translation_bg": "разговор/дискусия",
+      "translation_en": "discussion/talk"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "ден",
+      "translation_en": "day"
+    },
+    {
+      "surface": "行く",
+      "translation_bg": "отивам",
+      "translation_en": "to go"
+    },
+    {
+      "surface": "前",
+      "translation_bg": "преди",
+      "translation_en": "before"
+    },
+    {
+      "surface": "早く",
+      "translation_bg": "бързо/скоро",
+      "translation_en": "quickly/soon"
+    },
+    {
+      "surface": "大切",
+      "translation_bg": "важно",
+      "translation_en": "important"
+    },
+    {
+      "surface": "日本",
+      "translation_bg": "Япония",
+      "translation_en": "Japan"
+    },
+    {
+      "surface": "考え",
+      "translation_bg": "мислене/обмисляне",
+      "translation_en": "thinking/considering"
+    },
+    {
+      "surface": "しっかり",
+      "translation_bg": "стабилно/сериозно",
+      "translation_en": "thoroughly/properly"
+    },
+    {
+      "surface": "言い",
+      "translation_bg": "казвам",
+      "translation_en": "to say"
+    },
+    {
+      "surface": "高市",
+      "translation_bg": "Такаичи (фамилия)",
+      "translation_en": "Takaichi (surname)"
+    }
+  ],
   "5dd03dc182dbf4fbf6417381e70a50b211b44126": [
     {
       "category_bg": "съществително",
@@ -18348,6 +18405,68 @@
       "label": "向け"
     }
   ],
+  "a7b88575f1ba9f05ff4e10c7fba2d60f434e8ad9": [
+    {
+      "surface": "子どもたち",
+      "translation_bg": "деца",
+      "translation_en": "children"
+    },
+    {
+      "surface": "貼る",
+      "translation_bg": "залепям",
+      "translation_en": "to stick/attach"
+    },
+    {
+      "surface": "反射材",
+      "translation_bg": "светоотражател",
+      "translation_en": "reflective material"
+    },
+    {
+      "surface": "作り",
+      "translation_bg": "правене/изработка",
+      "translation_en": "making"
+    },
+    {
+      "surface": "子ども",
+      "translation_bg": "дете",
+      "translation_en": "child"
+    },
+    {
+      "surface": "動物",
+      "translation_bg": "животно",
+      "translation_en": "animal"
+    },
+    {
+      "surface": "形",
+      "translation_bg": "форма",
+      "translation_en": "shape"
+    },
+    {
+      "surface": "シート",
+      "translation_bg": "лист/фолио",
+      "translation_en": "sheet"
+    },
+    {
+      "surface": "切っ",
+      "translation_bg": "изрязвам",
+      "translation_en": "cut"
+    },
+    {
+      "surface": "できる",
+      "translation_bg": "готов съм/ставам",
+      "translation_en": "to be finished/ready"
+    },
+    {
+      "surface": "うれし",
+      "translation_bg": "щастлив",
+      "translation_en": "happy"
+    },
+    {
+      "surface": "友だち",
+      "translation_bg": "приятел",
+      "translation_en": "friend"
+    }
+  ],
   "a8798831b04f9bfd055d45e635cf6567e05c257d": [
     {
       "explanation_bg": "「中」означава „вътре/сред“ – посочва място или обхват, където нещо се случва.",
@@ -21108,6 +21227,28 @@
       "translation_en": "think",
       "usage_bg": "",
       "usage_en": ""
+    }
+  ],
+  "d476dc999bd5da134411ed49c63001302a9ff2d8": [
+    {
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "conversation"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "ден",
+      "translation_en": "day"
+    },
+    {
+      "surface": "2人",
+      "translation_bg": "двама души",
+      "translation_en": "two people"
+    },
+    {
+      "surface": "時間",
+      "translation_bg": "време",
+      "translation_en": "time"
     }
   ],
   "d56c64dcb671e204b07149b9086fe4c9b1a51702": [
