@@ -1,4 +1,63 @@
 {
+  "01c44f2ba37716baa3f918f11d7541d050e5232a": [
+    {
+      "surface": "給料",
+      "translation_bg": "заплата",
+      "translation_en": "salary"
+    },
+    {
+      "surface": "答え",
+      "translation_bg": "ще реши",
+      "translation_en": "will decide"
+    },
+    {
+      "surface": "小さい",
+      "translation_bg": "малка",
+      "translation_en": "small"
+    }
+  ],
+  "029fcea38206b6abc29ab34829a2366f0f4d5810": [
+    {
+      "surface": "円",
+      "translation_bg": "йен",
+      "translation_en": "yen"
+    },
+    {
+      "surface": "安く",
+      "translation_bg": "по-евтино",
+      "translation_en": "cheaper"
+    },
+    {
+      "surface": "入れ",
+      "translation_bg": "зареждане",
+      "translation_en": "filling"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "човек",
+      "translation_en": "person"
+    },
+    {
+      "surface": "話し",
+      "translation_bg": "каза",
+      "translation_en": "said"
+    },
+    {
+      "surface": "来た",
+      "translation_bg": "дойде",
+      "translation_en": "came"
+    },
+    {
+      "surface": "人は",
+      "translation_bg": "човекът",
+      "translation_en": "the person"
+    },
+    {
+      "surface": "安くなる",
+      "translation_bg": "поевтинява",
+      "translation_en": "becomes cheaper"
+    }
+  ],
   "03d99adbe1657180a6538790b41207e9be776970": [
     {
       "explanation_bg": "Използва се за изразяване на възможност или вероятност за нещо.",
@@ -29,6 +88,23 @@
       "explanation_bg": "Използва се за изразяване на причина или обяснение.",
       "explanation_en": "Used to express cause or explanation.",
       "label": "ので"
+    }
+  ],
+  "04755c96e77f8342af86249d265813d51bedf1c9": [
+    {
+      "explanation_bg": "Показва действие, насочено към някого/нещо; често се превежда като \"спрямо\", \"към\", \"срещу\".",
+      "explanation_en": "Marks the target of an action; translates as \"toward\", \"against\", \"for\".",
+      "label": "に対して"
+    },
+    {
+      "explanation_bg": "Изразява средство, причина или агент; значи \"чрез\", \"от\", \"в зависимост от\".",
+      "explanation_en": "Shows means, cause, or agent; means \"by\", \"through\", \"depending on\".",
+      "label": "によって"
+    },
+    {
+      "explanation_bg": "Посочва цел или причина; превежда се като \"за да\", \"поради\", \"заради\".",
+      "explanation_en": "Indicates purpose or reason; translates as \"in order to\", \"because of\".",
+      "label": "ため"
     }
   ],
   "06d1980ac4abf8d87c70d3f9737fc0ab01238140": [
@@ -1684,6 +1760,68 @@
       "usage_en": "used to describe a change"
     }
   ],
+  "09f8c267423ec20207a778cc71a6eb92335ad8d2": [
+    {
+      "surface": "人",
+      "translation_bg": "people",
+      "translation_en": "people"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "day",
+      "translation_en": "day"
+    },
+    {
+      "surface": "車",
+      "translation_bg": "cars",
+      "translation_en": "cars"
+    },
+    {
+      "surface": "機械",
+      "translation_bg": "machinery",
+      "translation_en": "machinery"
+    },
+    {
+      "surface": "大きい",
+      "translation_bg": "big",
+      "translation_en": "big"
+    },
+    {
+      "surface": "答える",
+      "translation_bg": "answered",
+      "translation_en": "answered"
+    },
+    {
+      "surface": "平均",
+      "translation_bg": "on average",
+      "translation_en": "on average"
+    },
+    {
+      "surface": "答え",
+      "translation_bg": "answer",
+      "translation_en": "answer"
+    },
+    {
+      "surface": "希望",
+      "translation_bg": "wishes",
+      "translation_en": "wishes"
+    },
+    {
+      "surface": "上げる",
+      "translation_bg": "raise",
+      "translation_en": "raise"
+    },
+    {
+      "surface": "たくさん",
+      "translation_bg": "many",
+      "translation_en": "many"
+    },
+    {
+      "surface": "働く",
+      "translation_bg": "working",
+      "translation_en": "working"
+    }
+  ],
   "0a9771b2e33bc138fa2d9bc047106d72138bd5a1": [
     {
       "category_bg": "съществително",
@@ -2305,6 +2443,13 @@
       "explanation_bg": "Сравнява – „отколкото“ или „в сравнение с…“.",
       "explanation_en": "Compares: 'than / compared with…'.",
       "label": "より"
+    }
+  ],
+  "0ddc63d8c0118422d2928c50dcb373e168fe7429": [
+    {
+      "explanation_bg": "Показва причина: „поради/от факта, че…“. Следва обяснение защо нещо се случва.",
+      "explanation_en": "Indicates a reason: \"because/since…\". It introduces the cause behind a situation.",
+      "label": "ことから"
     }
   ],
   "0e07c8b114463c394f7f3467a183c535b7aa87f2": [
@@ -3869,6 +4014,68 @@
       "label": "ように"
     }
   ],
+  "1fcbcae453dff918b565c2fb409de24b058e5865": [
+    {
+      "surface": "子ども",
+      "translation_bg": "деца",
+      "translation_en": "children"
+    },
+    {
+      "surface": "動物",
+      "translation_bg": "животни",
+      "translation_en": "animals"
+    },
+    {
+      "surface": "形",
+      "translation_bg": "форми",
+      "translation_en": "shapes"
+    },
+    {
+      "surface": "シート",
+      "translation_bg": "лист",
+      "translation_en": "sheet"
+    },
+    {
+      "surface": "切っ",
+      "translation_bg": "изрязани",
+      "translation_en": "cut"
+    },
+    {
+      "surface": "できる",
+      "translation_bg": "готови",
+      "translation_en": "finished"
+    },
+    {
+      "surface": "うれし",
+      "translation_bg": "радостни",
+      "translation_en": "happy"
+    },
+    {
+      "surface": "友だち",
+      "translation_bg": "приятели",
+      "translation_en": "friends"
+    },
+    {
+      "surface": "見せ合っ",
+      "translation_bg": "показваха си",
+      "translation_en": "showed each other"
+    },
+    {
+      "surface": "家",
+      "translation_bg": "вкъщи",
+      "translation_en": "home"
+    },
+    {
+      "surface": "持っ",
+      "translation_bg": "взеха",
+      "translation_en": "took"
+    },
+    {
+      "surface": "帰っ",
+      "translation_bg": "си тръгнаха",
+      "translation_en": "went back"
+    }
+  ],
   "20669fa6d6c70ac9aa48041b200637949e339020": [
     {
       "explanation_bg": "Използва се за изразяване на логическо заключение или извод. означава 'следователно' или 'значи'.",
@@ -3889,6 +4096,38 @@
       "explanation_bg": "Използва се за изразяване на увереност или очакване. означава 'сигурно' или 'очаквам'.",
       "explanation_en": "Used to express confidence or expectation. means 'surely' or 'I expect that'.",
       "label": "はずだ"
+    }
+  ],
+  "20aa208de7c1ad2c09f3c5ba6b5dd9b0d89fdabc": [
+    {
+      "surface": "日",
+      "translation_bg": "ден",
+      "translation_en": "the 19th"
+    },
+    {
+      "surface": "札幌市",
+      "translation_bg": "град Сапоро",
+      "translation_en": "Sapporo City"
+    },
+    {
+      "surface": "ガソリンスタンド",
+      "translation_bg": "бензиностанция",
+      "translation_en": "gas station"
+    },
+    {
+      "surface": "下げ",
+      "translation_bg": "намаляване",
+      "translation_en": "price cut"
+    },
+    {
+      "surface": "所",
+      "translation_bg": "място",
+      "translation_en": "place"
+    },
+    {
+      "surface": "所がありました",
+      "translation_bg": "имаше места",
+      "translation_en": "there were places"
     }
   ],
   "24b03ec6123c54157871758b85a6c12dcd628749": [
@@ -3930,6 +4169,48 @@
       "label": "の中で[A]が一番"
     }
   ],
+  "27ec922204b37d31d25cc3c1a8929af052869493": [
+    {
+      "surface": "入れ",
+      "translation_bg": "да сипя (гориво)",
+      "translation_en": "to fill (fuel)"
+    },
+    {
+      "surface": "来た",
+      "translation_bg": "дойдох",
+      "translation_en": "came"
+    },
+    {
+      "surface": "人は",
+      "translation_bg": "човекът",
+      "translation_en": "the person"
+    },
+    {
+      "surface": "円",
+      "translation_bg": "йени",
+      "translation_en": "yen"
+    },
+    {
+      "surface": "安くなる",
+      "translation_bg": "поевтинее",
+      "translation_en": "becomes cheaper"
+    },
+    {
+      "surface": "安く",
+      "translation_bg": "евтино",
+      "translation_en": "cheaper"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "човек",
+      "translation_en": "person"
+    },
+    {
+      "surface": "話し",
+      "translation_bg": "каза",
+      "translation_en": "said"
+    }
+  ],
   "28c7e78c981813592aade88d5210caa68880a44c": [
     {
       "explanation_bg": "Използва се за изразяване на благодарност за нещо, което се е случило поради някаква причина.",
@@ -3965,6 +4246,43 @@
       "explanation_bg": "Използва се за потвърждение или съгласие.",
       "explanation_en": "Used to confirm or agree.",
       "label": "確かに"
+    }
+  ],
+  "298cd8e5e920dca0cc0b35317b888f18ef379073": [
+    {
+      "explanation_bg": "показва цел: „за да“; използва се след основа в ます-форма + ため",
+      "explanation_en": "expresses purpose: 'in order to'; used after ます-stem + ため",
+      "label": "ため"
+    },
+    {
+      "explanation_bg": "старая се да/да се случи така, че...; глагол-те-форма + ようにする",
+      "explanation_en": "make sure that...; try to ensure; V-て + ようにする",
+      "label": "ようにする"
+    },
+    {
+      "explanation_bg": "изглежда, че; придава визуално впечатление; прилагателно + そうだ",
+      "explanation_en": "looks/seems (visual impression); i-adjective + そうだ",
+      "label": "そうだ"
+    },
+    {
+      "explanation_bg": "действие, започнало и идващо към говорещия; глагол-те-форма + くる",
+      "explanation_en": "action that started and comes toward the speaker; V-て + くる",
+      "label": "てくる"
+    },
+    {
+      "explanation_bg": "искам някой друг да направи нещо; глагол-те-форма + ほしい",
+      "explanation_en": "want someone to do something; V-て + ほしい",
+      "label": "てほしい"
+    },
+    {
+      "explanation_bg": "получавам услуга; някой прави нещо за мен; главол-те-форма + もらう",
+      "explanation_en": "receive a favor; someone does something for me; V-て + もらう",
+      "label": "てもらう"
+    },
+    {
+      "explanation_bg": "направя нещо предварително; глагол-те-форма + おく",
+      "explanation_en": "do something in advance; V-て + おく",
+      "label": "ておく"
     }
   ],
   "2a8822c89746afcfb47a5e9035d3fc20649bef1f": [
@@ -4635,6 +4953,68 @@
       "usage_en": "used to denote present action"
     }
   ],
+  "38efe265d22b5d8634ed83052a1f66f3a90236fb": [
+    {
+      "surface": "車",
+      "translation_bg": "кола",
+      "translation_en": "car"
+    },
+    {
+      "surface": "交通事故",
+      "translation_bg": "пътен инцидент",
+      "translation_en": "traffic accident"
+    },
+    {
+      "surface": "警察",
+      "translation_bg": "полиция",
+      "translation_en": "police"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "служител",
+      "translation_en": "officer"
+    },
+    {
+      "surface": "靴",
+      "translation_bg": "обувка",
+      "translation_en": "shoe"
+    },
+    {
+      "surface": "後ろ",
+      "translation_bg": "задна част",
+      "translation_en": "back"
+    },
+    {
+      "surface": "横",
+      "translation_bg": "страна",
+      "translation_en": "side"
+    },
+    {
+      "surface": "見え",
+      "translation_bg": "се вижда",
+      "translation_en": "visible"
+    },
+    {
+      "surface": "貼っ",
+      "translation_bg": "залепи",
+      "translation_en": "stick on"
+    },
+    {
+      "surface": "ください",
+      "translation_bg": "моля те",
+      "translation_en": "please"
+    },
+    {
+      "surface": "話し",
+      "translation_bg": "казва",
+      "translation_en": "is saying"
+    },
+    {
+      "surface": "人は",
+      "translation_bg": "служителят",
+      "translation_en": "the officer"
+    }
+  ],
   "3a182f5cbbe2d2d18f53598aa9938572e6d7ef21": [
     {
       "explanation_bg": "Използва се за изразяване на решение или намерение за извършване на действие. означава \"реших да направя нещо\"",
@@ -4945,6 +5325,170 @@
       "translation_en": "did (polite)",
       "usage_bg": "завършва формални действия",
       "usage_en": "ends formal actions"
+    }
+  ],
+  "3c09f266a08b6361fc3b5dcbc4b5b43d05504221": [
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "二人",
+      "meaning_bg": "бройлна дума за двама",
+      "meaning_en": "numeral for two persons",
+      "reading": "ふたり",
+      "surface": "2人",
+      "translation_bg": "двамата",
+      "translation_en": "the two (people)",
+      "usage_bg": "брои хората, които ще разговарят",
+      "usage_en": "counts the people who will talk"
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "Xは",
+      "formula_en": "Xは",
+      "item_type": "grammar",
+      "lemma": "は",
+      "meaning_bg": "отбелязва темата на изречението",
+      "meaning_en": "marks the sentence topic",
+      "reading": "は",
+      "surface": "は",
+      "translation_bg": "тематична частица",
+      "translation_en": "topic particle",
+      "usage_bg": "поставя се след темата 2人",
+      "usage_en": "placed after the topic 2人"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "日本",
+      "meaning_bg": "името на страната",
+      "meaning_en": "name of the country",
+      "reading": "にほん",
+      "surface": "日本",
+      "translation_bg": "Япония",
+      "translation_en": "Japan",
+      "usage_bg": "показва чия е временната зона",
+      "usage_en": "shows whose time zone is meant"
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "XのY",
+      "formula_en": "XのY",
+      "item_type": "grammar",
+      "lemma": "の",
+      "meaning_bg": "показва притежание или принадлежност",
+      "meaning_en": "shows possession or belonging",
+      "reading": "の",
+      "surface": "の",
+      "translation_bg": "родителен показател",
+      "translation_en": "possessive particle",
+      "usage_bg": "свързва 日本 и 時間",
+      "usage_en": "links 日本 and 時間"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "時間",
+      "meaning_bg": "времева единица",
+      "meaning_en": "time unit",
+      "reading": "じかん",
+      "surface": "時間",
+      "translation_bg": "часова зона",
+      "translation_en": "time zone",
+      "usage_bg": "временна рамка за срещата",
+      "usage_en": "time frame for the meeting"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "20日",
+      "meaning_bg": "двадесети ден от месеца",
+      "meaning_en": "twentieth day of the month",
+      "reading": "はつか",
+      "surface": "20日",
+      "translation_bg": "20-ти число",
+      "translation_en": "the 20th (day)",
+      "usage_bg": "датата на разговора",
+      "usage_en": "the date of the talk"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "話",
+      "meaning_bg": "действието да говориш",
+      "meaning_en": "the act of talking",
+      "reading": "はなし",
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "talk / chat",
+      "usage_bg": "обект на глагола します",
+      "usage_en": "object of the verb します"
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "Xを",
+      "formula_en": "Xを",
+      "item_type": "grammar",
+      "lemma": "を",
+      "meaning_bg": "отбелязва директния обект",
+      "meaning_en": "marks the direct object",
+      "reading": "を",
+      "surface": "を",
+      "translation_bg": "обектна частица",
+      "translation_en": "object particle",
+      "usage_bg": "поставя се след 話",
+      "usage_en": "placed after 話"
+    },
+    {
+      "category_bg": "глагол",
+      "category_en": "verb",
+      "formation_bg": "От する: добавяме учтивата настояща форма ます -> します",
+      "formation_en": "From する: add polite present ending ます to make します",
+      "formula_bg": "stem + ます",
+      "formula_en": "stem + ます",
+      "item_type": "verb",
+      "lemma": "する",
+      "meaning_bg": "учтиво настояще/бъдеще",
+      "meaning_en": "polite present/future",
+      "reading": "します",
+      "surface": "します",
+      "translation_bg": "правя/ще направя",
+      "translation_en": "do/will do",
+      "usage_bg": "учтиво казва \"ще разговарят\"",
+      "usage_en": "politely states \"will talk\""
     }
   ],
   "3d2306017cab3452f1d42e1eb9ad07dfb80f16c2": [
@@ -6759,6 +7303,120 @@
       "usage_en": "indicates ongoing action"
     }
   ],
+  "47d282316dbaf1b87aa8c2db438b83149854e364": [
+    {
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "talk/discussion"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "ден",
+      "translation_en": "day/Japan (as 日本)"
+    },
+    {
+      "surface": "行く",
+      "translation_bg": "отивам",
+      "translation_en": "go"
+    },
+    {
+      "surface": "前",
+      "translation_bg": "преди",
+      "translation_en": "before"
+    },
+    {
+      "surface": "早く",
+      "translation_bg": "бързо",
+      "translation_en": "quickly/early"
+    },
+    {
+      "surface": "大切",
+      "translation_bg": "важно",
+      "translation_en": "important"
+    },
+    {
+      "surface": "日本",
+      "translation_bg": "Япония",
+      "translation_en": "Japan"
+    },
+    {
+      "surface": "考え",
+      "translation_bg": "мисля",
+      "translation_en": "think/consider"
+    },
+    {
+      "surface": "しっかり",
+      "translation_bg": "добре/стабилно",
+      "translation_en": "properly/firmly"
+    },
+    {
+      "surface": "言い",
+      "translation_bg": "каза",
+      "translation_en": "said"
+    },
+    {
+      "surface": "高市",
+      "translation_bg": "Takaichi (фамилия)",
+      "translation_en": "Takaichi (surname)"
+    }
+  ],
+  "49230c5a56dc61f659eaed8a15553dc8c5c0a264": [
+    {
+      "surface": "働く",
+      "translation_bg": "работещи",
+      "translation_en": "working"
+    },
+    {
+      "surface": "日は",
+      "translation_bg": "денят",
+      "translation_en": "the day"
+    },
+    {
+      "surface": "車や",
+      "translation_bg": "автомобили и",
+      "translation_en": "cars and"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "хора",
+      "translation_en": "people"
+    },
+    {
+      "surface": "給料",
+      "translation_bg": "заплата",
+      "translation_en": "salary"
+    },
+    {
+      "surface": "高く",
+      "translation_bg": "повиши",
+      "translation_en": "raise"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "ден",
+      "translation_en": "day"
+    },
+    {
+      "surface": "車",
+      "translation_bg": "автомобил",
+      "translation_en": "car"
+    },
+    {
+      "surface": "機械",
+      "translation_bg": "машини",
+      "translation_en": "machinery"
+    },
+    {
+      "surface": "大きい",
+      "translation_bg": "големи",
+      "translation_en": "large"
+    },
+    {
+      "surface": "答える",
+      "translation_bg": "отговори",
+      "translation_en": "answered"
+    }
+  ],
   "4931810feef904039a5b066601c8daaca4671748": [
     {
       "explanation_bg": "Използва се за изразяване на възможност или вероятност за нещо.",
@@ -6823,7 +7481,56 @@
       "label": "切れない"
     }
   ],
+  "49d1721a6a3192278813787dc601591929363a6d": [
+    {
+      "surface": "小さい",
+      "translation_bg": "малка",
+      "translation_en": "small"
+    }
+  ],
   "49db360dfbd4e00b93a3879ffbed17f462c079ba": [],
+  "4bc2d4e4eaf235f8acb2f379b97cf4b42439341b": [
+    {
+      "surface": "高市",
+      "translation_bg": "Takaichi (фамилия)",
+      "translation_en": "Takaichi (surname)"
+    },
+    {
+      "surface": "総理大臣は",
+      "translation_bg": "премиера",
+      "translation_en": "the Prime Minister"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "число (19-о)",
+      "translation_en": "day (19th)"
+    },
+    {
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "talk"
+    },
+    {
+      "surface": "総理大臣",
+      "translation_bg": "премиера",
+      "translation_en": "Prime Minister"
+    },
+    {
+      "surface": "トランプ大統領",
+      "translation_bg": "президент Тръмп",
+      "translation_en": "President Trump"
+    },
+    {
+      "surface": "アメリカ",
+      "translation_bg": "САЩ",
+      "translation_en": "the U.S."
+    },
+    {
+      "surface": "着き",
+      "translation_bg": "пристигна",
+      "translation_en": "arrived"
+    }
+  ],
   "4bedaad0fcc8768ab1a776ecc2fe9b0a67585eec": [
     {
       "category_bg": "съществително",
@@ -7341,6 +8048,18 @@
       "label": "ほど～ない"
     }
   ],
+  "4d951229b16b7848b1a3d42f4cdf42dd34767875": [
+    {
+      "explanation_bg": "Придава значение \"изглежда така\" или \"изглежда, че ще...\" към прилагателно или глагол. В текста: うれしそうに – „с вид на радостен“.",
+      "explanation_en": "Attaches to adjectives/verbs to show outward appearance or likelihood: \"seems/seems like it will...\". Example: うれしそうに \"looking happy\".",
+      "label": "〜そうに・そうな"
+    },
+    {
+      "explanation_bg": "Показва действие, което ще продължи напред във времето или ще се развива. В текста: 下げています – „започнаха да свалят (и ще продължат)“.",
+      "explanation_en": "Expresses an action that will continue or develop into the future. Example: 下げています \"they have started lowering (and will keep doing so)\".",
+      "label": "〜ていく"
+    }
+  ],
   "4d9a7362e0d64b9195f4a1679447223fa10bb925": [
     {
       "explanation_bg": "Това е структура, която се използва за изразяване на молба или искане. Употребява се, когато някой иска да поиска нещо от другия.",
@@ -7802,6 +8521,33 @@
       "usage_en": "shows action in the past"
     }
   ],
+  "503e6ee3c1718ca8739d4458f89a88e974a8b5bb": [
+    {
+      "surface": "日",
+      "translation_bg": "ден (на месеца)",
+      "translation_en": "day (of the month)"
+    },
+    {
+      "surface": "2人",
+      "translation_bg": "двамата",
+      "translation_en": "the two (people)"
+    },
+    {
+      "surface": "日本",
+      "translation_bg": "Япония",
+      "translation_en": "Japan"
+    },
+    {
+      "surface": "時間",
+      "translation_bg": "часова зона",
+      "translation_en": "time zone"
+    },
+    {
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "talk / chat"
+    }
+  ],
   "520b12c9acf71ce39c6ee511764b5592e1636cc5": [
     {
       "explanation_bg": "Показва цел или желано състояние: „за да не се случи“/„такава, че да“.",
@@ -7817,6 +8563,80 @@
       "explanation_bg": "Показва външно впечатление за бъдещо състояние: „изглежда, че ще…“.",
       "explanation_en": "Outward impression of imminent state: ‘looks like it will…’.",
       "label": "そうに・そうな"
+    }
+  ],
+  "54f15549e4810d138d218a8e0c99b538a4bd5e58": [
+    {
+      "surface": "入る",
+      "translation_bg": "започвам (училище)",
+      "translation_en": "start (school)"
+    },
+    {
+      "surface": "子ど",
+      "translation_bg": "дете",
+      "translation_en": "child"
+    },
+    {
+      "surface": "貼る",
+      "translation_bg": "залепвам",
+      "translation_en": "stick on"
+    },
+    {
+      "surface": "夜に",
+      "translation_bg": "през нощта",
+      "translation_en": "at night"
+    },
+    {
+      "surface": "車の",
+      "translation_bg": "на колата",
+      "translation_en": "car’s"
+    },
+    {
+      "surface": "役に",
+      "translation_bg": "полезен съм",
+      "translation_en": "be useful"
+    },
+    {
+      "surface": "茨城県牛久市",
+      "translation_bg": "гр. Ушику, преф. Ибараки",
+      "translation_en": "Ushiku, Ibaraki"
+    },
+    {
+      "surface": "来月",
+      "translation_bg": "догодина (следващия месец)",
+      "translation_en": "next month"
+    },
+    {
+      "surface": "小学校",
+      "translation_bg": "начално училище",
+      "translation_en": "elementary school"
+    },
+    {
+      "surface": "子どもたち",
+      "translation_bg": "децата",
+      "translation_en": "the children"
+    }
+  ],
+  "552ad2e2add528f751ffc8295d9b0618f59e1da5": [
+    {
+      "surface": "とても",
+      "translation_bg": "много/многоо",
+      "translation_en": "very/really"
+    },
+    {
+      "surface": "高く",
+      "translation_bg": "скъпо",
+      "translation_en": "expensive/high"
+    },
+    {
+      "surface": "ガソリン",
+      "translation_bg": "бензин",
+      "translation_en": "gasoline"
+    },
+    {
+      "surface": "値段",
+      "translation_bg": "цена",
+      "translation_en": "price"
     }
   ],
   "56af9ee3ded5f6a9a8a590baf05c4a13a01efbcb": [
@@ -8141,6 +8961,23 @@
       "usage_en": "polite explanation or identification"
     }
   ],
+  "586915777cc533983390df1b4396d2aa06203e3a": [
+    {
+      "explanation_bg": "Показва действие, което се случва преди друго; използва се за време.",
+      "explanation_en": "Indicates an action that happens before another; used for sequencing events.",
+      "label": "前に"
+    },
+    {
+      "explanation_bg": "Показва решение или избор; „направи нещо да бъде по определен начин“.",
+      "explanation_en": "Shows a decision or choice; \"make something be a certain way\".",
+      "label": "にする"
+    },
+    {
+      "explanation_bg": "Сравнява в рамките на група и посочва кой е най-високият/най-големият.",
+      "explanation_en": "Compares within a group and singles out the highest/largest.",
+      "label": "の中で[A]が一番"
+    }
+  ],
   "58d59313daf4bfbe1c8e8aedae9f5e7e0e07c2d8": [
     {
       "category_bg": "съществително",
@@ -8321,6 +9158,68 @@
       "translation_en": "it seems that it will become",
       "usage_bg": "",
       "usage_en": ""
+    }
+  ],
+  "595b07e6e792c082dc27861450bbac81f480b9dc": [
+    {
+      "surface": "人",
+      "translation_bg": "хора",
+      "translation_en": "people"
+    },
+    {
+      "surface": "団体",
+      "translation_bg": "организация",
+      "translation_en": "organization"
+    },
+    {
+      "surface": "毎年",
+      "translation_bg": "всяка година",
+      "translation_en": "every year"
+    },
+    {
+      "surface": "春",
+      "translation_bg": "пролет",
+      "translation_en": "spring"
+    },
+    {
+      "surface": "会社",
+      "translation_bg": "фирмата",
+      "translation_en": "the company"
+    },
+    {
+      "surface": "話し合い",
+      "translation_bg": "преговори",
+      "translation_en": "negotiations"
+    },
+    {
+      "surface": "今年",
+      "translation_bg": "тази година",
+      "translation_en": "this year"
+    },
+    {
+      "surface": "以上",
+      "translation_bg": "повече от",
+      "translation_en": "more than"
+    },
+    {
+      "surface": "高く",
+      "translation_bg": "по-високо",
+      "translation_en": "higher"
+    },
+    {
+      "surface": "ほしい",
+      "translation_bg": "искаме",
+      "translation_en": "we want"
+    },
+    {
+      "surface": "言っ",
+      "translation_bg": "категорични са",
+      "translation_en": "they said"
+    },
+    {
+      "surface": "働く",
+      "translation_bg": "работещите",
+      "translation_en": "working"
     }
   ],
   "5dd03dc182dbf4fbf6417381e70a50b211b44126": [
@@ -9775,6 +10674,33 @@
       "usage_en": "used to describe a completed action of seeing"
     }
   ],
+  "648fddf0f3d44cbbf3de8f4b0c42d4e4c249edeb": [
+    {
+      "surface": "円",
+      "translation_bg": "yen",
+      "translation_en": "yen"
+    },
+    {
+      "surface": "レギュラー",
+      "translation_bg": "regular",
+      "translation_en": "regular"
+    },
+    {
+      "surface": "客",
+      "translation_bg": "customers",
+      "translation_en": "customers"
+    },
+    {
+      "surface": "半分",
+      "translation_bg": "half",
+      "translation_en": "half"
+    },
+    {
+      "surface": "円に",
+      "translation_bg": "to ¥",
+      "translation_en": "to ¥"
+    }
+  ],
   "6500ec1f4ab6e3d1f0fc3c40ce633e4d0c933f5c": [
     {
       "explanation_bg": "Използва се за изразяване на решение или намерение да се направи нещо. означава 'реших да направя нещо'",
@@ -9822,6 +10748,68 @@
       "explanation_bg": "Тази структура се използва за изразяване на източника на информация. Тя означава 'според' или 'по думите на'.",
       "explanation_en": "This structure is used to express the source of information. It means 'according to' or 'based on'.",
       "label": "〜によると"
+    }
+  ],
+  "67f503afa8fcda4844b3ec03032f7a3a712bd6ab": [
+    {
+      "surface": "政府",
+      "translation_bg": "правителството",
+      "translation_en": "the government"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "(на) 19-ти",
+      "translation_en": "(on) the 19th"
+    },
+    {
+      "surface": "石油",
+      "translation_bg": "бензин/гориво",
+      "translation_en": "gasoline/fuel"
+    },
+    {
+      "surface": "会社",
+      "translation_bg": "фирмите",
+      "translation_en": "the companies"
+    },
+    {
+      "surface": "補助",
+      "translation_bg": "допълнителна помощ",
+      "translation_en": "extra aid"
+    },
+    {
+      "surface": "お金",
+      "translation_bg": "пари",
+      "translation_en": "money"
+    },
+    {
+      "surface": "出し",
+      "translation_bg": "дава",
+      "translation_en": "is giving"
+    },
+    {
+      "surface": "急",
+      "translation_bg": "рязко",
+      "translation_en": "sharply"
+    },
+    {
+      "surface": "店",
+      "translation_bg": "на бензиностанциите",
+      "translation_en": "at the pumps"
+    },
+    {
+      "surface": "円",
+      "translation_bg": "йени",
+      "translation_en": "yen"
+    },
+    {
+      "surface": "下げる",
+      "translation_bg": "свалят",
+      "translation_en": "bring down"
+    },
+    {
+      "surface": "予定",
+      "translation_bg": "планират",
+      "translation_en": "plan to"
     }
   ],
   "6aaf97d0d35ed397a49680cf14bf39ce840190fd": [
@@ -9973,6 +10961,48 @@
       "label": "ていた"
     }
   ],
+  "71df8f3bf172a04e4577f7eedb34c8800c99d4b1": [
+    {
+      "surface": "高市",
+      "translation_bg": "Takaichi (фамилия)",
+      "translation_en": "Takaichi (surname)"
+    },
+    {
+      "surface": "総理大臣",
+      "translation_bg": "премиер",
+      "translation_en": "Prime Minister"
+    },
+    {
+      "surface": "トランプ大統領",
+      "translation_bg": "президент Тръмп",
+      "translation_en": "President Trump"
+    },
+    {
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "talk"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "число (на месеца)",
+      "translation_en": "day (of month)"
+    },
+    {
+      "surface": "アメリカ",
+      "translation_bg": "САЩ",
+      "translation_en": "the U.S."
+    },
+    {
+      "surface": "着き",
+      "translation_bg": "пристигане",
+      "translation_en": "arrival"
+    },
+    {
+      "surface": "総理大臣は",
+      "translation_bg": "премиерът",
+      "translation_en": "the Prime Minister"
+    }
+  ],
   "742b7c336217304fb44a964001a9a37e88e1baae": [
     {
       "explanation_bg": "Означава „да свърши“ или „да приключи“. Се използва, за да покаже край на някакво действие или събитие.",
@@ -10013,6 +11043,28 @@
       "explanation_bg": "Означава „току-що“ или „малко преди“. Се използва, за да покаже, че нещо е станало малко преди.",
       "explanation_en": "Means 'just now' or 'a little while ago'. Used to show that something happened a little while ago.",
       "label": "さっき"
+    }
+  ],
+  "757c05dda6cd5641909e36707831ccf591af0e5e": [
+    {
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "talk"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "число",
+      "translation_en": "day (of month)"
+    },
+    {
+      "surface": "2人",
+      "translation_bg": "двамата",
+      "translation_en": "the two"
+    },
+    {
+      "surface": "時間",
+      "translation_bg": "часови пояс",
+      "translation_en": "time zone"
     }
   ],
   "78ea948aed485f08a2170a14f03860eacca1925a": [
@@ -10204,6 +11256,90 @@
       "usage_en": "polite sentence ending"
     }
   ],
+  "7e0b9142a356e4ec7a59b99cdb8bdad89bb178d9": [
+    {
+      "surface": "働く",
+      "translation_bg": "работещи",
+      "translation_en": "working"
+    },
+    {
+      "surface": "人が",
+      "translation_bg": "хората",
+      "translation_en": "people"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "човек",
+      "translation_en": "person"
+    },
+    {
+      "surface": "給料",
+      "translation_bg": "заплата",
+      "translation_en": "salary"
+    },
+    {
+      "surface": "もらう",
+      "translation_bg": "получават",
+      "translation_en": "receive"
+    },
+    {
+      "surface": "ニュース",
+      "translation_bg": "новина",
+      "translation_en": "news"
+    }
+  ],
+  "7f1e2b46961c2f5d8e5249f1ba95b30c5fca4fe6": [
+    {
+      "surface": "人は",
+      "translation_bg": "казва",
+      "translation_en": "says"
+    },
+    {
+      "surface": "靴の",
+      "translation_bg": "на обувките",
+      "translation_en": "on the shoes"
+    },
+    {
+      "surface": "後ろ",
+      "translation_bg": "отзад",
+      "translation_en": "back"
+    },
+    {
+      "surface": "見え",
+      "translation_bg": "се вижда",
+      "translation_en": "visible"
+    },
+    {
+      "surface": "車",
+      "translation_bg": "колата",
+      "translation_en": "car"
+    },
+    {
+      "surface": "交通事故",
+      "translation_bg": "пътен инцидент",
+      "translation_en": "traffic accident"
+    },
+    {
+      "surface": "警察",
+      "translation_bg": "полицията",
+      "translation_en": "police"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "човек",
+      "translation_en": "officer"
+    },
+    {
+      "surface": "靴",
+      "translation_bg": "обувки",
+      "translation_en": "shoes"
+    },
+    {
+      "surface": "横",
+      "translation_bg": "отстрани",
+      "translation_en": "side"
+    }
+  ],
   "80c8bb90243c38eabf87ca6fab12d2890a040ed2": [
     {
       "explanation_bg": "Използва се за изразяване на по-точна или подходяща дефиниция за нещо. означава 'по-скоро' или 'по-точно'",
@@ -10252,6 +11388,28 @@
       "explanation_bg": "Показва последователност: след като първото действие приключи, започва второто.",
       "explanation_en": "Shows sequence: after the first action is finished, the second begins.",
       "label": "てから"
+    }
+  ],
+  "82d9fbc16366bbafb2ebd7545eec5921f0b0f109": [
+    {
+      "explanation_bg": "Показва намерение или план; използва се с основна форма на глагола.",
+      "explanation_en": "Shows intention or plan; used with the dictionary form of a verb.",
+      "label": "予定だ"
+    },
+    {
+      "explanation_bg": "Означава „подобно на“ или „за да“; свързва действие с цел или пример.",
+      "explanation_en": "Means 'like' or 'so that'; links an action to a purpose or example.",
+      "label": "ように / ような"
+    },
+    {
+      "explanation_bg": "Показва промяна на състоянието; „започва да става така“.",
+      "explanation_en": "Indicates a change of state; 'comes to be that...'",
+      "label": "ようになる"
+    },
+    {
+      "explanation_bg": "Показва изглеждащо или очаквано състояние; „изглежда ще...“.",
+      "explanation_en": "Shows apparent or expected state; 'looks like it will...'",
+      "label": "そうに・そうだ"
     }
   ],
   "831956b4658a16ac289f82fb20b12578bf46af18": [
@@ -11233,6 +12391,80 @@
       "usage_en": "shows what the mold turns into"
     }
   ],
+  "943a9a668e7d43d1abd24e337c8d3a80b558c7d9": [
+    {
+      "surface": "高市",
+      "translation_bg": "Takaichi (фамилия)",
+      "translation_en": "Takaichi (surname)"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "Япония (съкр. от 日本)",
+      "translation_en": "Japan (abbr. of 日本)"
+    },
+    {
+      "surface": "行く",
+      "translation_bg": "отивам",
+      "translation_en": "to go"
+    },
+    {
+      "surface": "前に",
+      "translation_bg": "преди да",
+      "translation_en": "before"
+    },
+    {
+      "surface": "早く",
+      "translation_bg": "бързо",
+      "translation_en": "quickly"
+    },
+    {
+      "surface": "日本",
+      "translation_bg": "Япония",
+      "translation_en": "Japan"
+    },
+    {
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "talk"
+    },
+    {
+      "surface": "前",
+      "translation_bg": "преди",
+      "translation_en": "before"
+    }
+  ],
+  "95d27c21c75a95f2fd797704ee309227c2fd2220": [
+    {
+      "surface": "働く",
+      "translation_bg": "работещи",
+      "translation_en": "working"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "хора",
+      "translation_en": "people"
+    },
+    {
+      "surface": "もらう",
+      "translation_bg": "получават",
+      "translation_en": "receive"
+    },
+    {
+      "surface": "給料",
+      "translation_bg": "заплата",
+      "translation_en": "salary"
+    },
+    {
+      "surface": "ニュース",
+      "translation_bg": "новина",
+      "translation_en": "news"
+    },
+    {
+      "surface": "人が",
+      "translation_bg": "хората",
+      "translation_en": "the people who"
+    }
+  ],
   "95d828fab5b67c6ca47db25fefb0d377958cc548": [
     {
       "category_bg": "съществително",
@@ -11455,6 +12687,23 @@
       "label": "すでに"
     }
   ],
+  "98e891e354541fd10d7e1709037827c9225a1b17": [
+    {
+      "explanation_bg": "Показва цел; превежда се като „за да“, „с цел“. Използва се след основата на глагола в обикновена форма.",
+      "explanation_en": "Expresses purpose; translates as \"in order to\", \"for the purpose of\". Used after the verb stem in plain form.",
+      "label": "ために"
+    },
+    {
+      "explanation_bg": "Показва, че нещо изглежда малко вероятно; добавя се към стъблото на глагола.",
+      "explanation_en": "Indicates that something seems unlikely; attaches to the verb stem.",
+      "label": "そうもない"
+    },
+    {
+      "explanation_bg": "Изразява силно чувство, че не можеш да го понесеш; буквално „не може да се направи нищо“.",
+      "explanation_en": "Expresses strong feeling that you can’t help it; literally \"there’s nothing to be done\".",
+      "label": "てしょうがない"
+    }
+  ],
   "99b0e8d860e32ba713c51bf0a4c64d22be37706a": [
     {
       "explanation_bg": "Означава „само“ или „единствено“ и се използва, за да покаже ограничение или ограниченост.",
@@ -11524,6 +12773,23 @@
       "explanation_bg": "Използва се за изразяване на сигурност или вероятност. означава 'със сигурност' или 'определено'.",
       "explanation_en": "Used to express certainty or probability. means 'surely' or 'definitely'.",
       "label": "に違いない"
+    }
+  ],
+  "9f2fe8b194e770c5cecc1e956c50a2e04c17bfde": [
+    {
+      "explanation_bg": "Показва, че нещо се е случило скоро или че количеството е само толкова.",
+      "explanation_en": "Indicates that something happened recently or that the amount is only that much.",
+      "label": "ばかり"
+    },
+    {
+      "explanation_bg": "Показва началото на действие – „започвам да...“.",
+      "explanation_en": "Shows the start of an action – 'begin to...'.",
+      "label": "始める"
+    },
+    {
+      "explanation_bg": "Показва, че говорещият е получил информация от друг източник – „казват, че...“.",
+      "explanation_en": "Shows the speaker got info from another source – 'it seems/they say that...'.",
+      "label": "そうだ"
     }
   ],
   "9f674da3aea8218902f9f3b6dd66a54e76c2f245": [
@@ -15611,6 +16877,28 @@
       "label": "予定だ"
     }
   ],
+  "a5efca809c962aff62037ebd73a8c57bc9d7bf5a": [
+    {
+      "explanation_bg": "Показва нещо, което изглежда така според наблюдение – „изглежда, че...“",
+      "explanation_en": "Expresses how something appears based on observation – \"looks like...\"",
+      "label": "〜そうだ"
+    },
+    {
+      "explanation_bg": "Дава съвет – „по-добре е да...“",
+      "explanation_en": "Gives advice – \"it’s better to...\"",
+      "label": "〜ほうがいい"
+    },
+    {
+      "explanation_bg": "Показва предположение – „вероятно...“",
+      "explanation_en": "Shows a guess – \"probably...\"",
+      "label": "〜でしょう"
+    },
+    {
+      "explanation_bg": "Изброява примери – „и други неща като...“",
+      "explanation_en": "Lists examples – \"things like...\"",
+      "label": "〜たりする"
+    }
+  ],
   "a655fb8b1e9c7c3ff8a2719e5b04a441f1402da7": [
     {
       "explanation_bg": "Глагол в основна форма + ことにする означава „реши се да се направи нещо“. Употребява се за официални решения.",
@@ -15964,6 +17252,18 @@
       "usage_en": "used for negative possibilities"
     }
   ],
+  "a78ea027cd67d2fbaafca27e8f2e815e733bef1d": [
+    {
+      "explanation_bg": "показва приблизително количество или степен; използва се след числа или наречия за „около“, „приблизително“",
+      "explanation_en": "indicates approximate amount/degree; used after numbers/adverbs to mean \"about, around\"",
+      "label": "くらい・ぐらい"
+    },
+    {
+      "explanation_bg": "показва, че нещо е предназначено за определена група или цел; използва се след съществително за „за“, „предназначен за“",
+      "explanation_en": "shows something is aimed/targeted at a group/purpose; used after noun to mean \"for, intended for\"",
+      "label": "向け"
+    }
+  ],
   "a8798831b04f9bfd055d45e635cf6567e05c257d": [
     {
       "explanation_bg": "「中」означава „вътре/сред“ – посочва място или обхват, където нещо се случва.",
@@ -16250,6 +17550,58 @@
       "label": "なかなか"
     }
   ],
+  "b699205990cccabd0dda8a28e699792b6461b9d4": [
+    {
+      "surface": "働く",
+      "translation_bg": "работещи",
+      "translation_en": "working"
+    },
+    {
+      "surface": "毎年",
+      "translation_bg": "всяка година",
+      "translation_en": "every year"
+    },
+    {
+      "surface": "春に",
+      "translation_bg": "напролет",
+      "translation_en": "in spring"
+    },
+    {
+      "surface": "話し",
+      "translation_bg": "преговори",
+      "translation_en": "talks"
+    },
+    {
+      "surface": "以上",
+      "translation_bg": "над",
+      "translation_en": "over"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "хора",
+      "translation_en": "people"
+    },
+    {
+      "surface": "給料",
+      "translation_bg": "заплата",
+      "translation_en": "wages"
+    },
+    {
+      "surface": "団体",
+      "translation_bg": "синдикат",
+      "translation_en": "union"
+    },
+    {
+      "surface": "春",
+      "translation_bg": "пролет",
+      "translation_en": "spring"
+    },
+    {
+      "surface": "会社",
+      "translation_bg": "фирмата",
+      "translation_en": "company"
+    }
+  ],
   "b7a09f35b3e0a447dfc3fc248f9275087e3c4a03": [
     {
       "explanation_bg": "Показва цел или причина; използва се като „за да“ или „поради“.",
@@ -16385,6 +17737,116 @@
       "label": "のは〜だ"
     }
   ],
+  "bded9651c4a3360c1ffab7f6158cd10ec026f263": [
+    {
+      "category_bg": "глагол",
+      "category_en": "verb",
+      "formation_bg": "От 働く: глаголът е в непреходна форма (ренийо форма), която се използва като прилагателно за съществително.",
+      "formation_en": "From 働く: the verb is in the attributive form (rentai-kei), which modifies the following noun.",
+      "formula_bg": "V(ренийо)",
+      "formula_en": "V(attributive)",
+      "item_type": "verb",
+      "lemma": "働く",
+      "meaning_bg": "да извършваш труд, да работиш",
+      "meaning_en": "to perform labor, to work",
+      "reading": "はたらく",
+      "surface": "働く",
+      "translation_bg": "работещи",
+      "translation_en": "working",
+      "usage_bg": "Модифицира съществителното 人 като „хора, които работят“.",
+      "usage_en": "Modifies the noun 人 as 'people who work'."
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "-",
+      "formation_en": "-",
+      "formula_bg": "-",
+      "formula_en": "-",
+      "item_type": "noun",
+      "lemma": "人",
+      "meaning_bg": "човек, лице",
+      "meaning_en": "person, individual",
+      "reading": "ひと",
+      "surface": "人",
+      "translation_bg": "хора",
+      "translation_en": "people",
+      "usage_bg": "Съществително, означаващо лице.",
+      "usage_en": "Noun denoting a person."
+    },
+    {
+      "category_bg": "глагол",
+      "category_en": "verb",
+      "formation_bg": "От もらう: глаголът е в непреходна форма (ренийо), за да модифицира следващото съществително.",
+      "formation_en": "From もらう: the verb is in the attributive form to modify the following noun.",
+      "formula_bg": "V(ренийо)",
+      "formula_en": "V(attributive)",
+      "item_type": "verb",
+      "lemma": "もらう",
+      "meaning_bg": "да получаваш нещо от някого",
+      "meaning_en": "to receive something from someone",
+      "reading": "もらう",
+      "surface": "もらう",
+      "translation_bg": "получават",
+      "translation_en": "receive",
+      "usage_bg": "Модифицира 給料 като „заплата, която се получава“.",
+      "usage_en": "Modifies 給料 as 'salary that is received'."
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "-",
+      "formation_en": "-",
+      "formula_bg": "-",
+      "formula_en": "-",
+      "item_type": "noun",
+      "lemma": "給料",
+      "meaning_bg": "възнаграждение за труд",
+      "meaning_en": "remuneration for work",
+      "reading": "きゅうりょう",
+      "surface": "給料",
+      "translation_bg": "заплата",
+      "translation_en": "salary",
+      "usage_bg": "Съществително, означаващо месечно или редовно възнаграждение.",
+      "usage_en": "Noun denoting monthly or regular pay."
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "-",
+      "formation_en": "-",
+      "formula_bg": "-",
+      "formula_en": "-",
+      "item_type": "noun",
+      "lemma": "ニュース",
+      "meaning_bg": "информация за текущи събития",
+      "meaning_en": "information about current events",
+      "reading": "にゅーす",
+      "surface": "ニュース",
+      "translation_bg": "новина",
+      "translation_en": "news",
+      "usage_bg": "Катакана заемка от английски „news“.",
+      "usage_en": "Katakana loanword from English \"news\"."
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "-",
+      "formation_en": "-",
+      "formula_bg": "N + です",
+      "formula_en": "N + です",
+      "item_type": "grammar",
+      "lemma": "です",
+      "meaning_bg": "свързващ глагол за учтиво изречение",
+      "meaning_en": "copula for polite sentence",
+      "reading": "です",
+      "surface": "です",
+      "translation_bg": "е (учтиво)",
+      "translation_en": "is (polite)",
+      "usage_bg": "Затваря изречението в учтив стил.",
+      "usage_en": "Closes the sentence in polite style."
+    }
+  ],
   "c012300c884696a4aaeea697a4f08bfd0ab2fcab": [
     {
       "explanation_bg": "Използва се за вземане на решение относно действие, което ще бъде извършено в бъдеще. означава 'реших да направя нещо'",
@@ -16461,6 +17923,43 @@
       "explanation_bg": "„Стане по-рано“; сравнителна форма, показваща изместване към по-ранен момент.",
       "explanation_en": "\"Become earlier\"; comparative form indicating shift to an earlier time.",
       "label": "早くなる"
+    }
+  ],
+  "c3df0c0c0e9716370c1fc6ef86c7c39590152284": [
+    {
+      "surface": "所がありました",
+      "translation_bg": "има места",
+      "translation_en": "there were places"
+    },
+    {
+      "surface": "値段",
+      "translation_bg": "цената",
+      "translation_en": "the price"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "деня",
+      "translation_en": "the day"
+    },
+    {
+      "surface": "札幌市",
+      "translation_bg": "град Сапоро",
+      "translation_en": "Sapporo City"
+    },
+    {
+      "surface": "ガソリンスタンド",
+      "translation_bg": "бензиностанция",
+      "translation_en": "gas station"
+    },
+    {
+      "surface": "下げ",
+      "translation_bg": "намаляване",
+      "translation_en": "reduction"
+    },
+    {
+      "surface": "所",
+      "translation_bg": "място",
+      "translation_en": "place"
     }
   ],
   "c422c91fd63bf770f37f0a0097b39c04119ec6d9": [
@@ -16545,6 +18044,28 @@
       "explanation_bg": "Минало време на です; учтиво казва „бе/бяха“.",
       "explanation_en": "Past tense of です; politely states „was/were“.",
       "label": "でした"
+    }
+  ],
+  "c74dd49eab1b542ed48bcc9ee3e1cf4666f62a4f": [
+    {
+      "surface": "値段",
+      "translation_bg": "цена",
+      "translation_en": "price"
+    },
+    {
+      "surface": "とても",
+      "translation_bg": "много",
+      "translation_en": "very"
+    },
+    {
+      "surface": "高く",
+      "translation_bg": "високо",
+      "translation_en": "high"
+    },
+    {
+      "surface": "ガソリン",
+      "translation_bg": "бензин",
+      "translation_en": "gasoline"
     }
   ],
   "c98ab712fabc235cd206a093da902a7991b213c9": [
@@ -16805,6 +18326,68 @@
       "explanation_bg": "「じゃない」е разговорна форма на отрицанието „не е“; омаловажава или отрича.",
       "explanation_en": "じゃない is the casual negative \"isn't\" and negates or downplays.",
       "label": "じゃない"
+    }
+  ],
+  "cb85ece459ace2e3b8524b65c642f2d4f5f5e546": [
+    {
+      "surface": "金を",
+      "translation_bg": "пари (в контекста на помощ)",
+      "translation_en": "money (as aid)"
+    },
+    {
+      "surface": "急に",
+      "translation_bg": "изведнъж",
+      "translation_en": "suddenly"
+    },
+    {
+      "surface": "店で",
+      "translation_bg": "в магазина",
+      "translation_en": "at the store"
+    },
+    {
+      "surface": "円",
+      "translation_bg": "йени",
+      "translation_en": "yen"
+    },
+    {
+      "surface": "値段",
+      "translation_bg": "цената",
+      "translation_en": "the price"
+    },
+    {
+      "surface": "政府",
+      "translation_bg": "правителството",
+      "translation_en": "the government"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "датата (19-ти)",
+      "translation_en": "the date (19th)"
+    },
+    {
+      "surface": "石油",
+      "translation_bg": "нефта",
+      "translation_en": "oil"
+    },
+    {
+      "surface": "会社",
+      "translation_bg": "фирмите",
+      "translation_en": "the companies"
+    },
+    {
+      "surface": "補助",
+      "translation_bg": "държавна помощ",
+      "translation_en": "subsidy"
+    },
+    {
+      "surface": "お金",
+      "translation_bg": "пари",
+      "translation_en": "money"
+    },
+    {
+      "surface": "出し",
+      "translation_bg": "дава",
+      "translation_en": "gives"
     }
   ],
   "ce309db4576cdcb24ca6f6eb5bed37daf4327ef0": [
@@ -17946,6 +19529,184 @@
       "usage_en": ""
     }
   ],
+  "d56c64dcb671e204b07149b9086fe4c9b1a51702": [
+    {
+      "surface": "円に",
+      "translation_bg": "до (йени)",
+      "translation_en": "to (yen)"
+    },
+    {
+      "surface": "円",
+      "translation_bg": "йени",
+      "translation_en": "yen"
+    },
+    {
+      "surface": "値段",
+      "translation_bg": "цената",
+      "translation_en": "the price"
+    },
+    {
+      "surface": "レギュラー",
+      "translation_bg": "обикновен",
+      "translation_en": "regular"
+    },
+    {
+      "surface": "客",
+      "translation_bg": "клиенти",
+      "translation_en": "customers"
+    },
+    {
+      "surface": "半分",
+      "translation_bg": "наполовина",
+      "translation_en": "half"
+    }
+  ],
+  "d688b462e9ab02f6a28f6487c42d663d2c452f3e": [
+    {
+      "category_bg": "прилагателно",
+      "category_en": "adjective",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "adjective",
+      "lemma": "とても",
+      "meaning_bg": "усилва степента на прилагателното",
+      "meaning_en": "intensifier for adjectives",
+      "reading": "とても",
+      "surface": "とても",
+      "translation_bg": "много",
+      "translation_en": "very",
+      "usage_bg": "поставя се пред прилагателно",
+      "usage_en": "placed before an adjective"
+    },
+    {
+      "category_bg": "глагол",
+      "category_en": "verb",
+      "formation_bg": "От 高い: премахваме い -> получаваме основа 高く -> добавяме продължителната форма на глагола なる в て-форма なって -> добавяме помощен глагол за продължително състояние いる в て-форма -> 高くなっている",
+      "formation_en": "From 高い: drop い to get the adverbial stem 高く, add the continuous form of なる in て-form なって, then add the auxiliary verb いる in て-form to show ongoing state -> 高くなっている",
+      "formula_bg": "i-Adj く + なっている",
+      "formula_en": "i-Adj ku + natte iru",
+      "item_type": "verb",
+      "lemma": "高い",
+      "meaning_bg": "намира се в състояние на повишена цена",
+      "meaning_en": "is in a state of being high",
+      "reading": "たかくなっている",
+      "surface": "高くなっている",
+      "translation_bg": "е станало високо",
+      "translation_en": "has become high",
+      "usage_bg": "показва продължително състояние на промяна",
+      "usage_en": "shows ongoing state of change"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "ガソリン",
+      "meaning_bg": "гориво за автомобили",
+      "meaning_en": "fuel for cars",
+      "reading": "がそりん",
+      "surface": "ガソリン",
+      "translation_bg": "бензин",
+      "translation_en": "gasoline",
+      "usage_bg": "",
+      "usage_en": ""
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "grammar",
+      "lemma": "の",
+      "meaning_bg": "притежание или атрибут",
+      "meaning_en": "possession or attribute",
+      "reading": "の",
+      "surface": "の",
+      "translation_bg": "на",
+      "translation_en": "'s / of",
+      "usage_bg": "свързва съществителни",
+      "usage_en": "links nouns"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "値段",
+      "meaning_bg": "стойност на стока",
+      "meaning_en": "cost of goods",
+      "reading": "ねだん",
+      "surface": "値段",
+      "translation_bg": "цената",
+      "translation_en": "the price",
+      "usage_bg": "",
+      "usage_en": ""
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "grammar",
+      "lemma": "が",
+      "meaning_bg": "отбелязва темата на изречението",
+      "meaning_en": "marks the sentence topic",
+      "reading": "が",
+      "surface": "が",
+      "translation_bg": "маркер на подлога",
+      "translation_en": "subject marker",
+      "usage_bg": "поставя се след подлога",
+      "usage_en": "placed after the subject"
+    },
+    {
+      "category_bg": "глагол",
+      "category_en": "verb",
+      "formation_bg": "От 下がる: премахваме る -> получаваме основа 下がり -> добавяме слуховата сложка そう -> 下がりそう",
+      "formation_en": "From 下がる: drop る to get the stem 下がり, add the hearsay/desire suffix そう to indicate appearance -> 下がりそう",
+      "formula_bg": "Verb stem + そう",
+      "formula_en": "Verb stem + sō",
+      "item_type": "verb",
+      "lemma": "下がる",
+      "meaning_bg": "дава впечатление за бъдещо понижение",
+      "meaning_en": "gives impression of future decrease",
+      "reading": "さがりそう",
+      "surface": "下がりそう",
+      "translation_bg": "изглежда ще падне",
+      "translation_en": "seems like it will drop",
+      "usage_bg": "показва външно впечатление за бъдещо действие",
+      "usage_en": "shows outward impression of future action"
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "grammar",
+      "lemma": "です",
+      "meaning_bg": "учтиво заключение на изречението",
+      "meaning_en": "polite sentence ending",
+      "reading": "です",
+      "surface": "です",
+      "translation_bg": "е (учтиво)",
+      "translation_en": "is (polite)",
+      "usage_bg": "завършва учтиво изречение",
+      "usage_en": "ends a polite statement"
+    }
+  ],
   "d935dbca696fe2c8f39a6aa5aed78c9f6ced406c": [
     {
       "explanation_bg": "Показва контекста или средството, чрез което нещо се случва.",
@@ -18677,6 +20438,18 @@
       }
     ]
   },
+  "db43724395d11fc5112467d41fa743f7d2a83d44": [
+    {
+      "explanation_bg": "означава „както е казано/според“; показва, че нещо става точно според дадено желание или инструкция.",
+      "explanation_en": "means 'as requested/as stated'; shows that something happens exactly according to a wish or instruction.",
+      "label": "とおりに"
+    },
+    {
+      "explanation_bg": "въвежда нова тема или обстоятелство, често с контрастно значение – „а между другото/но в същото време“.",
+      "explanation_en": "introduces a new topic or circumstance, often with a contrastive sense – 'by the way/while at that point'.",
+      "label": "ところで"
+    }
+  ],
   "dcf24c164b7e21e5cce9b1a73e0f36f76dea6b1d": [
     {
       "explanation_bg": "Означава „освен това“ или „надясно“ и се използва, за да покаже добавяне на нещо ново към предходното.",
@@ -18785,6 +20558,38 @@
       "explanation_bg": "Предава обобщение или официално обяснение; често след цитат.",
       "explanation_en": "Summarizes or gives an official explanation; often after a quote.",
       "label": "ということだ"
+    }
+  ],
+  "e0336e6e8031c17f84c1e00c0d10f64b18e6b257": [
+    {
+      "surface": "戦い",
+      "translation_bg": "борба/война",
+      "translation_en": "fight/war"
+    },
+    {
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "talk"
+    },
+    {
+      "surface": "イラン",
+      "translation_bg": "Иран",
+      "translation_en": "Iran"
+    },
+    {
+      "surface": "続い",
+      "translation_bg": "продължава",
+      "translation_en": "continues"
+    },
+    {
+      "surface": "問題",
+      "translation_bg": "въпрос/проблем",
+      "translation_en": "issue/problem"
+    },
+    {
+      "surface": "予定",
+      "translation_bg": "е планирано",
+      "translation_en": "is scheduled"
     }
   ],
   "e0bf8738c4dae5b65fe04633dbccb65a3515aa0d": [
@@ -19310,6 +21115,43 @@
       "usage_en": "Connecting action with object"
     }
   ],
+  "e7972dd4479883ad3159e4dd66a196c8bb5e8a59": [
+    {
+      "explanation_bg": "Показва промяна или начало на състояние/действие, идващо към момента на говорене.",
+      "explanation_en": "Indicates a change or beginning of a state/action coming toward the present.",
+      "label": "てくる"
+    },
+    {
+      "explanation_bg": "Показва, че действието се случва точно в момента.",
+      "explanation_en": "Shows that the action is happening right now.",
+      "label": "ているところ"
+    },
+    {
+      "explanation_bg": "Цитира думи, имена или обяснява значението на нещо.",
+      "explanation_en": "Quotes words, names or explains the meaning of something.",
+      "label": "という"
+    },
+    {
+      "explanation_bg": "Изброява примери с неопределеност: „едикакво си, онова нещо“.",
+      "explanation_en": "Lists examples with vagueness: 'this and that'.",
+      "label": "とか～とか"
+    },
+    {
+      "explanation_bg": "Посочва точна точка/място на действие или състояние.",
+      "explanation_en": "Points to the exact point/place of action or state.",
+      "label": "ところ"
+    },
+    {
+      "explanation_bg": "Показва, че действието продължава без прекъсване.",
+      "explanation_en": "Shows that the action continues without interruption.",
+      "label": "続ける"
+    },
+    {
+      "explanation_bg": "Разговорен начин да цитираш или споменеш нещо.",
+      "explanation_en": "Casual way to quote or mention something.",
+      "label": "って"
+    }
+  ],
   "e833996d9dcc9d33e9627ad72c41fc6ef0cd250d": [
     {
       "explanation_bg": "Изразът се използва за изразяване на възможност или предположение за бъдещо събитие. Той означава 'може би' или 'възможно е'.",
@@ -19335,6 +21177,38 @@
       "explanation_bg": "Изразът се използва за изразяване на предположение или възможност за нещо. Той означава 'може би' или 'вероятно е'.",
       "explanation_en": "This expression is used to express conjecture or possibility about something. It means 'maybe' or 'probably'.",
       "label": "〜だろう"
+    }
+  ],
+  "e8de0b29be29c4eccbd009126ea2586df84657fd": [
+    {
+      "surface": "話",
+      "translation_bg": "разговор",
+      "translation_en": "talk"
+    },
+    {
+      "surface": "イラン",
+      "translation_bg": "Иран",
+      "translation_en": "Iran"
+    },
+    {
+      "surface": "戦い",
+      "translation_bg": "война",
+      "translation_en": "war"
+    },
+    {
+      "surface": "続い",
+      "translation_bg": "продължава",
+      "translation_en": "continues"
+    },
+    {
+      "surface": "問題",
+      "translation_bg": "въпрос",
+      "translation_en": "issue"
+    },
+    {
+      "surface": "予定",
+      "translation_bg": "планираме",
+      "translation_en": "plan to"
     }
   ],
   "ed37a169a15c89fab3195364bb658508776faa6c": [
@@ -19550,6 +21424,142 @@
       "translation_en": "event",
       "usage_bg": "",
       "usage_en": ""
+    }
+  ],
+  "efbe11898b6652eaaeb69d82354fea1646fd7dd2": [
+    {
+      "surface": "子ど",
+      "translation_bg": "деца",
+      "translation_en": "kids"
+    },
+    {
+      "surface": "貼る",
+      "translation_bg": "залепям",
+      "translation_en": "stick on"
+    },
+    {
+      "surface": "形に",
+      "translation_bg": "във формата на",
+      "translation_en": "into the shape of"
+    },
+    {
+      "surface": "見せ",
+      "translation_bg": "показвам",
+      "translation_en": "show"
+    },
+    {
+      "surface": "家に",
+      "translation_bg": "вкъщи",
+      "translation_en": "home"
+    },
+    {
+      "surface": "使う",
+      "translation_bg": "използвам",
+      "translation_en": "use"
+    },
+    {
+      "surface": "反射材",
+      "translation_bg": "отразяваща лента",
+      "translation_en": "reflective strip"
+    },
+    {
+      "surface": "作り",
+      "translation_bg": "направиха",
+      "translation_en": "made"
+    },
+    {
+      "surface": "子ども",
+      "translation_bg": "дете",
+      "translation_en": "child"
+    },
+    {
+      "surface": "動物",
+      "translation_bg": "животно",
+      "translation_en": "animal"
+    },
+    {
+      "surface": "形",
+      "translation_bg": "форма",
+      "translation_en": "shape"
+    },
+    {
+      "surface": "シート",
+      "translation_bg": "лентичка",
+      "translation_en": "sheet"
+    }
+  ],
+  "f0348fbba438f625a98a6ba9bd96189e5b6f4a11": [
+    {
+      "surface": "茨城県牛久市",
+      "translation_bg": "в град Ушику, преф. Ибараки",
+      "translation_en": "in Ushiku City, Ibaraki Prefecture"
+    },
+    {
+      "surface": "来月",
+      "translation_bg": "догодина",
+      "translation_en": "next month"
+    },
+    {
+      "surface": "小学校",
+      "translation_bg": "начално училище",
+      "translation_en": "elementary school"
+    },
+    {
+      "surface": "入る",
+      "translation_bg": "тръгват на",
+      "translation_en": "start"
+    },
+    {
+      "surface": "子どもたち",
+      "translation_bg": "децата",
+      "translation_en": "the children"
+    },
+    {
+      "surface": "貼る",
+      "translation_bg": "залепят",
+      "translation_en": "stick on"
+    },
+    {
+      "surface": "反射材",
+      "translation_bg": "отразяваща лента",
+      "translation_en": "reflective strip"
+    },
+    {
+      "surface": "作り",
+      "translation_bg": "направиха",
+      "translation_en": "made"
+    },
+    {
+      "surface": "夕方",
+      "translation_bg": "вечерта",
+      "translation_en": "in the evening"
+    },
+    {
+      "surface": "夜",
+      "translation_bg": "през нощта",
+      "translation_en": "at night"
+    },
+    {
+      "surface": "車",
+      "translation_bg": "колите",
+      "translation_en": "cars"
+    },
+    {
+      "surface": "ライト",
+      "translation_bg": "фаровете",
+      "translation_en": "headlights"
+    }
+  ],
+  "f1d967d66b0c44cf6b9ca1891a9bffd24522da21": [
+    {
+      "explanation_bg": "Показва цел или желан резултат: „за да не стане“, „така че да“; използва се след основна форма на глагол.",
+      "explanation_en": "Expresses purpose or desired outcome: 'so that/in order that'; follows the verb stem.",
+      "label": "ように"
+    },
+    {
+      "explanation_bg": "Показва как изглежда нещо според наблюдателя: „изглежда, че ще“; използва се със свързана форма на глагол.",
+      "explanation_en": "Shows how something appears to the speaker: 'it looks like/it seems that'; attaches to the verb stem.",
+      "label": "ように見える"
     }
   ],
   "f7266e53fd605af855c73422f06c5b032893f1c9": [

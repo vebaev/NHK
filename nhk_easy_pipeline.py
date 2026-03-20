@@ -1281,6 +1281,31 @@ def choose_popup_reading(existing_reading: str, analysis_reading: str) -> str:
     return existing_reading
 
 
+def is_detailed_ai_formation(text: str) -> bool:
+    value = (text or "").strip()
+    if not value:
+        return False
+    markers = (
+        "стъп",
+        "основа",
+        "masu-stem",
+        "て-форма",
+        "учтива",
+        "минала",
+        "отрицателна",
+        "форма на 〜ている",
+        "dictionary form",
+        "stem",
+        "plain form",
+        "polite",
+        "past tense",
+        "negative form",
+        "Step",
+        "Стъпка",
+    )
+    return len(value) >= 24 or any(marker in value for marker in markers)
+
+
 def extend_reading_with_surface_kana(surface: str, reading: str) -> str:
     surface = (surface or "").strip()
     reading = normalize_katakana_to_hiragana((reading or "").strip())
@@ -1367,10 +1392,25 @@ def enrich_popup_item(item):
         item["formula_bg"] = (item.get("formula_bg") or "").strip()
         item["formula_en"] = (item.get("formula_en") or "").strip()
     if item_type == "verb":
-        item["formula_bg"] = (analysis.get("formula_bg") or item.get("formula_bg") or "").strip()
-        item["formula_en"] = (analysis.get("formula_en") or item.get("formula_en") or "").strip()
-        item["formation_bg"] = (item.get("formula_bg") or item.get("formation_bg") or "").strip()
-        item["formation_en"] = (item.get("formula_en") or item.get("formation_en") or "").strip()
+        ai_formation_bg = (item.get("formation_bg") or "").strip()
+        ai_formation_en = (item.get("formation_en") or "").strip()
+        ai_formula_bg = (item.get("formula_bg") or "").strip()
+        ai_formula_en = (item.get("formula_en") or "").strip()
+        analysis_formula_bg = (analysis.get("formula_bg") or "").strip()
+        analysis_formula_en = (analysis.get("formula_en") or "").strip()
+        analysis_form_bg = (analysis.get("form_bg") or "").strip()
+        analysis_form_en = (analysis.get("form_en") or "").strip()
+
+        item["formula_bg"] = ai_formula_bg or analysis_formula_bg
+        item["formula_en"] = ai_formula_en or analysis_formula_en
+        if is_detailed_ai_formation(ai_formation_bg):
+            item["formation_bg"] = ai_formation_bg
+        else:
+            item["formation_bg"] = ai_formula_bg or ai_formation_bg or analysis_formula_bg or analysis_form_bg
+        if is_detailed_ai_formation(ai_formation_en):
+            item["formation_en"] = ai_formation_en
+        else:
+            item["formation_en"] = ai_formula_en or ai_formation_en or analysis_formula_en or analysis_form_en
     if not item["translation_bg"] or not item["translation_en"]:
         contextual = contextual_surface_meaning(
             surface,
@@ -2992,7 +3032,11 @@ def analyze_article_block_with_groq(article_id: str, block_id: int, title: str, 
         "- reading: hiragana reading of the exact surface whenever possible; if uncertain, still provide the other fields\n"
         "- Include short grammar elements if they are genuinely useful to explain\n"
         "- Include katakana loanwords and named concepts if present\n"
-        "- For adjectives and verbs not in dictionary form, explain formation and formula\n"
+        "- For verbs not in dictionary form, formation_bg and formation_en must be detailed, learner-facing, and step-by-step.\n"
+        "- For verbs, explain exactly how the dictionary form became the surface form in the text.\n"
+        "- Good verb formation example bg: \"От 発表する: махаме する -> получаваме основа 発表し -> добавяме учтивата минала форма ました -> 発表しました.\"\n"
+        "- Good verb formation example en: \"From 発表する: remove する to get the stem 発表し, then add the polite past ending ました to make 発表しました.\"\n"
+        "- For adjectives and verbs, formula_bg/formula_en should stay compact, while formation_bg/formation_en should be the fuller explanation.\n"
         "- For grammar items, explain meaning, usage, and compact formula\n"
         "- Do not invent anything not literally present in the paragraph\n"
         "- Aim for 15 to 50 items when possible\n"
@@ -4236,7 +4280,7 @@ function esc(v){return (v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 function popupLine(label,value){return value?'<div class="dm"><b>'+esc(label)+':</b> '+esc(value)+'</div>':'';}
 function normalizePopupValue(v){return (v||'').replace(/\\s+/g,'').trim();}
 function isGenericFormation(v){const x=(v||'').trim().toLowerCase();return !x||x==='речникова форма'||x==='dictionary form'||x==='форма в текста'||x==='form in context';}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const itemType=(el.dataset.itemType||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const surfaceKey=normalizePopupValue(surface);const lemmaKey=normalizePopupValue(lemma);const showAdjectiveFormation=!!formation&&surfaceKey&&lemmaKey&&surfaceKey!==lemmaKey&&!isGenericFormation(formation);let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_translation,translation);if(itemType==='verb'){html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);}else if(itemType==='adjective'){if(showAdjectiveFormation)html+=popupLine(ui.popup_formation,formation);}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const itemType=(el.dataset.itemType||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();const surfaceKey=normalizePopupValue(surface);const lemmaKey=normalizePopupValue(lemma);const showAdjectiveFormation=!!formation&&surfaceKey&&lemmaKey&&surfaceKey!==lemmaKey&&!isGenericFormation(formation);let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_translation,translation);if(itemType==='verb'){html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);}else if(itemType==='adjective'){if(showAdjectiveFormation)html+=popupLine(ui.popup_formation,formation);}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
