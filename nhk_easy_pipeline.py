@@ -7,6 +7,7 @@ import hashlib
 import json
 import time
 import uuid
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from functools import lru_cache
@@ -15,7 +16,10 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup, NavigableString
-from googletrans import Translator
+try:
+    from googletrans import Translator
+except Exception:
+    Translator = None
 try:
     from google import genai
 except Exception:
@@ -47,29 +51,37 @@ EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
 DEFAULT_ANKI_FILENAME = "anki_cards_bg.tsv"
-DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_vocab_bg.apkg"
-DEFAULT_GRAMMAR_TSV_FILENAME = "anki_grammar_bg.tsv"
-DEFAULT_GRAMMAR_APKG_FILENAME = "nhk_easy_grammar_bg.apkg"
-DEFAULT_ANKI_EN_FILENAME = "anki_cards_en.tsv"
-DEFAULT_ANKI_EN_APKG_FILENAME = "nhk_easy_vocab_en.apkg"
-DEFAULT_GRAMMAR_EN_TSV_FILENAME = "anki_grammar_en.tsv"
-DEFAULT_GRAMMAR_EN_APKG_FILENAME = "nhk_easy_grammar_en.apkg"
+DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_elements_bg.apkg"
 DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
+EXTERNAL_GRAMMAR_FILE = os.path.join(os.path.expanduser("~/Downloads"), "gram.txt")
 
-translator = Translator()
+translator = Translator() if Translator is not None else None
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
-GEMINI_API_KEY = os.environ.get("GEMINI_API", "").strip()
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
+GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API") or "").strip()
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
 _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _GEMINI_CACHE = {}
 _MECAB_TAGGER = None
 _SUDACHI_TOKENIZER = None
 _JINF = None
-_WORD_GLOSSARY = None
+_EXTERNAL_GRAMMAR_PATTERNS = None
 _THREAD_LOCAL = threading.local()
 _TRANSLATION_CACHE_DIRTY = False
 _GEMINI_CACHE_DIRTY = False
+_GEMINI_RATE_LOCK = threading.Lock()
+_GEMINI_REQUEST_TIMES = deque()
+_GEMINI_TOKEN_USAGE = deque()
+
+GEMINI_REQUESTS_PER_MINUTE = 15
+GEMINI_TOKENS_PER_MINUTE = 250000
+AI_ARTICLE_MAX_COMPLETION_TOKENS = 1200
+AI_GRAMMAR_MAX_COMPLETION_TOKENS = 500
+AI_GRAMMAR_PATTERN_CHUNK_SIZE = 28
+AI_VERB_CORRECTION_MAX_COMPLETION_TOKENS = 700
+AI_VERB_CORRECTION_MAX_PROMPT_CHARS = 8000
+AI_VERB_CORRECTION_MAX_ITEMS = 10
 
 PARTICLE_PREFIXES = ("が", "を", "に", "で", "は", "と", "へ", "や", "も", "の")
 GODAN_I_TO_U = {"い":"う","き":"く","ぎ":"ぐ","し":"す","ち":"つ","に":"ぬ","び":"ぶ","み":"む","り":"る"}
@@ -329,6 +341,7 @@ def cache_gemini_result(cache_key: str, value):
     _GEMINI_CACHE[cache_key] = value
     return value
 
+
 def ensure_grammar_bilingual():
     missing_bg = [rule.get("explanation_bg", "") for rule in GRAMMAR_RULES if not rule.get("explanation_en")]
     translated = translate_texts(missing_bg, dest="en")
@@ -340,23 +353,23 @@ def ensure_grammar_bilingual():
     GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
 
 
-def load_word_glossary():
-    global _WORD_GLOSSARY
-    if _WORD_GLOSSARY is not None:
-        return _WORD_GLOSSARY
-    candidates = ["glossary_overrides.json", os.path.join(os.path.dirname(__file__), "glossary_overrides.json")]
-    for path in candidates:
-        if os.path.exists(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if isinstance(data, dict):
-                    _WORD_GLOSSARY = {str(k).strip(): str(v).strip() for k, v in data.items() if str(k).strip()}
-                    return _WORD_GLOSSARY
-            except Exception:
-                pass
-    _WORD_GLOSSARY = {}
-    return _WORD_GLOSSARY
+def load_external_grammar_patterns(path: str = EXTERNAL_GRAMMAR_FILE):
+    global _EXTERNAL_GRAMMAR_PATTERNS
+    if _EXTERNAL_GRAMMAR_PATTERNS is not None:
+        return _EXTERNAL_GRAMMAR_PATTERNS
+    patterns = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for raw_line in f:
+                line = (raw_line or "").strip()
+                if not line:
+                    continue
+                if line not in patterns:
+                    patterns.append(line)
+    except Exception:
+        patterns = []
+    _EXTERNAL_GRAMMAR_PATTERNS = patterns
+    return _EXTERNAL_GRAMMAR_PATTERNS
 
 
 def sudachi_tokenize(text: str):
@@ -473,6 +486,27 @@ def merge_compound_nouns(tokens):
         compounds.append(current[:])
     return compounds
 
+
+def merge_katakana_phrases(tokens):
+    phrases = []
+    current = []
+    for token in tokens:
+        surface = token_surface(token).strip()
+        feat = token_feature(token)
+        pos1 = getattr(feat, "pos1", "") if feat is not None else ""
+        reading = normalize_katakana_to_hiragana(feature_reading(token).strip())
+        is_katakana = bool(surface) and bool(re.fullmatch(r"[ァ-ヶー]+", surface))
+        is_connector = surface in {"・", "＝", "-", "−", "ー"} and current
+        if is_katakana or (is_connector and pos1 in {"記号", "補助記号", ""}):
+            current.append((surface, reading))
+            continue
+        if len(current) >= 2 or (current and any(part[0] == "・" for part in current)):
+            phrases.append(current[:])
+        current = []
+    if len(current) >= 2 or (current and any(part[0] == "・" for part in current)):
+        phrases.append(current[:])
+    return phrases
+
 def contains_japanese(text: str) -> bool:
     return bool(re.search(r"[ぁ-んァ-ン一-龯]", text or ""))
 
@@ -512,6 +546,8 @@ def translate_text(text: str, dest: str = "bg") -> str:
             result = ""
     if not result:
         try:
+            if translator is None:
+                raise RuntimeError("googletrans unavailable")
             result = (translator.translate(text, dest=dest).text or "").strip()
             if result:
                 _TRANSLATION_STATS["google"] += 1
@@ -621,10 +657,142 @@ def contextual_surface_meaning(surface: str, lemma: str = "", reading_surface: s
     }
 
 
+def strip_trailing_particles(text: str) -> str:
+    value = (text or "").strip()
+    if not value:
+        return ""
+    changed = True
+    while changed and len(value) > 1:
+        changed = False
+        for suffix in sorted(PARTICLE_PREFIXES + ("には", "では", "から", "まで", "より"), key=len, reverse=True):
+            if value.endswith(suffix) and len(value) > len(suffix):
+                value = value[:-len(suffix)].strip()
+                changed = True
+                break
+    return value or (text or "").strip()
+
+
+def should_skip_particle_tailed_compound(item) -> bool:
+    if not isinstance(item, dict):
+        return False
+    if (item.get("item_type") or "").strip().lower() != "compound":
+        return False
+    surface = (item.get("surface") or "").strip()
+    if not surface:
+        return False
+    stripped = strip_trailing_particles(surface)
+    if not stripped or stripped == surface:
+        return False
+    if re.search(r"[一-龯]", stripped):
+        return True
+    analysis = analyze_japanese_word(stripped)
+    return (analysis.get("pos1") or "").strip() == "名詞"
+
+
+def derive_particle_stripped_popup_item(item):
+    if not isinstance(item, dict):
+        return None
+    surface = (item.get("surface") or "").strip()
+    stripped = strip_trailing_particles(surface)
+    if not surface or not stripped or stripped == surface:
+        return None
+    analysis = analyze_japanese_word(stripped)
+    pos1 = (analysis.get("pos1") or "").strip()
+    if pos1 != "名詞" and not re.search(r"[一-龯々]", stripped):
+        return None
+    derived = dict(item)
+    derived["surface"] = stripped
+    derived["lemma"] = (analysis.get("lemma") or stripped).strip()
+    derived["reading"] = get_reading_for_word(stripped, fallback="")
+    if not (derived.get("item_type") or "").strip():
+        derived["item_type"] = "noun"
+    return derived
+
+
+def extract_predicate_tail_from_compound(surface: str) -> str:
+    surface = (surface or "").strip()
+    if not surface or len(surface) < 4:
+        return ""
+    m = re.match(r"^(.{1,16}?)(には|では|から|まで|より|が|を|に|で|は|も|へ)(.+)$", surface)
+    if not m:
+        return ""
+    tail = (m.group(3) or "").strip()
+    if not tail or len(tail) < 2:
+        return ""
+    if not re.search(
+        r"(そう(?:だ|です|で|な|に)?|ます|ました|ません|ましょう|ない|なかった|"
+        r"ている|でいる|ていた|でいた|れる|られる|たい|くない|かった|"
+        r"する|した|して|します|しました|なる|なった|なって|なります|なりました)$",
+        tail,
+    ):
+        return ""
+    return tail
+
+
+def should_skip_mixed_clause_surface(surface: str) -> bool:
+    surface = (surface or "").strip()
+    if not surface:
+        return False
+    if extract_predicate_tail_from_compound(surface):
+        return True
+    return bool(
+        re.match(r"^.{1,16}?(には|では|から|まで|より|が|を|に|で|は|も|へ).+(そう|ように|ことに).+$", surface)
+    )
+
+
+def extract_visible_text_from_nodes(nodes) -> str:
+    parts = []
+    consumed_prefix = {}
+    node_list = list(nodes or [])
+    for idx, node in enumerate(node_list):
+        if isinstance(node, NavigableString):
+            raw_text = str(node)
+            skip = consumed_prefix.get(id(node), 0)
+            if skip:
+                raw_text = raw_text[skip:]
+            if raw_text:
+                parts.append(raw_text)
+            continue
+        name = getattr(node, "name", None)
+        if name in {"rt", "rp"}:
+            continue
+        if name == "ruby":
+            base_text = ruby_base_text(node)
+            raw_suffix = extract_following_okurigana(node)
+            okurigana = raw_suffix if should_attach_ruby_suffix(base_text, raw_suffix) else ""
+            if okurigana and idx + 1 < len(node_list) and isinstance(node_list[idx + 1], NavigableString):
+                consumed_prefix[id(node_list[idx + 1])] = max(consumed_prefix.get(id(node_list[idx + 1]), 0), len(okurigana))
+            parts.append(base_text + okurigana)
+            continue
+        if name == "br":
+            parts.append("\n")
+            continue
+        parts.append(extract_visible_text_from_nodes(getattr(node, "contents", [])))
+    return "".join(parts)
+
+
+def best_effort_popup_translation(surface: str, lemma: str = "", reading_surface: str = "", reading_lemma: str = "", dest: str = "bg") -> str:
+    candidates = unique_keep_order([
+        strip_trailing_particles(surface),
+        strip_trailing_particles(lemma),
+        lemma,
+        surface,
+    ])
+    for candidate in candidates:
+        candidate = (candidate or "").strip()
+        if not candidate:
+            continue
+        translated = translate_word_lang(candidate, reading=reading_lemma or reading_surface, dest=dest) or translate_text(candidate, dest=dest) or ""
+        translated = translated.strip()
+        if translated and translated != candidate and not contains_japanese(translated):
+            return translated
+    return ""
+
+
 def get_article_blocks(content):
     blocks = []
     for el in content.find_all(["p", "h2", "h3", "li"], recursive=True):
-        txt = el.get_text(" ", strip=True)
+        txt = extract_visible_text_from_nodes(el.contents).strip()
         if not txt or len(txt) < 3:
             continue
         blocks.append({"text": txt, "html": "".join(str(x) for x in el.contents).strip()})
@@ -917,6 +1085,50 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
         if s.endswith(suffix) and len(s) > len(suffix):
             return chain(l, "te-form", s)
 
+    te_oku_map = [
+        ("ておきませんでした", "ておく"),
+        ("でおきませんでした", "でおく"),
+        ("ておきました", "ておく"),
+        ("でおきました", "でおく"),
+        ("ておきません", "ておく"),
+        ("でおきません", "でおく"),
+        ("ておきます", "ておく"),
+        ("でおきます", "でおく"),
+        ("ておいた", "ておく"),
+        ("でおいた", "でおく"),
+        ("ておいて", "ておく"),
+        ("でおいて", "でおく"),
+    ]
+    for suffix, mid in te_oku_map:
+        if s.endswith(suffix) and len(s) > len(suffix):
+            return chain(l, mid, s)
+
+    for suffix in ["そうです", "そうだ", "そうで", "そうな", "そうに"]:
+        if s.endswith(suffix) and len(s) > len(suffix):
+            stem = s[:-len(suffix)]
+            if l and l != s:
+                stem_form = masu_stem(l)
+                if stem_form:
+                    return chain(l, stem_form, s)
+            return chain(stem, s)
+
+    koto_decision_map = [
+        ("ことにしました", "ことにする"),
+        ("ことにします", "ことにする"),
+        ("ことにして", "ことにする"),
+        ("ことにした", "ことにする"),
+        ("ことになりました", "ことになる"),
+        ("ことになります", "ことになる"),
+        ("ことになって", "ことになる"),
+        ("ことになった", "ことになる"),
+    ]
+    for suffix, mid in koto_decision_map:
+        if s.endswith(suffix) and len(s) > len(suffix):
+            base = s[:-len(suffix)] + mid
+            if l and l != s:
+                base = l
+            return chain(base, s)
+
     stem = masu_stem(l)
     if s.endswith("ましょう") and len(s) > 4:
         return chain(l, stem, s)
@@ -1040,13 +1252,300 @@ def build_lookup_candidates(surface: str, reading: str = "", lemma: str = ""):
     candidates = [surface, lemma, lemmatize_japanese(surface), to_dictionary_form(surface), reading]
     return tuple(unique_keep_order(candidates))
 
+
+def analysis_category_labels(pos1: str, item_type: str = ""):
+    item_type = (item_type or "").strip().lower()
+    if item_type == "particle":
+        item_type = "grammar"
+    if item_type == "grammar":
+        return ("граматична конструкция", "grammar pattern")
+    if item_type == "compound":
+        return ("съчетание", "compound")
+    if item_type == "noun" or pos1 == "名詞":
+        return ("съществително", "noun")
+    if item_type == "verb" or pos1 == "動詞":
+        return ("глагол", "verb")
+    if item_type == "adjective" or pos1 == "形容詞":
+        return ("прилагателно", "adjective")
+    if pos1 == "副詞":
+        return ("наречие", "adverb")
+    return ("елемент", "text item")
+
+
+def choose_popup_reading(existing_reading: str, analysis_reading: str) -> str:
+    existing_reading = normalize_katakana_to_hiragana((existing_reading or "").strip())
+    analysis_reading = normalize_katakana_to_hiragana((analysis_reading or "").strip())
+    if not analysis_reading:
+        return existing_reading
+    if not existing_reading:
+        return analysis_reading
+    if len(analysis_reading) > len(existing_reading) and (
+        analysis_reading.startswith(existing_reading) or existing_reading in analysis_reading
+    ):
+        return analysis_reading
+    return existing_reading
+
+
+def is_detailed_ai_formation(text: str) -> bool:
+    value = (text or "").strip()
+    if not value:
+        return False
+    markers = (
+        "стъп",
+        "основа",
+        "masu-stem",
+        "て-форма",
+        "учтива",
+        "минала",
+        "отрицателна",
+        "форма на 〜ている",
+        "dictionary form",
+        "stem",
+        "plain form",
+        "polite",
+        "past tense",
+        "negative form",
+        "Step",
+        "Стъпка",
+    )
+    return len(value) >= 24 or any(marker in value for marker in markers)
+
+
+def choose_popup_lemma(surface: str, current_lemma: str, analysis) -> str:
+    surface = (surface or "").strip()
+    current_lemma = (current_lemma or "").strip()
+    analysis_lemma = ((analysis or {}).get("lemma") or "").strip()
+    candidates = unique_keep_order([current_lemma, analysis_lemma, lemmatize_japanese(surface), to_dictionary_form(surface), surface])
+    for candidate in candidates:
+        if not candidate or "->" in candidate:
+            continue
+        if is_suspicious_verb_lemma(surface, candidate) and candidate != surface:
+            continue
+        return candidate
+    return surface
+
+
+def extract_lemma_from_formula(formula: str) -> str:
+    formula = html_lib.unescape((formula or "").strip())
+    if not formula:
+        return ""
+    first = re.split(r"\s*(?:->|→)\s*", formula, maxsplit=1)[0].strip()
+    if not first or " " in first or first == "-":
+        return ""
+    return first
+
+
+def resolve_verb_popup_lemma(surface: str, lemma: str, formula: str = "") -> str:
+    surface = (surface or "").strip()
+    lemma = (lemma or "").strip()
+    formula_lemma = extract_lemma_from_formula(formula)
+    candidates = unique_keep_order([formula_lemma, lemma])
+    for candidate in candidates:
+        if not candidate:
+            continue
+        if candidate != surface and not is_suspicious_verb_lemma(surface, candidate):
+            return candidate
+    return lemma or formula_lemma or surface
+
+
+def build_plain_verb_formation_bg(surface: str, lemma: str, current: str = "", formula: str = "") -> str:
+    surface = (surface or "").strip()
+    lemma = (lemma or "").strip()
+    current = (current or "").strip()
+    formula = (formula or "").strip()
+    if not surface or not lemma:
+        return current
+    if current and current not in {"учтива форма", "учтива минала форма", "минала форма", "форма на 〜ている", "учтива форма на 〜ている", "учтива минала форма на 〜ている"}:
+        return current
+    formula_lemma = extract_lemma_from_formula(formula)
+    base_lemma = formula_lemma or lemma
+    if surface.endswith("ました") and base_lemma != surface:
+        stem = surface[:-3]
+        return f"речникова форма {base_lemma} → основа {stem} → добавяне на ました за учтиво минало"
+    if surface.endswith("ます") and base_lemma != surface:
+        stem = surface[:-2]
+        return f"речникова форма {base_lemma} → основа {stem} → добавяне на ます за учтива форма"
+    if surface.endswith("ていました") and base_lemma != surface:
+        return f"речникова форма {base_lemma} → форма て → добавяне на いる → минало いた → учтиво минало ました"
+    if surface.endswith("ています") and base_lemma != surface:
+        return f"речникова форма {base_lemma} → форма て → добавяне на いる → учтива форма ます"
+    if surface.endswith("ている") and base_lemma != surface:
+        return f"речникова форма {base_lemma} → форма て → добавяне на いる за продължително състояние"
+    if surface.endswith("でいる") and base_lemma != surface:
+        return f"речникова форма {base_lemma} → форма で → добавяне на いる за продължително състояние"
+    if surface.endswith("した") and base_lemma == "する":
+        return "речникова форма する → основа し → добавяне на た за минала форма"
+    return current
+
+
+def extend_reading_with_surface_kana(surface: str, reading: str) -> str:
+    surface = (surface or "").strip()
+    reading = normalize_katakana_to_hiragana((reading or "").strip())
+    if not surface or not reading:
+        return reading
+    m = re.match(r"^([一-龯々]+)([ぁ-んァ-ヶー].*)$", surface)
+    if not m:
+        return reading
+    kana_tail = normalize_katakana_to_hiragana(m.group(2))
+    if any(kana_tail.startswith(suffix) for suffix in ("には", "では", "から", "まで", "より") + PARTICLE_PREFIXES):
+        return reading
+    if kana_tail and not reading.endswith(kana_tail):
+        return reading + kana_tail
+    return reading
+
+
+def infer_popup_item_type(surface: str, analysis, current_item_type: str = "", lemma: str = "", formation_bg: str = "") -> str:
+    current_item_type = (current_item_type or "").strip().lower()
+    pos1 = (analysis.get("pos1") or "").strip()
+    if pos1 == "動詞":
+        return "verb"
+    if pos1 == "形容詞":
+        return "adjective"
+    if pos1 == "名詞":
+        return "noun"
+    if current_item_type and current_item_type != "compound":
+        return current_item_type
+
+    formation_bg = (formation_bg or "").strip().lower()
+    formula_bg = (analysis.get("formula_bg") or "").strip().lower()
+    if "прилагателно" in formation_bg or any(marker in formula_bg for marker in (" + かった", " + くない", " + くて")):
+        return "adjective"
+    if any(marker in formation_bg for marker in ("глагол", "ている", "учтива форма", "минала форма", "отрицателна форма")):
+        return "verb"
+    if any(marker in formula_bg for marker in ("te-form", "volitional", "past form", "れる/られる", "せる/させる")):
+        return "verb"
+    if lemma and surface and lemma != surface and lemma.endswith(("る", "う", "く", "ぐ", "す", "つ", "ぬ", "ぶ", "む")):
+        if surface.endswith(("そうです", "そうだ", "ます", "ました", "ません", "ない", "なかった", "たい", "れる", "られる", "ている", "でいる", "ていた", "でいた")):
+            return "verb"
+    if lemma and surface and lemma != surface:
+        if any(marker in formula_bg for marker in (" -> ", " + ")):
+            return current_item_type or "compound"
+    return current_item_type or ("compound" if len((surface or "").strip()) > 1 else "")
+
+
+def enrich_popup_item(item):
+    item = dict(item or {})
+    surface = (item.get("surface") or item.get("word") or "").strip()
+    if not surface:
+        return item
+    reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
+    lemma = (item.get("lemma") or item.get("word") or surface).strip()
+    analysis = analyze_japanese_word(surface, reading_hint=reading, lemma_hint=lemma)
+    resolved_lemma = choose_popup_lemma(surface, lemma, analysis)
+    item_type = infer_popup_item_type(
+        surface,
+        analysis,
+        current_item_type=(item.get("item_type") or ""),
+        lemma=resolved_lemma,
+        formation_bg=(item.get("formation_bg") or item.get("form_bg") or ""),
+    )
+    category_bg, category_en = analysis_category_labels((analysis.get("pos1") or "").strip(), item_type=item_type)
+    item["surface"] = surface
+    item["lemma"] = resolved_lemma
+    item["reading"] = extend_reading_with_surface_kana(
+        surface,
+        choose_popup_reading(reading, analysis.get("reading_surface") or ""),
+    )
+    item["item_type"] = item_type
+    item["translation_bg"] = (item.get("translation_bg") or item.get("meaning_bg") or "").strip()
+    item["translation_en"] = (item.get("translation_en") or item.get("meaning_en") or "").strip()
+    item["meaning_bg"] = (item.get("meaning_bg") or item["translation_bg"] or "").strip()
+    item["meaning_en"] = (item.get("meaning_en") or item["translation_en"] or "").strip()
+    item["category_bg"] = (item.get("category_bg") or category_bg).strip()
+    item["category_en"] = (item.get("category_en") or category_en).strip()
+    if item_type != "grammar":
+        item["formation_bg"] = (item.get("formation_bg") or analysis.get("form_bg") or "").strip()
+        item["formation_en"] = (item.get("formation_en") or analysis.get("form_en") or "").strip()
+        item["formula_bg"] = (item.get("formula_bg") or analysis.get("formula_bg") or "").strip()
+        item["formula_en"] = (item.get("formula_en") or analysis.get("formula_en") or "").strip()
+    else:
+        item["formation_bg"] = (item.get("formation_bg") or "").strip()
+        item["formation_en"] = (item.get("formation_en") or "").strip()
+        item["formula_bg"] = (item.get("formula_bg") or "").strip()
+        item["formula_en"] = (item.get("formula_en") or "").strip()
+    if item_type == "verb":
+        ai_formation_bg = (item.get("formation_bg") or "").strip()
+        ai_formation_en = (item.get("formation_en") or "").strip()
+        ai_formula_bg = (item.get("formula_bg") or "").strip()
+        ai_formula_en = (item.get("formula_en") or "").strip()
+        analysis_formula_bg = (analysis.get("formula_bg") or "").strip()
+        analysis_formula_en = (analysis.get("formula_en") or "").strip()
+        analysis_form_bg = (analysis.get("form_bg") or "").strip()
+        analysis_form_en = (analysis.get("form_en") or "").strip()
+
+        item["formula_bg"] = ai_formula_bg or analysis_formula_bg
+        item["formula_en"] = ai_formula_en or analysis_formula_en
+        if is_detailed_ai_formation(ai_formation_bg):
+            item["formation_bg"] = ai_formation_bg
+        else:
+            item["formation_bg"] = ai_formula_bg or ai_formation_bg or analysis_formula_bg or analysis_form_bg
+        if is_detailed_ai_formation(ai_formation_en):
+            item["formation_en"] = ai_formation_en
+        else:
+            item["formation_en"] = ai_formula_en or ai_formation_en or analysis_formula_en or analysis_form_en
+        item["lemma"] = resolve_verb_popup_lemma(
+            surface,
+            item.get("lemma", ""),
+            item.get("formula_bg", "") or item.get("formula_en", ""),
+        )
+        item["formation_bg"] = build_plain_verb_formation_bg(
+            surface,
+            item.get("lemma", ""),
+            item.get("formation_bg", ""),
+            item.get("formula_bg", ""),
+        )
+    if not item["translation_bg"] or not item["translation_en"]:
+        contextual = contextual_surface_meaning(
+            surface,
+            lemma=item.get("lemma", ""),
+            reading_surface=item.get("reading", ""),
+            reading_lemma=analysis.get("reading_lemma", ""),
+            form_label_bg=item.get("formation_bg", "") or analysis.get("form_bg", ""),
+            form_label_en=item.get("formation_en", "") or analysis.get("form_en", ""),
+        )
+        if not item["translation_bg"]:
+            item["translation_bg"] = (contextual.get("bg") or "").strip()
+        if not item["translation_en"]:
+            item["translation_en"] = (contextual.get("en") or "").strip()
+    if not item["translation_bg"]:
+        item["translation_bg"] = best_effort_popup_translation(
+            surface,
+            lemma=item.get("lemma", ""),
+            reading_surface=item.get("reading", ""),
+            reading_lemma=analysis.get("reading_lemma", ""),
+            dest="bg",
+        )
+    if not item["translation_en"]:
+        item["translation_en"] = best_effort_popup_translation(
+            surface,
+            lemma=item.get("lemma", ""),
+            reading_surface=item.get("reading", ""),
+            reading_lemma=analysis.get("reading_lemma", ""),
+            dest="en",
+        )
+    item["meaning_bg"] = (item.get("meaning_bg") or item["translation_bg"] or "").strip()
+    item["meaning_en"] = (item.get("meaning_en") or item["translation_en"] or "").strip()
+    item["usage_bg"] = (item.get("usage_bg") or "").strip()
+    item["usage_en"] = (item.get("usage_en") or "").strip()
+    return item
+
 def register_vocab_item(vocab_lookup, item, extra_keys=None):
     extra_keys = extra_keys or []
-    word = (item.get("word") or "").strip()
+    item = enrich_popup_item(item)
+    word = (item.get("word") or item.get("surface") or "").strip()
     reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
-    keys = unique_keep_order([word, reading] + list(extra_keys))
+    lemma = (item.get("lemma") or word).strip()
+    keys = unique_keep_order([word, reading, lemma] + list(extra_keys))
     for key in keys:
-        if key and key not in vocab_lookup:
+        if not key:
+            continue
+        existing = vocab_lookup.get(key)
+        if existing is None:
+            vocab_lookup[key] = item
+            continue
+        existing_score = sum(1 for field in ("translation_bg", "translation_en", "category_bg", "formation_bg", "formula_bg", "usage_bg") if (existing.get(field) or "").strip())
+        new_score = sum(1 for field in ("translation_bg", "translation_en", "category_bg", "formation_bg", "formula_bg", "usage_bg") if (item.get(field) or "").strip())
+        if new_score >= existing_score:
             vocab_lookup[key] = item
 def is_target_pos(token) -> bool:
     feat = token_feature(token)
@@ -1086,9 +1585,63 @@ def extract_following_okurigana(ruby_tag):
             continue
         m = re.match(r"^([ぁ-んー]{1,8})", txt)
         if m:
-            return m.group(1)
+            suffix = m.group(1)
+            cut_markers = [
+                "かもしれません",
+                "かもしれない",
+                "ことにしました",
+                "ことにします",
+                "ことにした",
+                "ことになります",
+                "ことになる",
+                "ことが",
+                "ことを",
+                "ことは",
+                "ことに",
+                "ときに",
+                "とき",
+                "のを",
+                "ので",
+                "のに",
+                "にしています",
+                "にしている",
+                "にした",
+                "にする",
+                "になっています",
+                "になっている",
+                "になった",
+                "になります",
+                "になる",
+                "そうです",
+                "そうだ",
+            ]
+            cut_positions = [suffix.find(marker, 1) for marker in cut_markers if suffix.find(marker, 1) > 0]
+            for ch in ("の", "が", "を", "に", "で", "は", "も", "へ", "と", "や", "か"):
+                pos = suffix.find(ch, 1)
+                if pos > 0:
+                    cut_positions.append(pos)
+            if cut_positions:
+                suffix = suffix[:min(cut_positions)]
+            return suffix
         return ""
     return ""
+
+
+def should_attach_ruby_suffix(base_text: str, suffix: str) -> bool:
+    base_text = (base_text or "").strip()
+    suffix = (suffix or "").strip()
+    if not base_text or not suffix:
+        return False
+    analysis = analyze_japanese_word(base_text)
+    pos1 = (analysis.get("pos1") or "").strip()
+    has_kanji = bool(re.search(r"[一-龯々]", base_text))
+    has_kana = bool(re.search(r"[ぁ-んァ-ヶー]", base_text))
+    noun_like_base = pos1 == "名詞" or (has_kanji and not has_kana and pos1 not in {"動詞", "形容詞"})
+    if noun_like_base and any(suffix.startswith(p) for p in ("には", "では", "から", "まで", "より")):
+        return False
+    if noun_like_base and suffix.startswith(PARTICLE_PREFIXES):
+        return False
+    return True
 @lru_cache(maxsize=8192)
 def to_dictionary_form(word: str) -> str:
     w = (word or "").strip()
@@ -1160,6 +1713,51 @@ def to_dictionary_form(word: str) -> str:
     for suffix in te_iru_suffixes:
         if w.endswith(suffix) and len(w) > len(suffix):
             return te_base_to_dictionary(w[:-len(suffix)])
+
+    te_oku_suffixes = [
+        ("ておきませんでした", "ておく"),
+        ("でおきませんでした", "でおく"),
+        ("ておきました", "ておく"),
+        ("でおきました", "でおく"),
+        ("ておきません", "ておく"),
+        ("でおきません", "でおく"),
+        ("ておきます", "ておく"),
+        ("でおきます", "でおく"),
+        ("ておいた", "ておく"),
+        ("でおいた", "でおく"),
+        ("ておいて", "ておく"),
+        ("でおいて", "でおく"),
+    ]
+    for suffix, replacement in te_oku_suffixes:
+        if w.endswith(suffix) and len(w) > len(suffix):
+            return w[:-len(suffix)] + replacement
+
+    for suffix, replacement in [
+        ("ことにしました", "ことにする"),
+        ("ことにします", "ことにする"),
+        ("ことにして", "ことにする"),
+        ("ことにした", "ことにする"),
+        ("ことになりました", "ことになる"),
+        ("ことになります", "ことになる"),
+        ("ことになって", "ことになる"),
+        ("ことになった", "ことになる"),
+    ]:
+        if w.endswith(suffix) and len(w) > len(suffix):
+            return w[:-len(suffix)] + replacement
+
+    for suffix in ["そうです", "そうだ", "そうで", "そうな", "そうに"]:
+        if w.endswith(suffix) and len(w) > len(suffix):
+            stem = w[:-len(suffix)]
+            if not stem:
+                return w
+            if stem.endswith("でき"):
+                return stem + "る"
+            if stem.endswith("れ"):
+                return stem + "る"
+            mapped = GODAN_I_TO_U.get(stem[-1]) if stem else None
+            if mapped:
+                return stem[:-1] + mapped
+            return stem
 
     for suffix in ["していました", "しています", "しました", "します"]:
         if w.endswith(suffix):
@@ -1252,6 +1850,72 @@ def should_keep_token_for_vocab(token) -> bool:
         return True
     return False
 
+
+def tokenize_block_text(text: str):
+    text = (text or "").strip()
+    if not text:
+        return []
+    sudachi_tokens = sudachi_tokenize(text)
+    if sudachi_tokens:
+        items = []
+        cursor = 0
+        for token in sudachi_tokens:
+            surface = sudachi_surface(token).strip()
+            if not surface:
+                continue
+            pos = cursor
+            found = text.find(surface, cursor)
+            if found != -1:
+                pos = found
+            end = pos + len(surface)
+            feat = sudachi_feature(token)
+            items.append(
+                {
+                    "surface": surface,
+                    "lemma": sudachi_dictionary_form(token) or surface,
+                    "reading": sudachi_reading(token),
+                    "pos1": feat.get("pos1", ""),
+                    "pos2": feat.get("pos2", ""),
+                    "start": pos,
+                    "end": end,
+                }
+            )
+            cursor = end
+        return items
+
+    tagger = get_mecab_tagger()
+    if tagger is None:
+        return []
+    try:
+        raw_tokens = list(tagger(text))
+    except Exception:
+        return []
+    items = []
+    cursor = 0
+    for token in raw_tokens:
+        surface = token_surface(token).strip()
+        if not surface:
+            continue
+        pos = cursor
+        found = text.find(surface, cursor)
+        if found != -1:
+            pos = found
+        end = pos + len(surface)
+        feat = token_feature(token)
+        items.append(
+            {
+                "surface": surface,
+                "lemma": token_lemma(token).strip() or surface,
+                "reading": normalize_katakana_to_hiragana(feature_reading(token).strip()),
+                "pos1": getattr(feat, "pos1", "") if feat is not None else "",
+                "pos2": getattr(feat, "pos2", "") if feat is not None else "",
+                "start": pos,
+                "end": end,
+            }
+        )
+        cursor = end
+    return items
+
 def is_suspicious_vocab_word(word: str) -> bool:
     w = (word or "").strip()
     if not w:
@@ -1263,6 +1927,127 @@ def is_suspicious_vocab_word(word: str) -> bool:
     if re.search(r"[<>{}=]", w):
         return True
     return False
+
+
+WEAK_FALLBACK_SURFACES = {
+    "から",
+    "ため",
+    "だけ",
+    "まで",
+    "より",
+    "ほど",
+    "ぐらい",
+    "くらい",
+    "など",
+    "とか",
+    "もの",
+    "こと",
+    "とき",
+    "あと",
+    "うち",
+}
+
+
+def should_keep_popup_token(surface: str, pos1: str = "", pos2: str = "", lemma: str = "", reading: str = "") -> bool:
+    surface = (surface or "").strip()
+    pos1 = (pos1 or "").strip()
+    pos2 = (pos2 or "").strip()
+    lemma = (lemma or "").strip()
+    reading = normalize_katakana_to_hiragana((reading or "").strip())
+
+    if not surface or not contains_japanese(surface):
+        return False
+    if pos1 in {"助詞", "助動詞", "記号", "補助記号", "空白", "接頭辞", "連体詞", "感動詞", "接続詞"}:
+        return False
+    if pos1 == "名詞" and pos2 in {"代名詞", "数詞", "非自立"}:
+        return False
+    if len(surface) == 1 and not re.search(r"[一-龯]", surface):
+        return False
+    if surface in WEAK_FALLBACK_SURFACES and pos1 not in {"動詞", "形容詞"}:
+        return False
+    if re.match(r"^[一-龯々]+(?:には|では|から|まで|より|[がをにではもへとのとやか])[ぁ-んー]+$", surface):
+        return False
+    if re.fullmatch(r"[ぁ-んー]{1,3}", surface) and pos1 not in {"動詞", "形容詞", "副詞"}:
+        return False
+    if re.fullmatch(r"[ぁ-んー]+", surface) and pos1 == "名詞" and surface == lemma:
+        return False
+    if len(surface) == 1 and pos1 == "動詞" and lemma and lemma != surface:
+        return False
+    if surface.endswith(("て", "で")) and len(surface) <= 2 and pos1 == "動詞":
+        return False
+    if surface in {"でき", "し", "なり", "なっ", "いっ", "いき", "き", "で"} and lemma and lemma != surface:
+        return False
+    if reading and surface == reading and re.fullmatch(r"[ぁ-んー]{1,2}", surface):
+        return False
+    return True
+
+
+def trim_fallback_popup_surface(surface: str) -> str:
+    value = (surface or "").strip()
+    if not value:
+        return ""
+    patterns = [
+        r"(かもしれ(?:ない|ません))$",
+        r"(ことに(?:する|した|して|します|しました|したい|しよう))$",
+        r"(ことに(?:なる|なった|なって|なります|なりました))$",
+        r"(ように(?:する|した|して|します|しました|したい|なる|なった|なって|なります|なりました))$",
+        r"(そう(?:だ|です))$",
+        r"(ときに|とき)$",
+        r"(ことが|ことを|ことは)$",
+        r"(のを|ので|のに)$",
+        r"(にしています|にしている|にした|にする)$",
+        r"(になっています|になっている|になった|になります|になる)$",
+    ]
+    changed = True
+    while changed:
+        changed = False
+        for pattern in patterns:
+            trimmed = re.sub(pattern, "", value)
+            if trimmed != value and trimmed.strip():
+                value = trimmed.strip()
+                changed = True
+                break
+    value = strip_trailing_particles(value)
+    return value.strip()
+
+
+def build_regex_fallback_candidates(text: str):
+    items = []
+    seen = set()
+    text = (text or "").strip()
+    if not text:
+        return items
+    for match in re.finditer(r"[一-龯々]+(?:[ぁ-んー]{0,16})|[ァ-ヶー]+(?:・[ァ-ヶー]+)*", text):
+        surface = trim_fallback_popup_surface(match.group(0))
+        if not surface or not contains_japanese(surface):
+            continue
+        if not should_keep_popup_token(surface):
+            continue
+        key = normalize_for_compare(surface)
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(
+            {
+                "surface": surface,
+                "lemma": to_dictionary_form(surface),
+                "reading": get_reading_for_word(surface, fallback=""),
+                "item_type": "",
+                "category_bg": "",
+                "category_en": "",
+                "translation_bg": "",
+                "translation_en": "",
+                "meaning_bg": "",
+                "meaning_en": "",
+                "formation_bg": "",
+                "formation_en": "",
+                "formula_bg": "",
+                "formula_en": "",
+                "usage_bg": "",
+                "usage_en": "",
+            }
+        )
+    return items
 
 
 def ruby_base_text(ruby_tag) -> str:
@@ -1278,46 +2063,26 @@ def ruby_base_text(ruby_tag) -> str:
 def make_dict_span(soup, item, inner_html: str, analysis=None):
     span = soup.new_tag("span")
     span["class"] = "dict-word"
-
-    analysis = analysis or analyze_japanese_word((item.get("word") or "").strip(), reading_hint=(item.get("reading") or "").strip(), lemma_hint=(item.get("word") or "").strip())
-    surface = (analysis.get("surface") or item.get("word") or "").strip()
-    lemma = (analysis.get("lemma") or item.get("word") or surface).strip()
-    reading_surface = normalize_katakana_to_hiragana((analysis.get("reading_surface") or item.get("reading") or "").strip())
-    reading_lemma = normalize_katakana_to_hiragana((analysis.get("reading_lemma") or "").strip())
-    if not reading_lemma:
-        reading_lemma = reading_surface if lemma == surface else get_reading_for_word(lemma, fallback="")
-    form_bg = (analysis.get("form_bg") or "форма в текста").strip()
-    form_en = (analysis.get("form_en") or "form in context").strip()
-    formula_bg = (analysis.get("formula_bg") or "").strip()
-    formula_en = (analysis.get("formula_en") or "").strip()
-    pos1 = (analysis.get("pos1") or "").strip()
-    show_form_details = pos1 in {"動詞", "形容詞"} and surface != lemma
-
-    lemma_meaning_en = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="en")
-    lemma_meaning_bg = translate_word_lang(lemma or surface, reading_lemma or reading_surface, dest="bg")
-    surface_meaning_en = ""
-    surface_meaning_bg = ""
-    if surface != lemma:
-        surface_meaning_en = translate_text(surface, dest="en")
-        surface_meaning_bg = translate_text(surface, dest="bg")
-        if normalize_for_compare(surface_meaning_en) == normalize_for_compare(lemma_meaning_en):
-            surface_meaning_en = ""
-        if normalize_for_compare(surface_meaning_bg) == normalize_for_compare(lemma_meaning_bg):
-            surface_meaning_bg = ""
-
+    item = enrich_popup_item(item)
+    surface = (item.get("surface") or item.get("word") or "").strip()
+    lemma = (item.get("lemma") or item.get("word") or surface).strip()
+    reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
     span["data-surface"] = surface
     span["data-lemma"] = lemma
-    span["data-reading-surface"] = reading_surface
-    span["data-reading-lemma"] = reading_lemma
-    span["data-show-form-details"] = "1" if show_form_details else ""
-    span["data-form-bg"] = form_bg
-    span["data-form-en"] = form_en
-    span["data-formula-bg"] = formula_bg
-    span["data-formula-en"] = formula_en
-    span["data-meaning-surface-bg"] = surface_meaning_bg
-    span["data-meaning-surface-en"] = surface_meaning_en
-    span["data-meaning-lemma-bg"] = lemma_meaning_bg
-    span["data-meaning-lemma-en"] = lemma_meaning_en
+    span["data-reading"] = reading
+    span["data-item-type"] = (item.get("item_type") or "").strip()
+    span["data-category-bg"] = (item.get("category_bg") or "").strip()
+    span["data-category-en"] = (item.get("category_en") or "").strip()
+    span["data-translation-bg"] = (item.get("translation_bg") or "").strip()
+    span["data-translation-en"] = (item.get("translation_en") or "").strip()
+    span["data-meaning-bg"] = (item.get("meaning_bg") or "").strip()
+    span["data-meaning-en"] = (item.get("meaning_en") or "").strip()
+    span["data-formation-bg"] = (item.get("formation_bg") or "").strip()
+    span["data-formation-en"] = (item.get("formation_en") or "").strip()
+    span["data-formula-bg"] = (item.get("formula_bg") or "").strip()
+    span["data-formula-en"] = (item.get("formula_en") or "").strip()
+    span["data-usage-bg"] = (item.get("usage_bg") or "").strip()
+    span["data-usage-en"] = (item.get("usage_en") or "").strip()
 
     if "<" not in inner_html and ">" not in inner_html:
         span.string = inner_html
@@ -1346,11 +2111,10 @@ def extract_vocab_from_blocks(blocks):
             rt_text = rt_text.strip()
             if not rb_text or not re.search(r"[一-龯]", rb_text):
                 continue
-            okurigana = extract_following_okurigana(ruby)
+            raw_suffix = extract_following_okurigana(ruby)
+            okurigana = raw_suffix if should_attach_ruby_suffix(rb_text, raw_suffix) else ""
             word = rb_text
             reading = rt_text
-            if okurigana and okurigana.startswith(PARTICLE_PREFIXES):
-                okurigana = ""
             if okurigana:
                 surface_word = rb_text + okurigana
                 surface_reading = (rt_text + okurigana).strip()
@@ -1407,6 +2171,393 @@ def build_vocab_lookup(vocab_items):
     return vocab_lookup
 
 
+def build_analysis_lookup(items):
+    def richness(item):
+        if not isinstance(item, dict):
+            return -1
+        score = 0
+        item_type = (item.get("item_type") or "").strip().lower()
+        if item_type == "grammar":
+            score += 30
+        if "・" in (item.get("surface") or ""):
+            score += 20
+        if (item.get("formation_en") or "").strip() == "katakana phrase":
+            score += 20
+        for key in (
+            "category_bg",
+            "translation_bg",
+            "translation_en",
+            "formation_bg",
+            "formula_bg",
+            "usage_bg",
+        ):
+            if (item.get(key) or "").strip():
+                score += 1
+        score += min(6, len((item.get("surface") or "").strip()))
+        return score
+    lookup = {}
+    for item in items or []:
+        if should_skip_particle_tailed_compound(item):
+            continue
+        stripped_item = derive_particle_stripped_popup_item(item)
+        if stripped_item is not None:
+            item = stripped_item
+        predicate_tail = extract_predicate_tail_from_compound((item or {}).get("surface") or "")
+        if predicate_tail:
+            derived = dict(item)
+            derived["surface"] = predicate_tail
+            derived["reading"] = predicate_tail if re.fullmatch(r"[ぁ-んァ-ヶー]+", predicate_tail) else get_reading_for_word(predicate_tail, fallback="")
+            derived["lemma"] = to_dictionary_form(predicate_tail)
+            derived["item_type"] = ""
+            item = derived
+        item = enrich_popup_item(item)
+        surface = (item.get("surface") or "").strip()
+        if not surface:
+            continue
+        if not (item.get("translation_bg") or item.get("translation_en") or item.get("meaning_bg") or item.get("meaning_en")):
+            if len(surface) <= 2:
+                continue
+        keys = build_lookup_candidates(surface, reading=item.get("reading", ""), lemma=item.get("lemma", ""))
+        for key in keys:
+            if not key:
+                continue
+            existing = lookup.get(key)
+            if existing is None or richness(item) >= richness(existing):
+                lookup[key] = item
+    return lookup
+
+
+def merge_popup_lookups(*lookups):
+    merged = {}
+
+    def richness(item):
+        if not isinstance(item, dict):
+            return -1
+        score = 0
+        for key in (
+            "translation_bg",
+            "translation_en",
+            "meaning_bg",
+            "meaning_en",
+            "formation_bg",
+            "formation_en",
+            "formula_bg",
+            "formula_en",
+            "usage_bg",
+            "usage_en",
+            "reading",
+        ):
+            if (item.get(key) or "").strip():
+                score += 1
+        score += min(6, len((item.get("surface") or "").strip()))
+        if (item.get("item_type") or "").strip() == "grammar":
+            score += 5
+        return score
+
+    for lookup in lookups:
+        for key, item in (lookup or {}).items():
+            if not key or not isinstance(item, dict):
+                continue
+            existing = merged.get(key)
+            if existing is None or richness(item) >= richness(existing):
+                merged[key] = item
+    return merged
+
+
+def build_baseline_analysis_items_from_blocks(blocks):
+    items = []
+    seen = set()
+    for block in blocks or []:
+        soup = BeautifulSoup(block.get("html", ""), "html.parser")
+        for ruby in soup.find_all("ruby"):
+            base = ruby_base_text(ruby)
+            reading = normalize_katakana_to_hiragana("".join(rt.get_text("", strip=True) for rt in ruby.find_all("rt")).strip())
+            okurigana = extract_following_okurigana(ruby)
+            surface = (base + okurigana).strip() if okurigana else (base or "").strip()
+            if not surface or not contains_japanese(surface):
+                continue
+            key = normalize_for_compare(surface)
+            if key in seen:
+                continue
+            seen.add(key)
+            meaning_bg = translate_text(surface, dest="bg") or ""
+            meaning_en = translate_text(surface, dest="en") or ""
+            items.append(
+                {
+                    "surface": surface,
+                    "lemma": surface,
+                    "reading": reading,
+                    "item_type": "compound",
+                    "category_bg": "елемент",
+                    "category_en": "text item",
+                    "translation_bg": meaning_bg,
+                    "translation_en": meaning_en,
+                    "meaning_bg": meaning_bg,
+                    "meaning_en": meaning_en,
+                    "formation_bg": "",
+                    "formation_en": "",
+                    "formula_bg": "",
+                    "formula_en": "",
+                    "usage_bg": "",
+                    "usage_en": "",
+                }
+            )
+    return items
+
+
+def build_base_token_candidates_from_blocks(blocks):
+    items = []
+    seen = set()
+    for block in blocks or []:
+        block_items = []
+        for token in tokenize_block_text(block.get("text") or ""):
+            surface = (token.get("surface") or "").strip()
+            if not surface or not contains_japanese(surface):
+                continue
+            pos1 = (token.get("pos1") or "").strip()
+            pos2 = (token.get("pos2") or "").strip()
+            lemma = (token.get("lemma") or surface).strip()
+            reading = normalize_katakana_to_hiragana((token.get("reading") or "").strip())
+            if not should_keep_popup_token(surface, pos1=pos1, pos2=pos2, lemma=lemma, reading=reading):
+                continue
+            key = (
+                normalize_for_compare(surface),
+                normalize_for_compare(lemma),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            block_items.append(
+                {
+                    "surface": surface,
+                    "lemma": lemma,
+                    "reading": reading,
+                    "item_type": "",
+                    "category_bg": "",
+                    "category_en": "",
+                    "translation_bg": "",
+                    "translation_en": "",
+                    "meaning_bg": "",
+                    "meaning_en": "",
+                    "formation_bg": "",
+                    "formation_en": "",
+                    "formula_bg": "",
+                    "formula_en": "",
+                    "usage_bg": "",
+                    "usage_en": "",
+                }
+            )
+        if not block_items:
+            for item in build_regex_fallback_candidates(block.get("text") or ""):
+                key = (
+                    normalize_for_compare(item.get("surface") or ""),
+                    normalize_for_compare(item.get("lemma") or item.get("surface") or ""),
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                block_items.append(item)
+        items.extend(block_items)
+    return items
+
+
+LOCAL_GRAMMAR_PATTERNS = [
+    ("kamoshirenai", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}かもしれ(?:ない|ません))")),
+    ("koto_ni_suru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}ことに(?:する|した|して|します|しました|したい|しよう))")),
+    ("koto_ni_naru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}ことに(?:なる|なった|なって|なります|なりました))")),
+    ("you_ni_suru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}ように(?:する|した|して|します|しました|したい))")),
+    ("you_ni_naru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}ように(?:なる|なった|なって|なります|なりました))")),
+    ("souda", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}そう(?:だ|です))")),
+    ("nikui", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}にくい(?:です|くて|かった)?)")),
+    ("yasui", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}やすい(?:です|くて|かった)?)")),
+]
+
+
+GRAMMAR_SENTENCE_FALLBACK_PATTERNS = [
+    ("kamoshirenai", re.compile(r"かもしれ(?:ない|ません)")),
+    ("koto_ni_suru", re.compile(r"ことに(?:する|した|して|します|しました|しよう|したい)")),
+    ("koto_ni_naru", re.compile(r"ことに(?:なる|なった|なって|なります|なりました)")),
+    ("koto_ga_aru", re.compile(r"ことがある")),
+    ("koto_ga_dekiru", re.compile(r"ことができる")),
+    ("koto_nominalizer", re.compile(r"こと")),
+    ("you_ni_suru", re.compile(r"ように(?:する|した|して|します|しました|したい)")),
+    ("you_ni_naru", re.compile(r"ように(?:なる|なった|なって|なります|なりました)")),
+    ("you_ni", re.compile(r"ように")),
+    ("souda", re.compile(r"そう(?:だ|です)")),
+    ("nikui", re.compile(r"にくい")),
+    ("yasui", re.compile(r"やすい")),
+    ("te_iru", re.compile(r"て(?:い|お)る|で(?:い|お)る|ています|ていた|ている|でいます|でいた|でいる")),
+    ("te_kara", re.compile(r"てから|でから")),
+    ("te_miru", re.compile(r"てみる|でみる")),
+    ("te_shimau", re.compile(r"てしま(?:う|った|います|いました)|でしま(?:う|った|います|いました)")),
+    ("te_oku", re.compile(r"てお(?:く|き|いた)|でお(?:く|き|いた)")),
+    ("temo", re.compile(r"ても|でも")),
+    ("temo_ii", re.compile(r"てもいい|でもいい")),
+    ("te_ii", re.compile(r"ていい|でいい")),
+    ("naide", re.compile(r"ないで")),
+    ("nakute", re.compile(r"なくて")),
+    ("zu", re.compile(r"ずに|ず")),
+    ("node", re.compile(r"ので")),
+    ("kara_reason", re.compile(r"から")),
+    ("noni", re.compile(r"のに")),
+    ("to_shite", re.compile(r"として")),
+    ("ni_tsuite", re.compile(r"について")),
+    ("ni_taishite", re.compile(r"に対して")),
+    ("ni_yoru_to", re.compile(r"によると")),
+    ("ni_yotte", re.compile(r"によって")),
+    ("ni_yori", re.compile(r"により")),
+    ("ni_oite", re.compile(r"において")),
+    ("ni_mukete", re.compile(r"に向けて")),
+    ("ni_awasete", re.compile(r"に合わせて")),
+    ("to_tomo_ni", re.compile(r"とともに")),
+    ("to_naru", re.compile(r"となる")),
+    ("ni_naru", re.compile(r"になる")),
+    ("towa_kagiranai", re.compile(r"とは限らない")),
+    ("wake_dewa_nai", re.compile(r"わけではない")),
+    ("youda_mitaida", re.compile(r"ようだ|みたいだ")),
+    ("beki", re.compile(r"べき")),
+    ("hazu", re.compile(r"はず")),
+    ("rashii", re.compile(r"らしい")),
+    ("ppoi", re.compile(r"っぽい")),
+    ("tari_tari", re.compile(r"たり.*たり")),
+    ("dake", re.compile(r"だけ")),
+    ("bakari", re.compile(r"ばかり")),
+    ("shika_nai", re.compile(r"しか.*ない")),
+    ("mada", re.compile(r"まだ")),
+    ("mou", re.compile(r"もう")),
+    ("mata", re.compile(r"また")),
+]
+
+
+def detect_grammar_in_sentence_fallback(sentence: str):
+    found = set()
+    text = (sentence or "").strip()
+    if not text:
+        return found
+    for rule_id, pattern in GRAMMAR_SENTENCE_FALLBACK_PATTERNS:
+        if pattern.search(text):
+            found.add(rule_id)
+    return found
+
+
+def build_local_analysis_items_from_blocks(blocks):
+    items = []
+    seen = set()
+    tagger = get_mecab_tagger()
+
+    def add_item(item):
+        surface = (item.get("surface") or "").strip()
+        if not surface:
+            return
+        key = (
+            normalize_gemini_match_key(surface),
+            normalize_gemini_match_key(item.get("lemma") or surface),
+            normalize_gemini_match_key(item.get("item_type") or ""),
+        )
+        if key in seen:
+            return
+        seen.add(key)
+        items.append(item)
+
+    for block in blocks or []:
+        text = (block.get("text") or "").strip()
+        if not text:
+            continue
+
+        for match in re.finditer(r"[ァ-ヶー]+(?:・[ァ-ヶー]+)+", text):
+            surface = match.group(0).strip()
+            if not surface:
+                continue
+            meaning_bg = translate_text(surface, dest="bg") or ""
+            meaning_en = translate_text(surface, dest="en") or ""
+            add_item(
+                {
+                    "surface": surface,
+                    "lemma": surface,
+                    "reading": normalize_katakana_to_hiragana(surface),
+                    "item_type": "compound",
+                    "category_bg": "съчетание",
+                    "category_en": "compound",
+                    "translation_bg": meaning_bg,
+                    "translation_en": meaning_en,
+                    "meaning_bg": meaning_bg,
+                    "meaning_en": meaning_en,
+                    "formation_bg": "катакана фраза",
+                    "formation_en": "katakana phrase",
+                    "formula_bg": surface,
+                    "formula_en": surface,
+                    "usage_bg": "",
+                    "usage_en": "",
+                }
+            )
+
+        for pattern_id, pattern in LOCAL_GRAMMAR_PATTERNS:
+            rule = GRAMMAR_RULES_BY_ID.get(pattern_id)
+            if rule is None:
+                continue
+            for match in pattern.finditer(text):
+                surface = match.group(0).strip()
+                if not contains_japanese(surface):
+                    continue
+                add_item(
+                    {
+                        "surface": surface,
+                        "lemma": rule["label"],
+                        "reading": get_reading_for_word(surface, fallback=""),
+                        "item_type": "grammar",
+                        "category_bg": "граматична конструкция",
+                        "category_en": "grammar pattern",
+                        "translation_bg": rule["explanation_bg"],
+                        "translation_en": rule.get("explanation_en") or translate_text(rule["explanation_bg"], dest="en") or "",
+                        "meaning_bg": rule["explanation_bg"],
+                        "meaning_en": rule.get("explanation_en") or "",
+                        "formation_bg": "граматична конструкция",
+                        "formation_en": "grammar pattern",
+                        "formula_bg": rule["label"],
+                        "formula_en": rule["label"],
+                        "usage_bg": rule["explanation_bg"],
+                        "usage_en": rule.get("explanation_en") or "",
+                    }
+                )
+
+        if tagger is None:
+            continue
+        try:
+            tokens = list(tagger(text))
+        except Exception:
+            continue
+
+        for phrase in merge_katakana_phrases(tokens):
+            surface = "".join(x[0] for x in phrase).strip()
+            reading = "".join(x[1] for x in phrase).strip()
+            if not surface or not contains_japanese(surface):
+                continue
+            meaning_bg = translate_text(surface, dest="bg") or ""
+            meaning_en = translate_text(surface, dest="en") or ""
+            add_item(
+                {
+                    "surface": surface,
+                    "lemma": surface,
+                    "reading": reading,
+                    "item_type": "compound",
+                    "category_bg": "съчетание",
+                    "category_en": "compound",
+                    "translation_bg": meaning_bg,
+                    "translation_en": meaning_en,
+                    "meaning_bg": meaning_bg,
+                    "meaning_en": meaning_en,
+                    "formation_bg": "катакана фраза",
+                    "formation_en": "katakana phrase",
+                    "formula_bg": surface,
+                    "formula_en": surface,
+                    "usage_bg": "",
+                    "usage_en": "",
+                }
+            )
+
+    return items
+
+
 def fill_block_translations(blocks):
     texts = [(block.get("text") or "").strip() for block in blocks or []]
     bg_map = translate_texts(texts, dest="bg")
@@ -1425,9 +2576,91 @@ def prepare_article_render_data(article):
     article["title_translation_bg"] = translate_text(title, dest="bg") if title else ""
     article["title_translation_en"] = translate_text(title, dest="en") if title else ""
     fill_block_translations(article.get("blocks") or [])
+    analysis_items = list(article.get("analysis_items") or [])
+    for item in build_base_token_candidates_from_blocks(article.get("blocks") or []):
+        analysis_items.append(item)
+    for item in build_baseline_analysis_items_from_blocks(article.get("blocks") or []):
+        analysis_items.append(item)
+    for item in build_local_analysis_items_from_blocks(article.get("blocks") or []):
+        analysis_items.append(item)
+    if GEMINI_API_KEY:
+        article_id = extract_ne_id(article.get("link") or "") or hashlib.sha1((article.get("title") or "").encode("utf-8")).hexdigest()[:10]
+        for block_id, block in enumerate((article.get("blocks") or []), start=1):
+            block_text = (block.get("text") or "").strip()
+            if not block_text:
+                continue
+            suspicious_verbs = []
+            for item in analysis_items:
+                surface = (item.get("surface") or "").strip()
+                if not surface or surface not in block_text:
+                    continue
+                if should_request_verb_lemma_correction(item):
+                    suspicious_verbs.append(item)
+            if suspicious_verbs:
+                corrected_map = {}
+                for items_chunk in chunk_list(suspicious_verbs, AI_VERB_CORRECTION_MAX_ITEMS):
+                    try:
+                        chunk_map = analyze_suspicious_verbs_with_groq(article_id, block_id, block_text, items_chunk)
+                    except Exception as e:
+                        print(f"Gemini suspicious verb correction failed for {article_id} block {block_id}: {e}")
+                        chunk_map = {}
+                    if chunk_map:
+                        corrected_map.update(chunk_map)
+                if corrected_map:
+                    for item in analysis_items:
+                        surface = (item.get("surface") or "").strip()
+                        corrected = corrected_map.get(surface)
+                        if not corrected:
+                            continue
+                        if corrected.get("confidence", 0.0) < 0.6:
+                            continue
+                        item["item_type"] = "verb"
+                        item["lemma"] = corrected.get("lemma") or item.get("lemma") or surface
+                        if (corrected.get("reading") or "").strip():
+                            item["reading"] = corrected["reading"].strip()
+                        if (corrected.get("formation_bg") or "").strip():
+                            item["formation_bg"] = corrected["formation_bg"].strip()
+                        if (corrected.get("formation_en") or "").strip():
+                            item["formation_en"] = corrected["formation_en"].strip()
+                        if (corrected.get("formula_bg") or "").strip():
+                            item["formula_bg"] = corrected["formula_bg"].strip()
+                        if (corrected.get("formula_en") or "").strip():
+                            item["formula_en"] = corrected["formula_en"].strip()
+            targets = []
+            for item in analysis_items:
+                surface = (item.get("surface") or "").strip()
+                if not surface or surface not in block_text:
+                    continue
+                if should_request_contextual_popup_translation(item):
+                    targets.append(surface)
+            if not targets:
+                continue
+            try:
+                contextual_map = analyze_contextual_popup_translations_with_groq(article_id, block_id, block_text, targets[:12])
+            except Exception as e:
+                print(f"Gemini contextual popup translation failed for {article_id} block {block_id}: {e}")
+                contextual_map = {}
+            if not contextual_map:
+                continue
+            for item in analysis_items:
+                surface = (item.get("surface") or "").strip()
+                contextual = contextual_map.get(surface)
+                if not contextual:
+                    continue
+                if (contextual.get("translation_bg") or "").strip():
+                    item["translation_bg"] = contextual["translation_bg"].strip()
+                if (contextual.get("translation_en") or "").strip():
+                    item["translation_en"] = contextual["translation_en"].strip()
+                if not (item.get("meaning_bg") or "").strip() and (contextual.get("translation_bg") or "").strip():
+                    item["meaning_bg"] = contextual["translation_bg"].strip()
+                if not (item.get("meaning_en") or "").strip() and (contextual.get("translation_en") or "").strip():
+                    item["meaning_en"] = contextual["translation_en"].strip()
+    article["analysis_items"] = analysis_items
+    analysis_lookup = build_analysis_lookup(analysis_items) if analysis_items else {}
     vocab_lookup = build_vocab_lookup(article.get("vocab") or [])
+    popup_lookup = merge_popup_lookups(vocab_lookup, analysis_lookup)
     for block in article.get("blocks") or []:
-        block["wrapped_html"] = wrap_vocab_words_in_html(block.get("html", ""), vocab_lookup=vocab_lookup)
+        block["wrapped_html"] = wrap_vocab_words_in_html(block.get("html", ""), vocab_lookup=popup_lookup)
     return article
 
 
@@ -1462,24 +2695,125 @@ def extract_json_object(text: str):
     return None
 
 
-def sanitize_gemini_verb_item(item):
+def estimate_gemini_tokens(prompt: str, max_completion_tokens: int) -> int:
+    prompt_tokens = max(1, len(prompt or "") // 4)
+    return prompt_tokens + max(1, int(max_completion_tokens or 0))
+
+
+def gemini_rate_limit_pause(estimated_tokens: int):
+    while True:
+        with _GEMINI_RATE_LOCK:
+            now = time.time()
+            while _GEMINI_REQUEST_TIMES and now - _GEMINI_REQUEST_TIMES[0] >= 60:
+                _GEMINI_REQUEST_TIMES.popleft()
+            while _GEMINI_TOKEN_USAGE and now - _GEMINI_TOKEN_USAGE[0][0] >= 60:
+                _GEMINI_TOKEN_USAGE.popleft()
+
+            used_tokens = sum(tokens for _, tokens in _GEMINI_TOKEN_USAGE)
+            request_wait = 60 - (now - _GEMINI_REQUEST_TIMES[0]) if len(_GEMINI_REQUEST_TIMES) >= GEMINI_REQUESTS_PER_MINUTE else 0.0
+            token_wait = 60 - (now - _GEMINI_TOKEN_USAGE[0][0]) if _GEMINI_TOKEN_USAGE and used_tokens + estimated_tokens > GEMINI_TOKENS_PER_MINUTE else 0.0
+            wait_for = max(request_wait, token_wait, 0.0)
+            if wait_for <= 0:
+                stamp = time.time()
+                _GEMINI_REQUEST_TIMES.append(stamp)
+                _GEMINI_TOKEN_USAGE.append((stamp, estimated_tokens))
+                return
+        time.sleep(min(wait_for, 5.0))
+
+
+def gemini_chat_completion(prompt: str, max_completion_tokens: int = AI_ARTICLE_MAX_COMPLETION_TOKENS) -> str:
+    if not GEMINI_API_KEY:
+        raise RuntimeError("Missing GEMINI_API_KEY")
+    last_error = None
+    estimated_tokens = estimate_gemini_tokens(prompt, max_completion_tokens)
+    for attempt in range(6):
+        response = None
+        try:
+            gemini_rate_limit_pause(estimated_tokens)
+            response = get_http_session().post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+                params={"key": GEMINI_API_KEY},
+                headers={"Content-Type": "application/json"},
+                json={
+                    "system_instruction": {
+                        "parts": [{"text": "Return only the requested content. Prefer strict JSON when asked."}]
+                    },
+                    "contents": [
+                        {
+                            "role": "user",
+                            "parts": [{"text": prompt}],
+                        }
+                    ],
+                    "generationConfig": {
+                        "temperature": 0.1,
+                        "maxOutputTokens": max_completion_tokens,
+                    },
+                },
+                timeout=180,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            candidates = payload.get("candidates") or []
+            if not candidates:
+                return ""
+            parts = ((candidates[0].get("content") or {}).get("parts") or [])
+            return "".join((part.get("text") or "") for part in parts).strip()
+        except Exception as e:
+            last_error = e
+            status = getattr(response, "status_code", None)
+            if status == 429 and attempt < 5:
+                time.sleep(12 * (attempt + 1))
+                continue
+            break
+    raise last_error
+
+
+def sanitize_gemini_analysis_item(item):
     if not isinstance(item, dict):
         return None
     surface = (item.get("surface") or "").strip()
-    if not surface:
+    if not surface or not contains_japanese(surface):
         return None
+    item_type = (item.get("item_type") or "").strip().lower()
+    if item_type == "particle":
+        item_type = "grammar"
+    if item_type not in {"verb", "noun", "adjective", "compound", "grammar"}:
+        return None
+    lemma = (item.get("lemma") or item.get("dictionary_form") or "").strip() or surface
+    reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
+    translation_bg = (item.get("translation_bg") or item.get("meaning_bg") or "").strip()
+    translation_en = (item.get("translation_en") or item.get("meaning_en") or "").strip()
+    category_bg_map = {
+        "verb": "глагол",
+        "noun": "съществително",
+        "adjective": "прилагателно",
+        "compound": "съчетание",
+        "grammar": "граматична конструкция",
+    }
+    category_en_map = {
+        "verb": "verb",
+        "noun": "noun",
+        "adjective": "adjective",
+        "compound": "compound",
+        "grammar": "grammar pattern",
+    }
     return {
         "surface": surface,
-        "lemma": (item.get("lemma") or "").strip(),
-        "reading": normalize_katakana_to_hiragana((item.get("reading") or "").strip()),
-        "translation_bg": (item.get("translation_bg") or "").strip(),
-        "translation_en": (item.get("translation_en") or "").strip(),
-        "form_type_bg": (item.get("form_type_bg") or "").strip(),
-        "form_type_en": (item.get("form_type_en") or "").strip(),
+        "lemma": lemma,
+        "reading": reading,
+        "item_type": item_type,
+        "category_bg": (item.get("category_bg") or "").strip() or category_bg_map[item_type],
+        "category_en": (item.get("category_en") or "").strip() or category_en_map[item_type],
+        "translation_bg": translation_bg,
+        "translation_en": translation_en,
+        "meaning_bg": (item.get("meaning_bg") or translation_bg).strip(),
+        "meaning_en": (item.get("meaning_en") or translation_en).strip(),
         "formation_bg": (item.get("formation_bg") or "").strip(),
         "formation_en": (item.get("formation_en") or "").strip(),
         "formula_bg": (item.get("formula_bg") or "").strip(),
         "formula_en": (item.get("formula_en") or "").strip(),
+        "usage_bg": (item.get("usage_bg") or "").strip(),
+        "usage_en": (item.get("usage_en") or "").strip(),
     }
 
 
@@ -1498,27 +2832,233 @@ def sanitize_gemini_grammar_item(item):
     }
 
 
+def sanitize_external_grammar_hit(item):
+    if not isinstance(item, dict):
+        return None
+    label = (item.get("label") or item.get("pattern") or "").strip()
+    explanation_bg = (item.get("explanation_bg") or "").strip()
+    explanation_en = (item.get("explanation_en") or "").strip()
+    if not label or not explanation_bg:
+        return None
+    return {
+        "label": label,
+        "explanation_bg": explanation_bg,
+        "explanation_en": explanation_en or translate_text(explanation_bg, dest="en") or explanation_bg,
+    }
+
+
+NOISY_EXTERNAL_GRAMMAR_LABELS = {
+    "が", "を", "に", "へ", "で", "と", "は", "も", "の", "や", "よ", "ね", "か", "な", "し", "さ",
+    "でも", "から", "まで", "より", "こと", "など", "です", "だ・です", "だろう", "でしょう",
+    "たい", "ば", "たら", "ても", "って", "なる", "出す", "方", "頃", "中", "間", "一番",
+}
+
+GRAMMAR_LABEL_BLACKLIST = {
+    "ごろ",
+    "頃",
+    "今までで",
+    "咲く",
+    "急に",
+    "きっと",
+    "どんな",
+    "どうして",
+    "どうやって",
+    "いつも",
+    "まだ",
+    "もう",
+    "しかし",
+    "とても",
+    "さっき",
+    "ぜひ",
+    "あまり",
+    "あまりにも",
+    "一緒に",
+    "後で",
+}
+
+GRAMMAR_LABEL_WHITELIST = {
+    "〜ことにする",
+    "〜ことになる",
+    "ことにする",
+    "ことにした",
+    "ことになる",
+    "〜ようにする",
+    "〜ようになる",
+    "ようにする",
+    "ようになる",
+    "〜かもしれない",
+    "かもしれない",
+    "〜そうだ",
+    "そうだ",
+    "〜みたいだ",
+    "みたいだ",
+    "〜のに",
+    "のに",
+    "〜のは〜だ",
+    "のは〜だ",
+    "〜という",
+    "という",
+    "〜として",
+    "として",
+    "〜ている",
+    "ている",
+    "〜ていた",
+    "ていた",
+    "〜て / で",
+    "て / で",
+    "〜てしまう / ちゃう",
+    "〜ておく",
+    "ておく",
+    "〜てみる",
+    "てみる",
+    "〜たい",
+    "〜ばよかった",
+    "ばよかった",
+    "〜にくい",
+    "にくい",
+    "〜やすい",
+    "やすい",
+    "〜予定だ",
+    "予定だ",
+    "〜ほうがいい",
+    "ほうがいい",
+    "〜なくてはいけない",
+    "なくてはいけない",
+    "〜なくてはならない",
+    "なくてはならない",
+    "〜なければいけない",
+    "なければいけない",
+    "〜なければならない",
+    "なければならない",
+    "〜ないでください",
+    "ないでください",
+    "〜てもいいです",
+    "てもいいです",
+    "〜ば",
+    "〜たら",
+    "〜たり〜たり",
+    "たり〜たり",
+    "〜てから",
+    "てから",
+    "〜ところ",
+    "ところ",
+    "〜たばかり",
+    "たばかり",
+    "〜はずだ",
+    "はずだ",
+    "〜はずがない",
+    "はずがない",
+    "〜と思う",
+    "と思う",
+    "〜ようだ",
+    "ようだ",
+}
+
+
+def should_keep_external_grammar_label(label: str) -> bool:
+    label = (label or "").strip()
+    if not label:
+        return False
+    normalized = normalize_for_compare(label)
+    if not normalized:
+        return False
+    if label in NOISY_EXTERNAL_GRAMMAR_LABELS or normalized in {normalize_for_compare(v) for v in NOISY_EXTERNAL_GRAMMAR_LABELS}:
+        return False
+    if label in GRAMMAR_LABEL_BLACKLIST or normalized in {normalize_for_compare(v) for v in GRAMMAR_LABEL_BLACKLIST}:
+        return False
+    if normalized in {normalize_for_compare(v) for v in GRAMMAR_LABEL_WHITELIST}:
+        return True
+    if "〜" in label or "～" in label:
+        return True
+    if "・" in label and any(part.strip() for part in label.split("・") if "〜" in part or "～" in part):
+        return True
+    if re.fullmatch(r"[ぁ-んァ-ヶー]{1,2}", label):
+        return False
+    if re.fullmatch(r"[一-龯ぁ-んァ-ヶー]+", label):
+        lexical_grammar_markers = (
+            "こと", "よう", "そう", "みたい", "らしい", "はず", "つもり", "わけ", "まま",
+            "ばかり", "ところ", "ながら", "かもしれ", "にくい", "やすい", "づらい",
+            "たい", "たがる", "がる", "すぎる", "ができる", "ことがある", "ことができる",
+            "ことになる", "ことにする", "ようになる", "ようにする", "と思う", "という",
+            "と言", "ている", "ていた", "てある", "ておく", "てみる", "てしま", "てくる",
+            "ていく", "てもらう", "てくれる", "てあげる", "てもいい", "てはいけない",
+            "ないで", "なくては", "なければ", "予定", "受身", "意向形",
+        )
+        if not any(marker in label for marker in lexical_grammar_markers):
+            return False
+    if re.fullmatch(r"[一-龯ぁ-んァ-ヶー]+[でにとはをがのへもや]", label) and "〜" not in label and "～" not in label:
+        return False
+    if re.fullmatch(r"[一-龯]{1,4}", label):
+        return False
+    if any(bad in label for bad in {"adjectives", "他動詞", "自動詞", "&"}):
+        return False
+    if not any(marker in label for marker in (
+        "こと", "よう", "そう", "みたい", "らしい", "はず", "つもり", "わけ", "まま",
+        "ばかり", "ところ", "ながら", "ない", "て", "で", "たり", "ば", "たら",
+        "にする", "になる", "として", "という", "予定", "かもしれ", "にくい", "やすい",
+        "づらい", "ても", "ては", "なくては", "なければ", "れる", "られる", "せる", "させる",
+    )):
+        return False
+    short_whitelist = {
+        "〜て", "〜で", "〜と", "〜に", "〜を", "〜が", "〜は", "〜へ", "〜の", "〜から", "〜まで",
+        "〜より", "〜ので", "〜のに", "〜だけ", "〜しか", "〜など", "〜でも", "〜ても", "〜たり",
+        "〜そう", "〜たい", "〜中", "〜後", "〜前",
+    }
+    if normalize_for_compare(label) in {normalize_for_compare(v) for v in short_whitelist}:
+        return True
+    if len(label) <= 3:
+        return False
+    return True
+
+
 def normalize_gemini_match_key(value: str) -> str:
     return re.sub(r"\s+", "", (value or "").strip()).lower()
 
 
-def find_best_gemini_verb_item(gemini_verbs, surface: str = "", reading: str = "", lemma: str = ""):
-    if not gemini_verbs:
+def chunk_sentences_for_gemini(sentences, max_chars: int = 220, max_sentences: int = 2):
+    chunks = []
+    current = []
+    current_len = 0
+    for sentence in sentences or []:
+        s = (sentence or "").strip()
+        if not s:
+            continue
+        projected = current_len + len(s) + (1 if current else 0)
+        if current and (len(current) >= max_sentences or projected > max_chars):
+            chunks.append(current)
+            current = []
+            current_len = 0
+        current.append(s)
+        current_len += len(s) + (1 if current_len else 0)
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def chunk_list(values, size: int):
+    values = list(values or [])
+    if size <= 0:
+        return [values]
+    return [values[i:i + size] for i in range(0, len(values), size)]
+
+
+def find_best_gemini_item(gemini_items, surface: str = "", reading: str = "", lemma: str = ""):
+    if not gemini_items:
         return None
     s = normalize_gemini_match_key(surface)
     r = normalize_gemini_match_key(reading)
     l = normalize_gemini_match_key(lemma)
-    for item in gemini_verbs:
+    for item in gemini_items:
         if normalize_gemini_match_key(item.get("surface")) == s and (not r or normalize_gemini_match_key(item.get("reading")) == r):
             return item
-    for item in gemini_verbs:
+    for item in gemini_items:
         if normalize_gemini_match_key(item.get("surface")) == s:
             return item
-    for item in gemini_verbs:
+    for item in gemini_items:
         if l and normalize_gemini_match_key(item.get("lemma")) == l:
             return item
     loose = []
-    for item in gemini_verbs:
+    for item in gemini_items:
         item_surface = normalize_gemini_match_key(item.get("surface"))
         if item_surface and s and (item_surface in s or s in item_surface):
             loose.append(item)
@@ -1528,134 +3068,391 @@ def find_best_gemini_verb_item(gemini_verbs, surface: str = "", reading: str = "
     return None
 
 
-def attach_gemini_to_wrapped_blocks(article):
-    gemini_verbs = article.get("gemini_verbs") or []
-    if not gemini_verbs:
-        return article
-    for block in article.get("blocks") or []:
-        wrapped_html = block.get("wrapped_html") or block.get("html") or ""
-        if "dict-word" not in wrapped_html:
+def sanitize_contextual_translation_item(item):
+    if not isinstance(item, dict):
+        return None
+    surface = (item.get("surface") or "").strip()
+    if not surface or not contains_japanese(surface):
+        return None
+    bg = (item.get("translation_bg") or item.get("bg") or "").strip()
+    en = (item.get("translation_en") or item.get("en") or "").strip()
+    return {
+        "surface": surface,
+        "translation_bg": bg,
+        "translation_en": en,
+    }
+
+
+def is_suspicious_verb_lemma(surface: str, lemma: str) -> bool:
+    surface = (surface or "").strip()
+    lemma = (lemma or "").strip()
+    if not surface or not lemma:
+        return True
+    if "->" in lemma:
+        return True
+    if lemma in {"す", "る"} and surface not in {"した", "します", "したい", "して", "している", "していた", "していました", "しました"}:
+        return True
+    if re.fullmatch(r"[一-龯々]る", lemma) and surface.endswith(("っている", "っていた", "っていました", "った", "って")):
+        return True
+    if lemma.endswith(("言る", "買る", "使る", "合る", "着くる", "殺する", "話する")):
+        return True
+    if lemma == surface and surface.endswith(("ました", "ています", "でいます", "ている", "でいる", "ていた", "でいた")):
+        return True
+    return False
+
+
+def should_request_verb_lemma_correction(item) -> bool:
+    if not isinstance(item, dict):
+        return False
+    surface = (item.get("surface") or "").strip()
+    lemma = (item.get("lemma") or surface).strip()
+    item_type = (item.get("item_type") or "").strip().lower()
+    formation_bg = (item.get("formation_bg") or "").strip()
+    if not surface or not contains_japanese(surface):
+        return False
+    verb_like_surface = surface.endswith(("ました", "します", "した", "して", "ている", "でいる", "ていた", "でいた", "ています", "でいます", "ない", "たい"))
+    if item_type == "verb" and is_suspicious_verb_lemma(surface, lemma):
+        return True
+    if item_type == "verb" and surface != lemma:
+        return True
+    if item_type == "verb" and formation_bg in {"учтива форма", "учтива минала форма", "минала форма", "форма на 〜ている", "учтива форма на 〜ている", "учтива минала форма на 〜ている"}:
+        return True
+    if item_type == "compound" and verb_like_surface:
+        return True
+    if surface in {"りました", "っています", "した"}:
+        return True
+    return False
+
+
+def sanitize_verb_correction_item(item):
+    if not isinstance(item, dict):
+        return None
+    surface = (item.get("surface") or "").strip()
+    lemma = (item.get("lemma") or "").strip()
+    if not surface or not lemma or not contains_japanese(surface) or not contains_japanese(lemma):
+        return None
+    confidence_raw = item.get("confidence")
+    try:
+        confidence = float(confidence_raw)
+    except Exception:
+        confidence = 0.0
+    confidence = max(0.0, min(1.0, confidence))
+    formation_bg = simplify_bg_formation_text((item.get("formation_bg") or "").strip())
+    formation_en = simplify_en_formation_text((item.get("formation_en") or "").strip())
+    return {
+        "surface": surface,
+        "lemma": lemma,
+        "reading": normalize_katakana_to_hiragana((item.get("reading") or "").strip()),
+        "formation_bg": formation_bg,
+        "formation_en": formation_en,
+        "formula_bg": (item.get("formula_bg") or "").strip(),
+        "formula_en": (item.get("formula_en") or "").strip(),
+        "confidence": confidence,
+        "reason": (item.get("reason") or "").strip(),
+    }
+
+
+def simplify_bg_formation_text(text: str) -> str:
+    value = (text or "").strip()
+    if not value:
+        return ""
+    replacements = [
+        ("辞書形", "речниковата форма"),
+        ("連用形", "основата за учтива форма"),
+        ("過去・完了の助動詞", "помощната минала/завършена форма"),
+        ("過去・丁寧形", "миналата учтива форма"),
+        ("丁寧過去", "учтивата минала форма"),
+        ("丁寧語", "учтивата форма"),
+        ("過去形", "миналата форма"),
+        ("促音便", "промяна на основата пред って"),
+        ("補助動詞", "помощния глагол"),
+        ("助動詞", "помощната форма"),
+        ("て-форма", "формата て"),
+        ("te-form", "формата て"),
+        ("-te form", "формата て"),
+        ("辞書形「", "От "),
+        ("辞書形『", "От "),
+    ]
+    for src, dst in replacements:
+        value = value.replace(src, dst)
+    value = value.replace("」", "").replace("』", "")
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def simplify_en_formation_text(text: str) -> str:
+    value = (text or "").strip()
+    if not value:
+        return ""
+    replacements = [
+        ("dictionary form", "dictionary form"),
+        ("ren'yo-kei", "polite stem"),
+        ("continuative form", "polite stem"),
+        ("sokuonbin", "stem change before って"),
+        ("te-form", "て form"),
+        ("-te form", "て form"),
+        ("polite form", "polite form"),
+        ("past form", "past form"),
+        ("auxiliary verb", "helper verb"),
+    ]
+    for src, dst in replacements:
+        value = value.replace(src, dst)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def analyze_suspicious_verbs_with_groq(article_id: str, block_id: int, text: str, items):
+    if not GEMINI_API_KEY or not text:
+        return {}
+    unique_items = []
+    seen = set()
+    for item in items or []:
+        surface = (item.get("surface") or "").strip()
+        if not surface or surface in seen:
             continue
-        soup = BeautifulSoup(wrapped_html, "html.parser")
-        updated = False
-        for span in soup.select(".dict-word"):
-            surface = (span.get("data-surface") or "").strip()
-            reading = normalize_katakana_to_hiragana((span.get("data-reading-surface") or "").strip())
-            lemma = (span.get("data-lemma") or "").strip()
-            match = find_best_gemini_verb_item(gemini_verbs, surface=surface, reading=reading, lemma=lemma)
-            if not match:
-                continue
-            span["data-gemini-translation-bg"] = match.get("translation_bg", "")
-            span["data-gemini-translation-en"] = match.get("translation_en", "")
-            span["data-gemini-form-type-bg"] = match.get("form_type_bg", "")
-            span["data-gemini-form-type-en"] = match.get("form_type_en", "")
-            span["data-gemini-formation-bg"] = match.get("formation_bg", "")
-            span["data-gemini-formation-en"] = match.get("formation_en", "")
-            span["data-gemini-formula-bg"] = match.get("formula_bg", "")
-            span["data-gemini-formula-en"] = match.get("formula_en", "")
-            updated = True
-        if updated:
-            block["wrapped_html"] = "".join(str(x) for x in soup.contents)
-    return article
-
-
-def analyze_articles_with_gemini(articles):
-    for article in articles or []:
-        article["gemini_verbs"] = []
-    if not articles or not GEMINI_API_KEY or genai is None:
-        return articles
-
-    payload_articles = []
-    articles_by_id = {}
-    for index, article in enumerate(articles, start=1):
-        text = article_text_for_gemini(article)
-        if not text:
-            continue
-        article_id = f"article_{index}"
-        articles_by_id[article_id] = article
-        payload_articles.append(
+        seen.add(surface)
+        unique_items.append(item)
+    if not unique_items:
+        return {}
+    compact_items = []
+    for item in unique_items[:AI_VERB_CORRECTION_MAX_ITEMS]:
+        compact_items.append(
             {
-                "article_id": article_id,
-                "title": (article.get("title") or "").strip(),
-                "text": text,
-                "sentences": split_sentences_for_gemini(text),
+                "surface": (item.get("surface") or "").strip(),
+                "current_lemma": (item.get("lemma") or item.get("surface") or "").strip(),
+                "reading": normalize_katakana_to_hiragana((item.get("reading") or "").strip()),
+                "item_type": (item.get("item_type") or "").strip(),
             }
         )
-    if not payload_articles:
-        return articles
-
-    cache_payload = {"model": GEMINI_MODEL, "articles": payload_articles}
+    cache_payload = {
+        "model": GEMINI_MODEL,
+        "task": "verb_lemma_correction_v3",
+        "article_id": article_id,
+        "block_id": block_id,
+        "text": text,
+        "items": compact_items,
+    }
     cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     cached = _GEMINI_CACHE.get(cache_key)
-    if isinstance(cached, dict):
-        for article_id, verb_items in cached.items():
-            article = articles_by_id.get(article_id)
-            if article:
-                article["gemini_verbs"] = [item for item in (sanitize_gemini_verb_item(v) for v in verb_items) if item]
-        for article in articles or []:
-            attach_gemini_to_wrapped_blocks(article)
-        return articles
+    if isinstance(cached, list):
+        cleaned = [v for v in (sanitize_verb_correction_item(x) for x in cached) if v]
+        return {v["surface"]: v for v in cleaned}
 
     prompt = (
-        "Analyze the Japanese news articles below and return strict JSON only.\n"
-        "Goal: for each article, extract the verb forms that actually appear in the text.\n"
-        "Deduplicate exact same encountered surface form within the same article.\n"
-        "If the predicate is a compound ending in a verb, include the full encountered verbal predicate when appropriate, "
-        "for example 多くなりました should count as one encountered verbal form.\n"
-        "Return this JSON shape exactly:\n"
-        "{\"articles\":[{\"article_id\":\"article_1\",\"verbs\":[{\"surface\":\"...\",\"reading\":\"...\","
-        "\"translation_bg\":\"...\",\"translation_en\":\"...\",\"form_type_bg\":\"...\",\"form_type_en\":\"...\","
-        "\"formation_bg\":\"...\",\"formation_en\":\"...\",\"formula_bg\":\"...\",\"formula_en\":\"...\"}]}]}\n"
-        "Field rules:\n"
-        "- surface: exact form as seen in the text\n"
-        "- reading: hiragana reading of that exact form\n"
-        "- translation_bg / translation_en: short translation of the encountered form in context\n"
-        "- form_type_bg / form_type_en: short name of the form type, tense, or construction\n"
-        "- formation_bg / formation_en: short explanation of how the form is built starting from dictionary form\n"
-        "- formula_bg / formula_en: compact formula of the form\n"
-        "Do not include nouns, particles, or plain adjectives unless they are part of a compound verbal predicate.\n"
-        f"Articles:\n{json.dumps(payload_articles, ensure_ascii=False, indent=2)}"
+        "You are correcting suspicious Japanese verb analyses in a short NHK Easy paragraph.\n"
+        "Return strict JSON only in this shape:\n"
+        "{\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\",\"confidence\":0.0,"
+        "\"formation_bg\":\"...\",\"formation_en\":\"...\",\"formula_bg\":\"...\",\"formula_en\":\"...\",\"reason\":\"...\"}]}\n"
+        "Rules:\n"
+        "- Only correct actual verb forms that appear exactly in the paragraph.\n"
+        "- lemma must be the dictionary form of the exact Japanese verb.\n"
+        "- confidence must be between 0 and 1.\n"
+        "- formation_bg and formation_en must explain step by step how the dictionary form became the surface form.\n"
+        "- Do not use Japanese linguistic terminology like 辞書形, 連用形, 促音便, 丁寧形, 助動詞, 補助動詞.\n"
+        "- Use Japanese script endings and particles such as う, て, ます, ました, いる, ない directly. Do not use romaji like te-form, masu-stem, plain form.\n"
+        "- Use plain learner-friendly Bulgarian and English instead.\n"
+        "- formula_bg and formula_en should stay compact.\n"
+        "- If an item is not really a verb, keep the current lemma and give low confidence.\n"
+        f"Paragraph:\n{text}\n"
+        f"Suspicious items:\n{json.dumps(compact_items, ensure_ascii=False)}"
     )
-
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config={"response_mime_type": "application/json"},
+    if len(prompt) > AI_VERB_CORRECTION_MAX_PROMPT_CHARS:
+        shortened_items = compact_items[:max(1, min(5, len(compact_items)))]
+        prompt = (
+            "You are correcting suspicious Japanese verb analyses in a short NHK Easy paragraph.\n"
+            "Return strict JSON only.\n"
+            "{\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\",\"confidence\":0.0,"
+            "\"formation_bg\":\"...\",\"formation_en\":\"...\",\"formula_bg\":\"...\",\"formula_en\":\"...\",\"reason\":\"...\"}]}\n"
+            "Correct only exact verb forms.\n"
+            f"Paragraph:\n{text[:3000]}\n"
+            f"Suspicious items:\n{json.dumps(shortened_items, ensure_ascii=False)}"
         )
-        parsed = extract_json_object(getattr(response, "text", ""))
-    except Exception as e:
-        print(f"Gemini verb analysis failed: {e}")
-        return articles
-
+    parsed = extract_json_object(
+        gemini_chat_completion(
+            prompt,
+            max_completion_tokens=min(AI_VERB_CORRECTION_MAX_COMPLETION_TOKENS, AI_GRAMMAR_MAX_COMPLETION_TOKENS + 200),
+        )
+    )
     if not isinstance(parsed, dict):
-        print("Gemini verb analysis returned invalid JSON.")
-        return articles
+        return {}
+    cleaned = [v for v in (sanitize_verb_correction_item(x) for x in (parsed.get("items") or [])) if v]
+    cache_gemini_result(cache_key, cleaned)
+    return {v["surface"]: v for v in cleaned}
 
-    cached_result = {}
-    for article_obj in parsed.get("articles") or []:
-        if not isinstance(article_obj, dict):
-            continue
-        article_id = (article_obj.get("article_id") or "").strip()
-        if not article_id:
-            continue
-        verbs = [item for item in (sanitize_gemini_verb_item(v) for v in (article_obj.get("verbs") or [])) if item]
-        cached_result[article_id] = verbs
-        article = articles_by_id.get(article_id)
-        if article:
-            article["gemini_verbs"] = verbs
 
-    if cached_result:
-        cache_gemini_result(cache_key, cached_result)
+def should_request_contextual_popup_translation(item) -> bool:
+    if not isinstance(item, dict):
+        return False
+    surface = (item.get("surface") or "").strip()
+    item_type = (item.get("item_type") or "").strip().lower()
+    translation_bg = (item.get("translation_bg") or "").strip()
+    if not surface or not contains_japanese(surface):
+        return False
+    if not translation_bg:
+        return True
+    if len(surface) == 1 and re.search(r"[一-龯々]", surface):
+        return True
+    if item_type in {"noun", "compound"} and len(surface) <= 2 and re.search(r"[一-龯々]", surface):
+        return True
+    return False
+
+
+def analyze_contextual_popup_translations_with_groq(article_id: str, block_id: int, text: str, targets):
+    targets = [t for t in unique_keep_order(targets) if t]
+    if not GEMINI_API_KEY or not text or not targets:
+        return {}
+    cache_payload = {
+        "model": GEMINI_MODEL,
+        "task": "contextual_popup_translation_v1",
+        "article_id": article_id,
+        "block_id": block_id,
+        "text": text,
+        "targets": targets,
+    }
+    cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    cached = _GEMINI_CACHE.get(cache_key)
+    if isinstance(cached, list):
+        cleaned = [v for v in (sanitize_contextual_translation_item(x) for x in cached) if v]
+        return {v["surface"]: v for v in cleaned}
+
+    prompt = (
+        "Analyze this Japanese paragraph and provide learner-friendly contextual translations only for the exact target items.\n"
+        "Return strict JSON only in this shape:\n"
+        "{\"items\":[{\"surface\":\"...\",\"translation_bg\":\"...\",\"translation_en\":\"...\"}]}\n"
+        "Rules:\n"
+        "- Translate each target according to how it is used in this paragraph, not by its most generic dictionary sense.\n"
+        "- Use short learner-friendly translations.\n"
+        "- Do not translate the whole sentence.\n"
+        "- Keep each surface exactly as given in the targets list.\n"
+        f"Targets: {json.dumps(targets, ensure_ascii=False)}\n"
+        f"Paragraph:\n{text}"
+    )
+    parsed = extract_json_object(gemini_chat_completion(prompt, max_completion_tokens=min(450, AI_GRAMMAR_MAX_COMPLETION_TOKENS)))
+    if not isinstance(parsed, dict):
+        return {}
+    items = [v for v in (sanitize_contextual_translation_item(x) for x in (parsed.get("items") or [])) if v]
+    cache_gemini_result(cache_key, items)
+    return {v["surface"]: v for v in items}
+
+
+def analyze_article_block_with_groq(article_id: str, block_id: int, title: str, text: str):
+    if not text:
+        return []
+    cache_payload = {
+        "model": GEMINI_MODEL,
+        "task": "article_elements_groq_block_v1",
+        "article_id": article_id,
+        "block_id": block_id,
+        "title": title,
+        "text": text,
+    }
+    cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    cached = _GEMINI_CACHE.get(cache_key)
+    if isinstance(cached, list):
+        return [item for item in (sanitize_gemini_analysis_item(v) for v in cached) if item]
+
+    prompt = (
+        "Analyze this short Japanese NHK Easy paragraph and return strict JSON only.\n"
+        "Be exhaustive rather than selective.\n"
+        "Extract as many learner-relevant language elements as possible that actually appear in the text.\n"
+        "Include nouns, katakana words, adjectives, conjugated verb forms, useful compounds, particles as grammar, auxiliary patterns, and grammar constructions.\n"
+        "Use exact surface spans from the paragraph.\n"
+        "Deduplicate only exact same encountered surface form within this paragraph.\n"
+        "Cover the whole paragraph and do not stop after only a few examples.\n"
+        "Return this JSON shape exactly:\n"
+        "{\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\","
+        "\"item_type\":\"noun|adjective|verb|compound|grammar|particle\",\"translation_bg\":\"...\",\"translation_en\":\"...\","
+        "\"meaning_bg\":\"...\",\"meaning_en\":\"...\",\"formation_bg\":\"...\",\"formation_en\":\"...\","
+        "\"formula_bg\":\"...\",\"formula_en\":\"...\",\"usage_bg\":\"...\",\"usage_en\":\"...\"}]}\n"
+        "Rules:\n"
+        "- surface: exact form as written in the paragraph\n"
+        "- lemma: dictionary/base form or canonical grammar pattern\n"
+        "- reading: hiragana reading of the exact surface whenever possible; if uncertain, still provide the other fields\n"
+        "- Include short grammar elements if they are genuinely useful to explain\n"
+        "- Include katakana loanwords and named concepts if present\n"
+        "- For verbs not in dictionary form, formation_bg and formation_en must be detailed, learner-facing, and step-by-step.\n"
+        "- For verbs, explain exactly how the dictionary form became the surface form in the text.\n"
+        "- Good verb formation example bg: \"От 発表する: махаме する -> получаваме основа 発表し -> добавяме учтивата минала форма ました -> 発表しました.\"\n"
+        "- Good verb formation example en: \"From 発表する: remove する to get the stem 発表し, then add the polite past ending ました to make 発表しました.\"\n"
+        "- For adjectives and verbs, formula_bg/formula_en should stay compact, while formation_bg/formation_en should be the fuller explanation.\n"
+        "- For grammar items, explain meaning, usage, and compact formula\n"
+        "- Do not invent anything not literally present in the paragraph\n"
+        "- Aim for 15 to 50 items when possible\n"
+        "- It is better to return many correct items than only a few polished ones\n"
+        f"Article title: {title}\n"
+        f"Paragraph text:\n{text}"
+    )
+    parsed = extract_json_object(gemini_chat_completion(prompt, max_completion_tokens=AI_ARTICLE_MAX_COMPLETION_TOKENS))
+    if not isinstance(parsed, dict):
+        return []
+    items = [item for item in (sanitize_gemini_analysis_item(v) for v in (parsed.get("items") or [])) if item]
+    cache_gemini_result(cache_key, items)
+    return items
+
+
+def analyze_articles_with_groq(articles):
     for article in articles or []:
-        attach_gemini_to_wrapped_blocks(article)
+        article["analysis_items"] = []
+    if not articles or not GEMINI_API_KEY:
+        return articles
+    for index, article in enumerate((articles or [])[:4], start=1):
+        title = (article.get("title") or "").strip()
+        article_id = f"article_{index}"
+        merged = {}
+        baseline_items = build_baseline_analysis_items_from_blocks(article.get("blocks") or [])
+        for item in baseline_items:
+            key = (
+                normalize_gemini_match_key(item.get("surface")),
+                normalize_gemini_match_key(item.get("lemma")),
+                normalize_gemini_match_key(item.get("item_type")),
+            )
+            merged[key] = item
+        for block_id, block in enumerate((article.get("blocks") or []), start=1):
+            text = (block.get("text") or "").strip()
+            if not text:
+                continue
+            try:
+                items = analyze_article_block_with_groq(article_id, block_id, title, text)
+            except Exception as e:
+                print(f"Gemini article analysis failed for {article_id} block {block_id}: {e}")
+                items = []
+            for item in items:
+                key = (
+                    normalize_gemini_match_key(item.get("surface")),
+                    normalize_gemini_match_key(item.get("lemma")),
+                    normalize_gemini_match_key(item.get("item_type")),
+                )
+                existing = merged.get(key)
+                if existing is None:
+                    merged[key] = item
+                    continue
+                for field in (
+                    "reading",
+                    "translation_bg",
+                    "translation_en",
+                    "meaning_bg",
+                    "meaning_en",
+                    "formation_bg",
+                    "formation_en",
+                    "formula_bg",
+                    "formula_en",
+                    "usage_bg",
+                    "usage_en",
+                    "category_bg",
+                    "category_en",
+                ):
+                    if not existing.get(field) and item.get(field):
+                        existing[field] = item[field]
+        try:
+            article["analysis_items"] = list(merged.values())
+        except Exception:
+            article["analysis_items"] = baseline_items
     return articles
 
 
 def analyze_grammar_points_with_gemini(articles, existing_grammar_points=None):
     existing_grammar_points = existing_grammar_points or []
-    if not articles or not GEMINI_API_KEY or genai is None:
+    if not articles or not GEMINI_API_KEY:
         return []
 
     article_payload = []
@@ -1698,13 +3495,7 @@ def analyze_grammar_points_with_gemini(articles, existing_grammar_points=None):
     )
 
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config={"response_mime_type": "application/json"},
-        )
-        parsed = extract_json_object(getattr(response, "text", ""))
+        parsed = extract_json_object(gemini_chat_completion(prompt, max_completion_tokens=AI_GRAMMAR_MAX_COMPLETION_TOKENS))
     except Exception as e:
         print(f"Gemini grammar analysis failed: {e}")
         return []
@@ -1717,6 +3508,82 @@ def analyze_grammar_points_with_gemini(articles, existing_grammar_points=None):
     if items:
         cache_gemini_result(cache_key, items)
     return items
+
+
+def analyze_external_grammar_patterns_with_groq(articles, grammar_patterns, existing_grammar_points=None):
+    existing_grammar_points = existing_grammar_points or []
+    grammar_patterns = [p for p in (grammar_patterns or []) if (p or "").strip()]
+    if not articles or not GEMINI_API_KEY or not grammar_patterns:
+        return []
+
+    article_payload = []
+    for index, article in enumerate((articles or [])[:4], start=1):
+        text = article_text_for_gemini(article)
+        if not text:
+            continue
+        article_payload.append(
+            {
+                "article_id": f"article_{index}",
+                "title": (article.get("title") or "").strip(),
+                "text": text,
+            }
+        )
+    if not article_payload:
+        return []
+
+    existing_labels = [((g.get("label") or "").strip()) for g in existing_grammar_points if (g.get("label") or "").strip()]
+    found_items = []
+    found_labels = set(normalize_for_compare(v) for v in existing_labels)
+    article_texts = "\n\n".join(
+        f"{article['article_id']}: {article['title']}\n{article['text']}" for article in article_payload
+    )
+
+    for pattern_chunk in chunk_list(grammar_patterns, AI_GRAMMAR_PATTERN_CHUNK_SIZE):
+        cache_payload = {
+            "model": GEMINI_MODEL,
+            "task": "external_grammar_catalog_v1",
+            "patterns": pattern_chunk,
+            "existing": sorted(found_labels),
+            "articles": article_payload,
+        }
+        cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+        cached = _GEMINI_CACHE.get(cache_key)
+        if isinstance(cached, list):
+            chunk_items = [item for item in (sanitize_external_grammar_hit(v) for v in cached) if item]
+        else:
+            prompt = (
+                "Check the Japanese article texts against the supplied grammar catalog chunk.\n"
+                "Use only grammar labels from the catalog chunk.\n"
+                "Return only labels that are actually used in the texts.\n"
+                "Do not include labels already covered by this existing list:\n"
+                f"{json.dumps(sorted(found_labels), ensure_ascii=False)}\n"
+                "For each returned structure, explain in Bulgarian and English what it means and how it is used.\n"
+                "Keep each explanation short.\n"
+                "Return strict JSON only in this exact shape:\n"
+                "{\"items\":[{\"label\":\"...\",\"explanation_bg\":\"...\",\"explanation_en\":\"...\"}]}\n"
+                "Rules:\n"
+                "- label must be exactly one item from the catalog chunk\n"
+                "- only include a label if the structure appears in the texts\n"
+                "- include only learner-facing grammar structures, not single particles, not plain adverbs, not time words, not ordinary verbs, not plain nouns\n"
+                "- reject labels like が, を, に, で, と, は, の, より, など, です, こと, 頃, 方, 出す\n"
+                "- explanation_bg and explanation_en must mention usage and meaning\n"
+                f"Catalog chunk:\n{json.dumps(pattern_chunk, ensure_ascii=False)}\n"
+                f"Texts:\n{article_texts}"
+            )
+            parsed = extract_json_object(gemini_chat_completion(prompt, max_completion_tokens=AI_GRAMMAR_MAX_COMPLETION_TOKENS))
+            if not isinstance(parsed, dict):
+                chunk_items = []
+            else:
+                chunk_items = [item for item in (sanitize_external_grammar_hit(v) for v in (parsed.get("items") or [])) if item]
+                cache_gemini_result(cache_key, chunk_items)
+
+        for item in chunk_items:
+            key = normalize_for_compare(item.get("label") or "")
+            if not key or key in found_labels or not should_keep_external_grammar_label(item.get("label") or ""):
+                continue
+            found_labels.add(key)
+            found_items.append(item)
+    return found_items
 
 
 def contains_digit(word: str) -> bool:
@@ -1867,6 +3734,125 @@ def build_grammar_anki_cards(grammar_points, lang="bg"):
         cards.append((label, explanation))
 
     return cards
+
+
+def build_grammar_points_from_analysis(articles):
+    points = []
+    seen = set()
+
+    def add_point(label: str, explanation_bg: str = "", explanation_en: str = ""):
+        label = (label or "").strip()
+        if not label or not should_keep_external_grammar_label(label):
+            return
+        key = normalize_for_compare(label)
+        if key in seen:
+            return
+        seen.add(key)
+        points.append(
+            {
+                "label": label,
+                "explanation_bg": (explanation_bg or "").strip(),
+                "explanation_en": (explanation_en or "").strip(),
+            }
+        )
+
+    for article in articles or []:
+        for block in article.get("blocks") or []:
+            for sentence in split_japanese_sentences(block.get("text", "")):
+                for rule_id in detect_grammar_in_sentence(sentence):
+                    rule = GRAMMAR_RULES_BY_ID.get(rule_id)
+                    if not rule:
+                        continue
+                    add_point(
+                        (rule.get("label") or "").strip(),
+                        (rule.get("explanation_bg") or "").strip(),
+                        (rule.get("explanation_en") or "").strip(),
+                    )
+        for item in article.get("analysis_items") or []:
+            if item.get("item_type") != "grammar":
+                continue
+            label = (item.get("lemma") or item.get("surface") or "").strip()
+            add_point(
+                label,
+                (item.get("usage_bg") or item.get("meaning_bg") or item.get("translation_bg") or "").strip(),
+                (item.get("usage_en") or item.get("meaning_en") or item.get("translation_en") or "").strip(),
+            )
+    external_patterns = load_external_grammar_patterns()
+    external_hits = analyze_external_grammar_patterns_with_groq(articles, external_patterns, existing_grammar_points=points)
+    for item in external_hits:
+        add_point(
+            (item.get("label") or "").strip(),
+            (item.get("explanation_bg") or "").strip(),
+            (item.get("explanation_en") or "").strip(),
+        )
+    for article in articles or []:
+        for item in build_local_analysis_items_from_blocks(article.get("blocks") or []):
+            if item.get("item_type") != "grammar":
+                continue
+            add_point(
+                (item.get("lemma") or item.get("surface") or "").strip(),
+                (item.get("usage_bg") or item.get("meaning_bg") or item.get("translation_bg") or "").strip(),
+                (item.get("usage_en") or item.get("meaning_en") or item.get("translation_en") or "").strip(),
+            )
+    local_points = extract_grammar_points(articles)
+    for item in local_points:
+        add_point(
+            (item.get("label") or "").strip(),
+            (item.get("explanation_bg") or "").strip(),
+            (item.get("explanation_en") or "").strip(),
+        )
+    return points
+
+
+def format_analysis_anki_back(item, lang="bg"):
+    category = (item.get("category_bg") if lang == "bg" else item.get("category_en") or "").strip()
+    translation = (item.get("translation_bg") if lang == "bg" else item.get("translation_en") or "").strip()
+    meaning = (item.get("meaning_bg") if lang == "bg" else item.get("meaning_en") or "").strip()
+    formation = (item.get("formation_bg") if lang == "bg" else item.get("formation_en") or "").strip()
+    formula = (item.get("formula_bg") if lang == "bg" else item.get("formula_en") or "").strip()
+    usage = (item.get("usage_bg") if lang == "bg" else item.get("usage_en") or "").strip()
+    lines = []
+    if category:
+        lines.append(f"<b>{'Тип' if lang == 'bg' else 'Type'}:</b> {html_lib.escape(category)}")
+    if translation:
+        lines.append(f"<b>{'Превод' if lang == 'bg' else 'Translation'}:</b> {html_lib.escape(translation)}")
+    if meaning and meaning != translation:
+        lines.append(f"<b>{'Значение' if lang == 'bg' else 'Meaning'}:</b> {html_lib.escape(meaning)}")
+    if formation:
+        lines.append(f"<b>{'Образуване' if lang == 'bg' else 'Formation'}:</b> {html_lib.escape(formation)}")
+    if formula:
+        lines.append(f"<b>{'Формула' if lang == 'bg' else 'Formula'}:</b> {html_lib.escape(formula)}")
+    if usage:
+        lines.append(f"<b>{'Употреба' if lang == 'bg' else 'Usage'}:</b> {html_lib.escape(usage)}")
+    return "<br>".join(lines)
+
+
+def build_analysis_anki_cards(articles, lang="bg"):
+    cards = []
+    seen = set()
+    for article in articles or []:
+        for item in article.get("analysis_items") or []:
+            surface = (item.get("surface") or "").strip()
+            lemma = (item.get("lemma") or surface).strip()
+            reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
+            if not surface:
+                continue
+            back = format_analysis_anki_back(item, lang=lang)
+            if not back:
+                continue
+            key = (
+                normalize_for_compare(surface),
+                normalize_for_compare(lemma),
+                normalize_for_compare(item.get("item_type") or ""),
+                lang,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            front = f"<ruby>{surface}<rt>{reading}</rt></ruby>" if reading and reading != surface else surface
+            cards.append((front, back))
+    cards.sort(key=lambda pair: pair[0])
+    return cards
 def load_seen_words(path):
     if not os.path.exists(path):
         return set()
@@ -1942,11 +3928,11 @@ def detect_grammar_in_sentence(sentence: str):
     tagger = get_mecab_tagger()
     found = set()
     if tagger is None:
-        return found
+        return detect_grammar_in_sentence_fallback(sentence)
     try:
         tokens = list(tagger(sentence))
     except Exception:
-        return found
+        return detect_grammar_in_sentence_fallback(sentence)
     surfaces = [token_surface(t) for t in tokens]
     lemmas = [token_lemma(t) for t in tokens]
     for i in range(len(tokens)):
@@ -2071,6 +4057,7 @@ def detect_grammar_in_sentence(sentence: str):
         if s == "ほど": found.add("hodo")
         if s == "以上": found.add("ijo")
         if l == "過ぎる" or s == "すぎる": found.add("sugiru")
+    found.update(detect_grammar_in_sentence_fallback(sentence))
     return found
 def extract_grammar_details(articles):
     details = []
@@ -2104,6 +4091,7 @@ def get_nhkeasier_items():
     items = {}
     for item in soup.find_all("item"):
         title = (item.title.get_text() if item.title else "").strip()
+        post_link = (item.link.get_text() if item.link else "").strip()
         desc_raw = (item.description.get_text() if item.description else "").strip()
         desc_html = html_lib.unescape(desc_raw)
         desc_soup = BeautifulSoup(desc_html, "html.parser")
@@ -2142,7 +4130,14 @@ def get_nhkeasier_items():
         if not ne_id:
             ne_id = extract_ne_id(audio_url) or extract_ne_id(image_url) or extract_ne_id(desc_html)
         if ne_id:
-            items[ne_id] = {"title": title, "blocks": blocks, "audio_url": audio_url, "image_url": image_url, "original_link": original_link}
+            items[ne_id] = {
+                "title": title,
+                "blocks": blocks,
+                "audio_url": audio_url,
+                "image_url": image_url,
+                "original_link": original_link,
+                "post_link": post_link,
+            }
     return items
 def extract_easy_article_links_from_sitemap(n=4):
     r = get_http_session().get(EASY_SITEMAP_URL, timeout=20)
@@ -2263,16 +4258,28 @@ def build_article_from_fallback(link: str, fallback: dict):
 
 
 def get_articles(n=4):
-    links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     nhkeasier_items = {}
     try:
         nhkeasier_items = get_nhkeasier_items()
     except Exception as e:
         print(f"Could not load nhkeasier fallback feed: {e}")
     articles = []
+
+    # Prefer nhkeasier feed because it contains full text blocks and mp3 audio.
+    for ne_id, fallback in list(nhkeasier_items.items())[:n]:
+        link = (fallback.get("original_link") or fallback.get("post_link") or "").strip()
+        article = build_article_from_fallback(link, fallback)
+        if article and article.get("blocks"):
+            articles.append(article)
+
+    if len(articles) >= n:
+        return articles[:n]
+
+    links = extract_easy_article_links_from_sitemap(max(n * 8, n))
+    existing_links = {(a.get("link") or "").strip() for a in articles}
     max_workers = min(8, max(1, n * 2))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(parse_article_from_nhk_easy, link): link for link in links}
+        futures = {executor.submit(parse_article_from_nhk_easy, link): link for link in links if link not in existing_links}
         for future in as_completed(futures):
             link = futures[future]
             ne_id = extract_ne_id(link)
@@ -2291,16 +4298,19 @@ def get_articles(n=4):
                     article = build_article_from_fallback(link, fallback)
                 if article and article.get("blocks"):
                     articles.append(article)
+                if len(articles) >= n:
+                    break
             except Exception as e:
                 if fallback:
                     article = build_article_from_fallback(link, fallback)
                     if article and article.get("blocks"):
                         articles.append(article)
                         print(f"Used nhkeasier fallback for {link} after error: {e}")
+                        if len(articles) >= n:
+                            break
                         continue
                 print(f"Skipping article because of error: {e}")
                 continue
-    articles.sort(key=lambda item: links.index(item.get("link", "")) if item.get("link") in links else len(links))
     return articles[:n]
 def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None):
     if not html_fragment:
@@ -2314,111 +4324,156 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None)
     if not vocab_lookup:
         return html_fragment
 
-    # 1) Wrap ruby words first, so kanji + reading stay intact.
-    for ruby in list(soup.find_all("ruby")):
-        if ruby.find_parent(class_="dict-word"):
+    units = []
+    consumed_prefix = {}
+    root_nodes = list(soup.contents)
+
+    for idx, node in enumerate(root_nodes):
+        if isinstance(node, NavigableString):
+            raw_text = str(node)
+            skip = consumed_prefix.get(id(node), 0)
+            raw_text = raw_text[skip:] if skip else raw_text
+            for ch in raw_text:
+                units.append({"text": ch, "html": html_lib.escape(ch), "matchable": True})
             continue
+        if getattr(node, "name", None) == "ruby":
+            base_text = ruby_base_text(node)
+            raw_suffix = extract_following_okurigana(node)
+            okurigana = raw_suffix if should_attach_ruby_suffix(base_text, raw_suffix) else ""
+            if okurigana and idx + 1 < len(root_nodes) and isinstance(root_nodes[idx + 1], NavigableString):
+                consumed_prefix[id(root_nodes[idx + 1])] = max(consumed_prefix.get(id(root_nodes[idx + 1]), 0), len(okurigana))
+            units.append(
+                {
+                    "text": base_text + okurigana,
+                    "html": str(node) + html_lib.escape(okurigana),
+                    "matchable": True,
+                }
+            )
+            continue
+        units.append({"text": "", "html": str(node), "matchable": False})
 
-        base = ruby_base_text(ruby)
-        ruby_reading = "".join(rt.get_text("", strip=True) for rt in ruby.find_all("rt"))
-        okurigana = extract_following_okurigana(ruby)
-        candidates = []
-        if base and okurigana:
-            surface = base + okurigana
-            candidates.extend([surface, lemmatize_japanese(surface)])
-        if base:
-            candidates.append(base)
+    visible_text = "".join(unit["text"] for unit in units if unit["matchable"])
+    if not visible_text.strip():
+        return "".join(unit["html"] for unit in units)
 
-        item = None
-        analysis = None
-        ruby_candidates = list(build_lookup_candidates(base + okurigana if okurigana else base, reading=ruby_reading))
-        for cand in unique_keep_order(candidates + ruby_candidates):
-            if cand in vocab_lookup:
-                item = vocab_lookup[cand]
-                analysis = analyze_japanese_word(base + okurigana if okurigana else base, reading_hint=(ruby_reading + okurigana).strip() if okurigana else ruby_reading, lemma_hint=(item.get("word") or "").strip())
+    sorted_surfaces = sorted(
+        [
+            (surface, vocab_lookup[surface])
+            for surface in vocab_lookup.keys()
+            if surface and contains_japanese(surface) and not should_skip_mixed_clause_surface(surface)
+        ],
+        key=lambda pair: (-len(pair[0]), pair[0]),
+    )
+
+    unit_start_positions = {}
+    unit_end_positions = {}
+    visible_pos = 0
+    for idx, unit in enumerate(units):
+        if not unit["matchable"]:
+            continue
+        unit_start_positions[visible_pos] = idx
+        visible_pos += len(unit["text"])
+        unit_end_positions[visible_pos] = idx + 1
+
+    def find_lookup_item_for_token(token):
+        surface = (token.get("surface") or "").strip()
+        lemma = (token.get("lemma") or surface).strip()
+        reading = normalize_katakana_to_hiragana((token.get("reading") or "").strip())
+        for key in build_lookup_candidates(surface, reading=reading, lemma=lemma):
+            item = vocab_lookup.get(key)
+            if isinstance(item, dict):
+                return item
+        return {
+            "surface": surface,
+            "lemma": lemma,
+            "reading": reading,
+            "item_type": "",
+            "translation_bg": "",
+            "translation_en": "",
+            "meaning_bg": "",
+            "meaning_en": "",
+            "formation_bg": "",
+            "formation_en": "",
+            "formula_bg": "",
+            "formula_en": "",
+            "usage_bg": "",
+            "usage_en": "",
+        }
+
+    matches = []
+    occupied = [False] * len(visible_text)
+    cursor = 0
+    while cursor < len(visible_text):
+        if cursor not in unit_start_positions:
+            cursor += 1
+            continue
+        best_surface = None
+        best_item = None
+        for surface, item in sorted_surfaces:
+            end_pos = cursor + len(surface)
+            if visible_text.startswith(surface, cursor) and end_pos in unit_end_positions:
+                best_surface = surface
+                best_item = item
                 break
-        if item is None:
+        if best_surface is None:
+            cursor += 1
             continue
+        matches.append((unit_start_positions[cursor], unit_end_positions[cursor + len(best_surface)], best_item))
+        for pos in range(cursor, min(len(visible_text), cursor + len(best_surface))):
+            occupied[pos] = True
+        cursor += len(best_surface)
 
-        inner_html = str(ruby) + html_lib.escape(okurigana)
-        span = make_dict_span(soup, item, inner_html, analysis=analysis)
-        ruby.replace_with(span)
-
-        nxt = span.next_sibling
-        if isinstance(nxt, NavigableString) and okurigana and str(nxt).startswith(okurigana):
-            rest = str(nxt)[len(okurigana):]
-            nxt.replace_with(rest)
-
-    # 2) Wrap remaining plain text by MeCab token boundaries, not raw substring search.
-    tagger = get_mecab_tagger()
-    skip_tags = {"rt", "rp", "script", "style"}
-
-    for text_node in list(soup.find_all(string=True)):
-        parent = getattr(text_node, "parent", None)
-        if parent is None or getattr(parent, "name", None) in skip_tags:
+    for token in tokenize_block_text(visible_text):
+        surface = (token.get("surface") or "").strip()
+        start = token.get("start")
+        end = token.get("end")
+        if not surface or start is None or end is None or end <= start:
             continue
-        if parent.get("class") and "dict-word" in parent.get("class", []):
+        if start not in unit_start_positions or end not in unit_end_positions:
             continue
-
-        original = str(text_node)
-        if not original.strip():
+        if any(occupied[pos] for pos in range(start, min(end, len(visible_text)))):
             continue
-
-        if tagger is None:
+        if not should_keep_popup_token(
+            surface,
+            pos1=token.get("pos1") or "",
+            pos2=token.get("pos2") or "",
+            lemma=token.get("lemma") or surface,
+            reading=token.get("reading") or "",
+        ):
             continue
-
-        try:
-            tokens = list(tagger(original))
-        except Exception:
+        if should_skip_mixed_clause_surface(surface):
             continue
+        item = enrich_popup_item(find_lookup_item_for_token(token))
+        matches.append((unit_start_positions[start], unit_end_positions[end], item))
+        for pos in range(start, min(end, len(visible_text))):
+            occupied[pos] = True
 
-        surfaces = [token_surface(t) for t in tokens]
-        if not surfaces:
+    if not matches:
+        return "".join(unit["html"] for unit in units)
+
+    matches.sort(key=lambda match: (match[0], -(match[1] - match[0])))
+
+    rebuilt = []
+    unit_cursor = 0
+    for start_unit, end_unit, item in matches:
+        if start_unit < unit_cursor:
             continue
-
-        # Only rewrite node if we actually match something.
-        matched_any = False
-        rebuilt = []
-        i = 0
-        while i < len(surfaces):
-            best = None
-            best_item = None
-            best_analysis = None
-            max_j = min(len(surfaces), i + 5)
-            for j in range(max_j, i, -1):
-                if not is_matchable_token_span(tokens[i:j]):
-                    continue
-                candidate = "".join(surfaces[i:j]).strip()
-                candidate_reading = normalize_katakana_to_hiragana("".join(feature_reading(t).strip() for t in tokens[i:j]))
-                lemma_joined = "".join((token_lemma(t).strip() or token_surface(t).strip()) for t in tokens[i:j]).strip()
-                key_candidates = build_lookup_candidates(candidate, reading=candidate_reading, lemma=lemma_joined)
-                matched_key = None
-                for key in key_candidates:
-                    if key in vocab_lookup and not is_suspicious_vocab_word(candidate):
-                        matched_key = key
-                        break
-                if matched_key:
-                    best = candidate
-                    best_item = vocab_lookup[matched_key]
-                    best_analysis = analyze_japanese_word(candidate, reading_hint=candidate_reading, lemma_hint=(best_item.get("word") or lemma_joined or candidate))
-                    best_j = j
-                    break
-            if best is not None:
-                matched_any = True
-                rebuilt.append(make_dict_span(soup, best_item, html_lib.escape(best), analysis=best_analysis))
-                i = best_j
-            else:
-                rebuilt.append(NavigableString(surfaces[i]))
-                i += 1
-
-        if matched_any:
-            for node in rebuilt[::-1]:
-                text_node.insert_after(node)
-            text_node.extract()
-
-    return "".join(str(x) for x in soup.contents)
+        rebuilt.extend(unit["html"] for unit in units[unit_cursor:start_unit])
+        inner_html = "".join(unit["html"] for unit in units[start_unit:end_unit])
+        surface = (item or {}).get("surface") or ""
+        if should_skip_mixed_clause_surface(surface):
+            rebuilt.append(inner_html)
+        else:
+            span = make_dict_span(BeautifulSoup("", "html.parser"), item, inner_html)
+            rebuilt.append(str(span))
+        unit_cursor = end_unit
+    rebuilt.extend(unit["html"] for unit in units[unit_cursor:])
+    return "".join(rebuilt)
 def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
-    grammar_points = grammar_points or []
+    grammar_points = [
+        g for g in (grammar_points or [])
+        if should_keep_external_grammar_label((g or {}).get("label", ""))
+    ]
     html = """<!doctype html>
 <html lang=\"ja\">
 <head>
@@ -2522,17 +4577,10 @@ ruby rt{font-size:.68em;color:var(--muted)}
             block_en = html_lib.escape(block.get('translation_en', ''), quote=True)
             if block_bg or block_en:
                 html += f"<div class='trans-block' data-bg='{block_bg}' data-en='{block_en}'></div>"
-        gemini_verbs = article.get("gemini_verbs") or []
-        if gemini_verbs:
-            html += "<script type='application/json' class='article-gemini-data'>"
-            html += html_lib.escape(json.dumps(gemini_verbs, ensure_ascii=False), quote=False)
-            html += "</script>"
         html += "</article>"
     html += "<div class='downloads'>"
-    html += f"<a class='download-btn download-link' data-kind='vocab_apkg' href='{DEFAULT_ANKI_APKG_FILENAME}' download></a>"
-    html += f"<a class='download-btn download-link' data-kind='vocab_tsv' href='{DEFAULT_ANKI_FILENAME}' download></a>"
-    html += f"<a class='download-btn download-link' data-kind='grammar_apkg' href='{DEFAULT_GRAMMAR_APKG_FILENAME}' download></a>"
-    html += f"<a class='download-btn download-link' data-kind='grammar_tsv' href='{DEFAULT_GRAMMAR_TSV_FILENAME}' download></a>"
+    html += f"<a class='download-btn download-link' data-kind='anki_apkg' href='{DEFAULT_ANKI_APKG_FILENAME}' download></a>"
+    html += f"<a class='download-btn download-link' data-kind='anki_tsv' href='{DEFAULT_ANKI_FILENAME}' download></a>"
     html += "</div>"
     if grammar_points:
         html += "<section class='grammar'><div class='section-title' data-ui='grammar_in_texts'></div><ul>"
@@ -2550,8 +4598,8 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class='build-marker'>Generated: __GENERATED_AT__</div>
 </div>
 <script>
-const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",verb_form_type:"Тип",verb_formation:"Образуване",verb_formula:"Формула",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху дума за значение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",vocab_apkg:"Свали Anki речник (.apkg)",vocab_tsv:"Свали речник TSV",grammar_apkg:"Свали Anki граматика (.apkg)",grammar_tsv:"Свали граматика TSV"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",verb_form_type:"Type",verb_formation:"Formation",verb_formula:"Formula",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a word for its meaning.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",vocab_apkg:"Download Anki vocabulary (.apkg)",vocab_tsv:"Download vocabulary TSV",grammar_apkg:"Download Anki grammar (.apkg)",grammar_tsv:"Download grammar TSV"}};
-const FILES={bg:{vocab_apkg:"nhk_easy_vocab_bg.apkg",vocab_tsv:"anki_cards_bg.tsv",grammar_apkg:"nhk_easy_grammar_bg.apkg",grammar_tsv:"anki_grammar_bg.tsv"},en:{vocab_apkg:"nhk_easy_vocab_en.apkg",vocab_tsv:"anki_cards_en.tsv",grammar_apkg:"nhk_easy_grammar_en.apkg",grammar_tsv:"anki_grammar_en.tsv"}};
+const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula"}};
+const FILES={bg:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"},en:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"}};
 function getContentLanguage(){return localStorage.getItem('nhk_content_lang')||'bg';}
 function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;const lang=getContentLanguage();const langSel=document.getElementById('lang-select');if(langSel)langSel.value=lang;applyContentLanguage(lang);}
 function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk_theme',theme);const meta=document.querySelector('meta[name="theme-color"]');if(meta){meta.setAttribute('content',theme==='theme-light'?'#f7f7f5':theme==='theme-sepia'?'#f3eadb':'#0f1115');}}
@@ -2561,14 +4609,15 @@ function setContentLanguage(lang){localStorage.setItem('nhk_content_lang',lang);
 function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEach(el=>{const key=el.dataset.ui;if(UI_TEXT[lang]&&UI_TEXT[lang][key])el.textContent=UI_TEXT[lang][key];});document.querySelectorAll('.title-translation,.trans-block,.grammar-expl,.author-info').forEach(el=>{el.textContent=el.dataset[lang]||'';});document.querySelectorAll('.download-link').forEach(el=>{const kind=el.dataset.kind;el.textContent=UI_TEXT[lang][kind]||kind;el.setAttribute('href',FILES[lang][kind]);});}
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
-function getArticleGeminiVerbs(article){if(!article)return[];if(article._geminiVerbs)return article._geminiVerbs;const node=article.querySelector('.article-gemini-data');if(!node){article._geminiVerbs=[];return article._geminiVerbs;}try{article._geminiVerbs=JSON.parse(node.textContent||'[]');}catch(_){article._geminiVerbs=[];}return article._geminiVerbs;}
-function normalizeGeminiKey(v){return (v||'').trim().toLowerCase();}
-function findGeminiVerbData(article,surface,reading){const verbs=getArticleGeminiVerbs(article);if(!verbs.length)return null;const s=normalizeGeminiKey(surface);const r=normalizeGeminiKey(reading);let exact=verbs.find(v=>normalizeGeminiKey(v.surface)===s&&(!r||normalizeGeminiKey(v.reading)===r));if(exact)return exact;exact=verbs.find(v=>normalizeGeminiKey(v.surface)===s);if(exact)return exact;const loose=verbs.filter(v=>{const vs=normalizeGeminiKey(v.surface);return vs&&s&&(vs.includes(s)||s.includes(vs));});if(!loose.length)return null;loose.sort((a,b)=>Math.abs((a.surface||'').length-surface.length)-Math.abs((b.surface||'').length-surface.length));return loose[0]||null;}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const rs=(el.dataset.readingSurface||'').trim();const rl=(el.dataset.readingLemma||'').trim();let ms=(lang==='en'?el.dataset.meaningSurfaceEn:el.dataset.meaningSurfaceBg||el.dataset.meaningSurfaceEn||'').trim();const ml=(lang==='en'?el.dataset.meaningLemmaEn:el.dataset.meaningLemmaBg||el.dataset.meaningLemmaEn||'').trim();const labelForm=(lang==='en'?'Form':'Форма');const labelFormula=(lang==='en'?'Formation':'Образуване');const labelLemma=(lang==='en'?'Dictionary form':'Речникова форма');const missingLemmaMeaning=(lang==='en'?'no translation':'няма превод');let geminiType=(lang==='en'?el.dataset.geminiFormTypeEn:el.dataset.geminiFormTypeBg||'').trim();let geminiFormation=(lang==='en'?el.dataset.geminiFormationEn:el.dataset.geminiFormationBg||'').trim();let geminiFormula=(lang==='en'?el.dataset.geminiFormulaEn:el.dataset.geminiFormulaBg||'').trim();let geminiTranslation=(lang==='en'?el.dataset.geminiTranslationEn:el.dataset.geminiTranslationBg||'').trim();if(!geminiType&&!geminiFormation&&!geminiFormula&&!geminiTranslation){const gemini=findGeminiVerbData(el.closest('article'),surface,rs);if(gemini){geminiTranslation=((lang==='en'?gemini.translation_en:gemini.translation_bg)||'').trim();geminiType=((lang==='en'?gemini.form_type_en:gemini.form_type_bg)||'').trim();geminiFormation=((lang==='en'?gemini.formation_en:gemini.formation_bg)||'').trim();geminiFormula=((lang==='en'?gemini.formula_en:gemini.formula_bg)||'').trim();}}if(geminiTranslation)ms=geminiTranslation;let html='<div class="dw">'+surface+(rs?' ['+rs+']':'')+(ms?' - '+ms:'')+'</div>';if(geminiType)html+='<div class="dm">'+labelForm+': '+geminiType+'</div>';if(geminiFormation)html+='<div class="dm">'+labelFormula+': '+geminiFormation+'</div>';if(geminiFormula)html+='<div class="dm">'+(lang==='en'?'Formula':'Формула')+': '+geminiFormula+'</div>';html+='<div class="dm">'+labelLemma+': '+lemma+(rl?' ['+rl+']':'')+' - '+(ml||missingLemmaMeaning)+'</div>';popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function esc(v){return (v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function popupLine(label,value){return value?'<div class="dm"><b>'+esc(label)+':</b> '+esc(value)+'</div>':'';}
+function normalizePopupValue(v){return (v||'').replace(/\\s+/g,'').trim();}
+function isGenericFormation(v){const x=(v||'').trim().toLowerCase();return !x||x==='речникова форма'||x==='dictionary form'||x==='форма в текста'||x==='form in context';}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const itemType=(el.dataset.itemType||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();const surfaceKey=normalizePopupValue(surface);const lemmaKey=normalizePopupValue(lemma);const showAdjectiveFormation=!!formation&&surfaceKey&&lemmaKey&&surfaceKey!==lemmaKey&&!isGenericFormation(formation);let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_translation,translation);if(itemType==='verb'){html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);}else if(itemType==='adjective'){if(showAdjectiveFormation)html+=popupLine(ui.popup_formation,formation);}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
-  return (text || '').split(/(?<=[。！？?!])\s*/).filter(function(s){return s && s.trim();});
+  return (text || '').split(/(?<=[。！？?!])\\s*/).filter(function(s){return s && s.trim();});
 }
 
 function wrapBlockSentences(block){
@@ -2597,7 +4646,7 @@ function wrapBlockSentences(block){
     }
     parts.forEach(function(part){
       current.appendChild(document.createTextNode(part));
-      if(/[。！？?!]\s*$/.test(part)){
+      if(/[。！？?!]\\s*$/.test(part)){
         flushCurrent();
       }
     });
@@ -2610,7 +4659,7 @@ function wrapBlockSentences(block){
       const clone = node.cloneNode(true);
       current.appendChild(clone);
       const t = (current.textContent || '').trim();
-      if(/[。！？?!]\s*$/.test(t)){
+      if(/[。！？?!]\\s*$/.test(t)){
         flushCurrent();
       }
     }
@@ -2728,13 +4777,15 @@ def main():
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
-    parser.add_argument("--gemini-key", default=os.environ.get("GEMINI_API", ""))
-    parser.add_argument("--gemini-model", default=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"))
+    parser.add_argument("--gemini-key", default=os.environ.get("GEMINI_API_KEY", os.environ.get("GEMINI_API", "")))
+    parser.add_argument("--gemini-model", default=os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL))
+    parser.add_argument("--groq-key", default=os.environ.get("GROQ_API_KEY", os.environ.get("GROQ_API", "")))
+    parser.add_argument("--groq-model", default=os.environ.get("GROQ_MODEL", ""))
     args = parser.parse_args()
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
-    GEMINI_API_KEY = (args.gemini_key or "").strip()
-    GEMINI_MODEL = (args.gemini_model or "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+    GEMINI_API_KEY = (args.gemini_key or args.groq_key or "").strip()
+    GEMINI_MODEL = (args.gemini_model or args.groq_model or DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     generated_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -2747,78 +4798,36 @@ def main():
         os.makedirs(output_dir, exist_ok=True)
         write_pwa_files(output_dir, build_version=build_version)
 
-    ensure_grammar_bilingual()
     articles = get_articles(args.count)
     if not articles:
         raise RuntimeError("No articles were extracted.")
 
-    grammar_points = extract_grammar_points(articles)
-    ai_grammar_points = analyze_grammar_points_with_gemini(articles, grammar_points)
-    existing_grammar_keys = {normalize_for_compare((g.get("label") or "").replace(" (AI)", "")) for g in grammar_points}
-    for item in ai_grammar_points:
-        base_label = (item.get("label") or "").replace(" (AI)", "").strip()
-        if not base_label:
-            continue
-        if normalize_for_compare(base_label) in existing_grammar_keys:
-            continue
-        grammar_points.append(
-            {
-                "label": f"{base_label} (AI)",
-                "explanation_bg": item.get("explanation_bg", ""),
-                "explanation_en": item.get("explanation_en", ""),
-            }
-        )
-        existing_grammar_keys.add(normalize_for_compare(base_label))
-    analyze_articles_with_gemini(articles)
+    analyze_articles_with_groq(articles)
+    for article in articles:
+        prepare_article_render_data(article)
+    grammar_points = build_grammar_points_from_analysis(articles)
 
     vocab_tsv_filename = DEFAULT_ANKI_FILENAME
     vocab_apkg_filename = DEFAULT_ANKI_APKG_FILENAME
-    grammar_tsv_filename = DEFAULT_GRAMMAR_TSV_FILENAME
-    grammar_apkg_filename = DEFAULT_GRAMMAR_APKG_FILENAME
-    vocab_tsv_en_filename = DEFAULT_ANKI_EN_FILENAME
-    vocab_apkg_en_filename = DEFAULT_ANKI_EN_APKG_FILENAME
-    grammar_tsv_en_filename = DEFAULT_GRAMMAR_EN_TSV_FILENAME
-    grammar_apkg_en_filename = DEFAULT_GRAMMAR_EN_APKG_FILENAME
     anki_seen_words_filename = DEFAULT_ANKI_SEEN_WORDS_FILENAME
 
     if output_dir:
         vocab_tsv_path = os.path.join(output_dir, vocab_tsv_filename)
         vocab_apkg_path = os.path.join(output_dir, vocab_apkg_filename)
-        grammar_tsv_path = os.path.join(output_dir, grammar_tsv_filename)
-        grammar_apkg_path = os.path.join(output_dir, grammar_apkg_filename)
-        vocab_tsv_en_path = os.path.join(output_dir, vocab_tsv_en_filename)
-        vocab_apkg_en_path = os.path.join(output_dir, vocab_apkg_en_filename)
-        grammar_tsv_en_path = os.path.join(output_dir, grammar_tsv_en_filename)
-        grammar_apkg_en_path = os.path.join(output_dir, grammar_apkg_en_filename)
         anki_seen_words_path = os.path.join(output_dir, anki_seen_words_filename)
     else:
         vocab_tsv_path = vocab_tsv_filename
         vocab_apkg_path = vocab_apkg_filename
-        grammar_tsv_path = grammar_tsv_filename
-        grammar_apkg_path = grammar_apkg_filename
-        vocab_tsv_en_path = vocab_tsv_en_filename
-        vocab_apkg_en_path = vocab_apkg_en_filename
-        grammar_tsv_en_path = grammar_tsv_en_filename
-        grammar_apkg_en_path = grammar_apkg_en_filename
         anki_seen_words_path = anki_seen_words_filename
 
     seen_words = load_seen_words(anki_seen_words_path)
     add_known_progress_to_articles(articles, seen_words)
 
-    vocab_cards = build_vocab_anki_cards(articles, lang="bg")
-    vocab_cards_en = build_vocab_anki_cards(articles, lang="en")
-    grammar_cards = build_grammar_anki_cards(grammar_points, lang="bg")
-    grammar_cards_en = build_grammar_anki_cards(grammar_points, lang="en")
+    vocab_cards = build_analysis_anki_cards(articles, lang="bg")
 
     save_anki_tsv(vocab_cards, vocab_tsv_path)
-    save_anki_tsv(vocab_cards_en, vocab_tsv_en_path)
-    save_anki_tsv(grammar_cards, grammar_tsv_path)
-    save_anki_tsv(grammar_cards_en, grammar_tsv_en_path)
 
-    build_anki_apkg(vocab_cards, vocab_apkg_path, deck_name="NHK Easy Vocabulary BG")
-    build_anki_apkg(vocab_cards_en, vocab_apkg_en_path, deck_name="NHK Easy Vocabulary EN")
-    build_anki_apkg(grammar_cards, grammar_apkg_path, deck_name="NHK Easy Grammar BG")
-    build_anki_apkg(grammar_cards_en, grammar_apkg_en_path, deck_name="NHK Easy Grammar EN")
+    build_anki_apkg(vocab_cards, vocab_apkg_path, deck_name="NHK Easy Elements BG")
 
     save_seen_words(anki_seen_words_path, seen_words)
 
