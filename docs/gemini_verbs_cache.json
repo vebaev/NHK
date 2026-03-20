@@ -16,6 +16,19 @@
       "translation_en": "small"
     }
   ],
+  "01e56c1c9706904a04219e32cd19adb34c286c38": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "話す → 話し (連用形) + て + いる (補助動詞) → ている (継続) → て + いました (過去丁寧)",
+      "formation_en": "hanasu → hanashi (ren’yō-kei) + te + iru (auxiliary) → te-iru (progressive) → te + imashita (past polite)",
+      "formula_bg": "話す → 連用形＋て＋いる → て形＋いました",
+      "formula_en": "hanasu → ren’yō+te+iru → te+imashita",
+      "lemma": "話す",
+      "reading": "はな",
+      "reason": "正確な動詞語幹は「話す」であり、丁寧過去継続形「話していました」はその活用形である。",
+      "surface": "話していました"
+    }
+  ],
   "029fcea38206b6abc29ab34829a2366f0f4d5810": [
     {
       "surface": "円",
@@ -56,6 +69,19 @@
       "surface": "安くなる",
       "translation_bg": "поевтинява",
       "translation_en": "becomes cheaper"
+    }
+  ],
+  "030abf015ad9cc3b00c739e9896868a8c11aeb40": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "語幹「話」＋助詞「を」＋動詞「する」の連用形「し」＋丁寧助動詞「ます」",
+      "formation_en": "stem han + particle o + verb suru (ren’yōkei shi) + polite auxiliary masu",
+      "formula_bg": "話す → 話し + を + します",
+      "formula_en": "hanasu → hanashi + o + shimasu",
+      "lemma": "話す",
+      "reading": "はなし",
+      "reason": "「話をします」は「話す」の敬語表現であり、動詞の活用形として扱う",
+      "surface": "話をします"
     }
   ],
   "03d99adbe1657180a6538790b41207e9be776970": [
@@ -2418,6 +2444,35 @@
       "usage_en": "used to denote quoting"
     }
   ],
+  "0ad2c22daf1a1f834ee38ffad07bf2f8cbd7213c": [
+    {
+      "explanation_bg": "Показва нещо, което вече е решено да се случи; еквивалент на „ще“ в бъдеще време.",
+      "explanation_en": "States a scheduled or intended action; future plan already set.",
+      "label": "予定だ"
+    },
+    {
+      "explanation_bg": "Цел или целева ситуация: „за да може да/така че да“.",
+      "explanation_en": "Expresses purpose or desired state: ‘so that/in order that’.",
+      "label": "ように"
+    },
+    {
+      "explanation_bg": "Действие, което се стараеш да осъществиш или поддържаш.",
+      "explanation_en": "Make sure that something happens or keep it in a certain state.",
+      "label": "ようにする"
+    },
+    {
+      "explanation_bg": "Изглежда, че ще стане; показва предстояща вероятност.",
+      "explanation_en": "Seems about to happen; imminent probability.",
+      "label": "そうに・そうな"
+    }
+  ],
+  "0ce5bd48c60d561a752fe3715e647af4a99dfb53": [
+    {
+      "explanation_bg": "Показва приблизително количество или степен; използва се след числа или съществителни.",
+      "explanation_en": "Indicates approximate amount or degree; used after numbers or nouns.",
+      "label": "くらい・ぐらい"
+    }
+  ],
   "0d64d61f0b6eec506a19e84661677969fc7117c9": [
     {
       "explanation_bg": "Показва допускане или противопоставяне – „дори и да…“ или „въпреки че…“.",
@@ -4130,6 +4185,32 @@
       "translation_en": "there were places"
     }
   ],
+  "2234a8bf1531c05ea2ec1b48508c23513af86c44": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "話す → 話し (отпада う) → 話し + て → 話して → 話して + いる → 話している → 話しています (учтено е и на ます)",
+      "formation_en": "話す → 話し (drop う) → 話し + て → 話して → 話して + いる → 話している → 話しています (add ます)",
+      "formula_bg": "話す + て + いる + ます",
+      "formula_en": "話す + て + いる + ます",
+      "lemma": "話す",
+      "reading": "はな",
+      "reason": "compound should be split to the real verb lemma 話す",
+      "surface": "話しています"
+    }
+  ],
+  "22bb56dfdb39b768ddd2365ab287327f320436be": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "основа 話 + свързваща гласна し + продължителна форма て + помощен глагол いる в минало време いました",
+      "formation_en": "stem 話 + linking し + -te form て + auxiliary いる in past いました",
+      "formula_bg": "話す → 話し → 話して → 話している → 話していました",
+      "formula_en": "話す → 話し → 話して → 話している → 話していました",
+      "lemma": "話す",
+      "reading": "はな",
+      "reason": "compound was treated as lemma; real verb is 話す",
+      "surface": "話していました"
+    }
+  ],
   "24b03ec6123c54157871758b85a6c12dcd628749": [
     {
       "explanation_bg": "Тази структура се използва, когато нещо трябва да се направи задължително или когато някой иска нещо силно. Тя показва силно желание или необходимост.",
@@ -4167,6 +4248,19 @@
       "explanation_bg": "Означава „най-… сред …“. В текста: „日本 の 中 でいちばん 早 く“ – най-рано в цяла Япония.",
       "explanation_en": "Means „the most … among …“. Here: earliest in all of Japan.",
       "label": "の中で[A]が一番"
+    }
+  ],
+  "26a27c41e140e3d63e78d7dfa4d9d8fb33e5ff7f": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "начална форма 言う → премахвам края у → получавам い → добавям っ за по-силна консона́нтна спирка → добавям свързващата форма на て → добавям помощния глагол いる в свързваща форма → добавям миналото време на いる",
+      "formation_en": "dictionary form 言う → drop final う → get い → add small っ to mark a strong stop → add て linking form → add helper verb いる in linking form → add past tense of いる",
+      "formula_bg": "言う → い + っ + て + いる → いました",
+      "formula_en": "言う → い + っ + て + いる → いました",
+      "lemma": "言う",
+      "reading": "い",
+      "reason": "The surface form is the past progressive of 言う, not a lemma itself.",
+      "surface": "言っていました"
     }
   ],
   "27ec922204b37d31d25cc3c1a8929af052869493": [
@@ -4209,6 +4303,30 @@
       "surface": "話し",
       "translation_bg": "каза",
       "translation_en": "said"
+    }
+  ],
+  "2869e995d328da957236e21666942ec5e58816da": [
+    {
+      "confidence": 0.9,
+      "formation_bg": "основа глагола + о-формата (основата за учтива форма) + したい (искам)",
+      "formation_en": "verb stem + o-form (ren'yō) + したい (want to)",
+      "formula_bg": "話す → 話し → 話し＋たい",
+      "formula_en": "hanasu → hanashi → hanashi+tai",
+      "lemma": "話す",
+      "reading": "はなす",
+      "reason": "「話をしたい」е съставна форма: съществителното 「話」+ 「を」+ исканата форма на глагола 「話す」.",
+      "surface": "話をしたい"
+    },
+    {
+      "confidence": 0.9,
+      "formation_bg": "основа глагола (основата за учтива форма) + ました (учтиво минало)",
+      "formation_en": "verb stem (ren'yō) + ました (polite past)",
+      "formula_bg": "言う → 言い＋ました",
+      "formula_en": "iu → ii+mashita",
+      "lemma": "言う",
+      "reading": "いう",
+      "reason": "「言いました」е учтивата минала форма на глагола 「言う」.",
+      "surface": "言いました"
     }
   ],
   "28c7e78c981813592aade88d5210caa68880a44c": [
@@ -4315,6 +4433,19 @@
       "explanation_bg": "Използва се за изразяване на прекомерност или излишък. означава 'твърде' или 'много'",
       "explanation_en": "Used to express excessiveness or surplus. means 'too' or 'very'",
       "label": "〜過ぎる"
+    }
+  ],
+  "2cf9bd8e13fda0aaff5ddd418b818c0036086f0b": [
+    {
+      "confidence": 0.95,
+      "formation_bg": "形容詞「高い」の連用形「高く」＋補助動詞「なる」のテンス・テイル形「なっている」",
+      "formation_en": "i-adjective stem tak- + ku (continuative) + auxiliary verb nar- (become) in -te iru form",
+      "formula_bg": "高い → 高く → 高く＋なる → 高くなっている",
+      "formula_en": "takai → taku → taku+naru → takunatte iru",
+      "lemma": "高い",
+      "reading": "たか",
+      "reason": "「高くなっている」は形容詞「高い」の連用形＋補助動詞「なる」のテイル形であり、動詞の活用形ではない",
+      "surface": "高くなっている"
     }
   ],
   "2de04c959327508c7a581f63d6f73f52625398e1": [
@@ -4682,6 +4813,19 @@
       "label": "を"
     }
   ],
+  "3377038ed56b600d4a8a5985fddccbd366e6a605": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "下げる → 下げ (連用形) + ます (丁寧助動詞) → 下げます → 下げました (過去形)",
+      "formation_en": "sageru → sage (ren'yō) + masu (polite auxiliary) → sagemasu → sagemashita (past)",
+      "formula_bg": "下げる → 連用形 + ました",
+      "formula_en": "sageru → ren'yō + mashita",
+      "lemma": "下げる",
+      "reading": "さげ",
+      "reason": "下げました is the past polite form of the verb 下げる, not a compound noun.",
+      "surface": "下げました"
+    }
+  ],
   "33ea20dbd5ba0d6e87388340e750ba1c4b81c4f7": [
     {
       "explanation_bg": "Показва, че нещо е официално решено или установено; използва се за правила, разпоредби.",
@@ -4697,6 +4841,32 @@
       "explanation_bg": "Омекотява или показва неопределеност, често с лека емоционална окраска.",
       "explanation_en": "Softens or shows vagueness, often adding slight emotional nuance.",
       "label": "なんか / なんて"
+    }
+  ],
+  "353e47f93ae518f957855fe8513b36044c0b3e81": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "начална форма 作る → основа 作り → добавяме минало времно окончание ました",
+      "formation_en": "dictionary form 作る → stem 作り → add past-tense ending ました",
+      "formula_bg": "作る → 作り + ました",
+      "formula_en": "作る → 作り + ました",
+      "lemma": "作る",
+      "reading": "つくる",
+      "reason": "作りました е минало времно на 作る, не самостоятелна дума",
+      "surface": "作りました"
+    }
+  ],
+  "35d6b32745624c54e8636a1e5779bc957ff6833a": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "основа 'саге' + '-e' (форма за минало време) + '-mashita' (учтиво минало)",
+      "formation_en": "stem 'sage' + '-e' (past tense form) + '-mashita' (polite past)",
+      "formula_bg": "саге → саге → сагемашита",
+      "formula_en": "sage → sage → sagemashita",
+      "lemma": "下げる",
+      "reading": "さげ",
+      "reason": "'下げました' е учтивата минала форма на глагола '下げる' (свалям, намалявам)",
+      "surface": "下げました"
     }
   ],
   "3859d1aef93f88595015e50e3675c65d5b0489f9": [
@@ -4951,6 +5121,19 @@
       "translation_en": "say",
       "usage_bg": "използва се за означаване на действие в настояще",
       "usage_en": "used to denote present action"
+    }
+  ],
+  "3870325e3d7422bd26f02fd674c612bea3bd6ac8": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "下げる → свали края げ и добави げ (основа) + ました (учтиво минало)",
+      "formation_en": "sageru → drop final る and add げ (stem) + ました (polite past)",
+      "formula_bg": "下げる → 下げ + ました",
+      "formula_en": "sageru → sage + mashita",
+      "lemma": "下げる",
+      "reading": "さ",
+      "reason": "下げました е учтивата минала форма на глагола 下げる, а не самостоятелна лема.",
+      "surface": "下げました"
     }
   ],
   "38efe265d22b5d8634ed83052a1f66f3a90236fb": [
@@ -5489,6 +5672,19 @@
       "translation_en": "do/will do",
       "usage_bg": "учтиво казва \"ще разговарят\"",
       "usage_en": "politely states \"will talk\""
+    }
+  ],
+  "3c0b92d10e0325cfae4fdf563986f053cd9cc9ff": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "作る → 作り (отрежи る) → 作り + ました",
+      "formation_en": "作る → 作り (drop る) → 作り + ました",
+      "formula_bg": "глагол в основа + ました",
+      "formula_en": "verb stem + ました",
+      "lemma": "作る",
+      "reading": "つくる",
+      "reason": "作りました е учтивата минало време на глагола 作る, а не самостоятелна лема.",
+      "surface": "作りました"
     }
   ],
   "3d2306017cab3452f1d42e1eb9ad07dfb80f16c2": [
@@ -7193,6 +7389,19 @@
       "label": "て / で"
     }
   ],
+  "46d35c92df216bb371bb2220c08fb40611615cd2": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "続く → 続き → 続い → 続いている",
+      "formation_en": "tsuzuku → tsuzuki → tsuzui → tsuzuite iru",
+      "formula_bg": "stem + い + て + いる",
+      "formula_en": "stem + i + te + iru",
+      "lemma": "続く",
+      "reading": "つづ",
+      "reason": "続いている е продължителна форма на глагола 続く, а не отделна дума.",
+      "surface": "続いている"
+    }
+  ],
   "47778a6aad1da79a61924976232ef5701bdc8419": [
     {
       "category_bg": "съществително",
@@ -8548,6 +8757,13 @@
       "translation_en": "talk / chat"
     }
   ],
+  "5203f37a51443c5bb0abbab730fd613538e0ec1f": [
+    {
+      "explanation_bg": "Показва цел или желан резултат: „за да стане така, че…“",
+      "explanation_en": "Expresses purpose or desired outcome: 'so that…' / 'in order to…'",
+      "label": "ように"
+    }
+  ],
   "520b12c9acf71ce39c6ee511764b5592e1636cc5": [
     {
       "explanation_bg": "Показва цел или желано състояние: „за да не се случи“/„такава, че да“.",
@@ -8637,6 +8853,19 @@
       "surface": "値段",
       "translation_bg": "цена",
       "translation_en": "price"
+    }
+  ],
+  "56435eeb6928bcf4a94c68d18947e5ea65da59b5": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "話す → 話し (連用形) + て + いる (補助動詞) → 話している → 丁寧語にするため「です」に変化 → 話しています",
+      "formation_en": "hanasu → hanashi (continuative form) + te + iru (auxiliary verb) → hanashite iru → polite form by changing iru to imasu → hanashite imasu",
+      "formula_bg": "話す → 連用形+て+います",
+      "formula_en": "hanasu → ren'yōkei + te + imasu",
+      "lemma": "話す",
+      "reading": "はな",
+      "reason": "The lemma should be the dictionary form 話す, not the whole polite progressive form.",
+      "surface": "話しています"
     }
   ],
   "56af9ee3ded5f6a9a8a590baf05c4a13a01efbcb": [
@@ -9810,6 +10039,19 @@
       "label": "という"
     }
   ],
+  "5f1fd1f5cf6122ee9eb3cf31d093cfed3c8c1fcb": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "続く → 続き → 続い → 続いで → 続いている",
+      "formation_en": "tsuzuku → tsuzuki → tsuzui → tsuzuide → tsuzuite iru",
+      "formula_bg": "основа 続き + いる",
+      "formula_en": "stem tsuzui + iru",
+      "lemma": "続く",
+      "reading": "つづ",
+      "reason": "続いている е съставна форма: て-форма на глагола 続く + спомагателния глагол いる.",
+      "surface": "続いている"
+    }
+  ],
   "5f4fa95541600d7ababbda562c66665038bd85ea": [
     {
       "explanation_bg": "Използва се за описание на нещо, което надхвърля определена граница или очакване. Например: \"とても\" (много) + прилагателно/глагол + すぎる.",
@@ -10723,6 +10965,23 @@
       "label": "なかなか～ない"
     }
   ],
+  "6577383e18fd7618fc07dedadf59f890873688af": [
+    {
+      "explanation_bg": "Показва изглеждащо се състояние; придава прилагателно значение на глагола/прилагателното.",
+      "explanation_en": "Makes a verb/adjective function like an -i/-na adjective to describe how something appears.",
+      "label": "〜そうに・そうな"
+    },
+    {
+      "explanation_bg": "Кара някой друг да извърши действието; изразява причиняване или позволяване.",
+      "explanation_en": "Causes or lets someone else do the action; expresses causation or permission.",
+      "label": "〜させる"
+    },
+    {
+      "explanation_bg": "Действието продължава или протича в бъдеще/от говорещия навън.",
+      "explanation_en": "The action continues or proceeds into the future/away from the speaker.",
+      "label": "〜ていく"
+    }
+  ],
   "67f2f06e03a6666fd7c58ae8a771bfac357a5585": [
     {
       "explanation_bg": "Тази структура се използва за изразяване на изминалото време от последното извършване на нещо. Тя означава 'след толкова време' или 'от толкова време'.",
@@ -10810,6 +11069,32 @@
       "surface": "予定",
       "translation_bg": "планират",
       "translation_en": "plan to"
+    }
+  ],
+  "6a319719f9175b1c162565187a4a15dc4aa33dac": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "雷четката ある → основата за учтива форма ари → добавяме ました за учтиво минало",
+      "formation_en": "dict. ある → 連用形 ari → add ました for polite past",
+      "formula_bg": "ある → あり + ました",
+      "formula_en": "aru → ari + mashita",
+      "lemma": "ある",
+      "reading": "ありました",
+      "reason": "所がありました не е глагол; глаголът е ある във формата ありました",
+      "surface": "ありました"
+    }
+  ],
+  "6a455a7b20091eb43d8fcd6516b52ea55d4edb9d": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "作る → 連用形 作り + 過去の助動詞 た",
+      "formation_en": "作る → continuative stem 作り + past auxiliary た",
+      "formula_bg": "V[連用形] + た",
+      "formula_en": "V[cont] + ta",
+      "lemma": "作る",
+      "reading": "つくる",
+      "reason": "作りました is the polite past form of 作る, not a lemma.",
+      "surface": "作りました"
     }
   ],
   "6aaf97d0d35ed397a49680cf14bf39ce840190fd": [
@@ -10920,6 +11205,19 @@
       "explanation_bg": "означава „още повече/освен това“; в текста подчертава, че правителството ще освободи още по-голямо количество петрол.",
       "explanation_en": "means \"furthermore/even more\"; in the text it stresses that the government will release an even larger amount of oil.",
       "label": "さらに"
+    }
+  ],
+  "6d4d04ae46172898ded995554af7cb9194145a46": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "речникова форма 合う → основа あ → добавяне на て-form あって → добавяне на помощната форма за продължително състояние いる → минало време いた → учтиво минало いました",
+      "formation_en": "dictionary 合う → stem あ → attach -te form あって → add auxiliary for continuous state いる → past いた → polite past いました",
+      "formula_bg": "あって + いました",
+      "formula_en": "あって + いました",
+      "lemma": "合う",
+      "reading": "あ",
+      "reason": "合っていました е форма на глагола 合う „съответствам, съвпадам“, а не отделна дума.",
+      "surface": "合っていました"
     }
   ],
   "6f0792a24f4cf960527f99a703fc2d0fdb19eb66": [
@@ -11045,6 +11343,13 @@
       "label": "さっき"
     }
   ],
+  "74fff2af57c40d60522df8572a14e49413e6f23d": [
+    {
+      "explanation_bg": "Показва причина или основание; „поради/заради това, че…“",
+      "explanation_en": "Indicates a reason or basis; ‘from the fact that…’ / ‘because…’",
+      "label": "ことから"
+    }
+  ],
   "757c05dda6cd5641909e36707831ccf591af0e5e": [
     {
       "surface": "話",
@@ -11109,6 +11414,38 @@
       "explanation_bg": "Показва, че говорещият е чул или прочел информацията отнякъде; употребява се след кратката форма на глагола.",
       "explanation_en": "Shows that the speaker heard or read the information somewhere; used after the short form of the verb.",
       "label": "〜そうだ"
+    }
+  ],
+  "7c2bb6fe47fe46928cb7a8b47fc2a7c0be536a14": [
+    {
+      "explanation_bg": "Показва възможност или способност – „може да се...“",
+      "explanation_en": "Expresses possibility/ability: ‘can/be able to...’",
+      "label": "ことができる"
+    },
+    {
+      "explanation_bg": "Показва решение, до което се стига; нещо става официално решено/прието",
+      "explanation_en": "Indicates a decision or result that has been reached; something becomes officially settled",
+      "label": "ことになる"
+    },
+    {
+      "explanation_bg": "Показва усилие да се поддържа или постигне определено състояние",
+      "explanation_en": "Shows effort to keep or bring about a certain state",
+      "label": "ようにする"
+    },
+    {
+      "explanation_bg": "Предположение по външни признаци – „изглежда, че...“",
+      "explanation_en": "Conjecture based on appearance: ‘it seems/looks like...’",
+      "label": "みたいだ"
+    },
+    {
+      "explanation_bg": "Подчертава, че нещо трудно се случва – „едва ли...“",
+      "explanation_en": "Emphasises that something is hard to achieve: ‘hardly/not easily...’",
+      "label": "なかなか～ない"
+    },
+    {
+      "explanation_bg": "Показва противопоставяне – „въпреки че...“",
+      "explanation_en": "Indicates contrast: ‘although/even though...’",
+      "label": "のに"
     }
   ],
   "7d3d038c06d94887fe296b0ed288828a89564a89": [
@@ -11254,6 +11591,19 @@
       "translation_en": "polite past tense",
       "usage_bg": "вежливое завершение предложения",
       "usage_en": "polite sentence ending"
+    }
+  ],
+  "7dd19441b0da52f3f98656020cace94b164d160f": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "辞書形「合う」→ 連用形「合い」＋補助動詞「て」→ 補助動詞「いる」→ 過去・丁寧形「いた」→ 丁寧過去「いました」",
+      "formation_en": "dict. au → stem ai + te-iru auxiliary → past-polite imashita",
+      "formula_bg": "合う → 合い+て+い+ました",
+      "formula_en": "au → ai-te-i-mashita",
+      "lemma": "合う",
+      "reading": "あ",
+      "reason": "「合っていました」は「合う」の進行・継続の過去丁寧形であり、複合動詞ではなく単一の動詞の活用形であるため",
+      "surface": "合っていました"
     }
   ],
   "7e0b9142a356e4ec7a59b99cdb8bdad89bb178d9": [
@@ -11456,6 +11806,23 @@
       "label": "あまりにも"
     }
   ],
+  "839aa63bdce0c19fef5f9f9263f7664fe8b43e4f": [
+    {
+      "explanation_bg": "Показва насоченост към някого/нещо; използва се при действия или чувства към обект.",
+      "explanation_en": "Indicates direction toward someone/something; used for actions or feelings directed at an object.",
+      "label": "に対して"
+    },
+    {
+      "explanation_bg": "Показва средство, причина или агент; употребява се за нещо, което предизвиква действие.",
+      "explanation_en": "Shows means, cause or agent; used for something that triggers an action.",
+      "label": "によって"
+    },
+    {
+      "explanation_bg": "Означава 'центрирано около' или 'с фокус върху'; употребява се за нещо, около което се въртят други неща.",
+      "explanation_en": "Means 'centered on' or 'focusing on'; used for something around which other things revolve.",
+      "label": "を中心に"
+    }
+  ],
   "856ae14a36fda4540aed8b28f4cd09af7dc334b3": [
     {
       "category_bg": "съществително",
@@ -11600,6 +11967,201 @@
       "translation_en": "quotation construction",
       "usage_bg": "",
       "usage_en": ""
+    }
+  ],
+  "85a55b78444a78344164517f24123199be97c93c": [
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "高市総理大臣",
+      "meaning_bg": "титла + фамилия",
+      "meaning_en": "title + surname",
+      "reading": "たかいちそうりだいじん",
+      "surface": "高市総理大臣",
+      "translation_bg": "министър-председателят Такайчи",
+      "translation_en": "Prime Minister Takayichi",
+      "usage_bg": "официално обръщение",
+      "usage_en": "formal address"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "トランプ大統領",
+      "meaning_bg": "заемка + титла",
+      "meaning_en": "loanword + title",
+      "reading": "とらんぷだいとうりょう",
+      "surface": "トランプ大統領",
+      "translation_bg": "президент Тръмп",
+      "translation_en": "President Trump",
+      "usage_bg": "официално обръщение",
+      "usage_en": "formal address"
+    },
+    {
+      "category_bg": "съчетание",
+      "category_en": "compound",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "N + を + する",
+      "formula_en": "N + を + する",
+      "item_type": "compound",
+      "lemma": "話をする",
+      "meaning_bg": "същ. + глагол",
+      "meaning_en": "noun + verb",
+      "reading": "はなしをする",
+      "surface": "話をする",
+      "translation_bg": "да разговарям",
+      "translation_en": "to talk / have a conversation",
+      "usage_bg": "изразява действие, свързано със съществително",
+      "usage_en": "expresses action related to the noun"
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "V(plain) + ために",
+      "formula_en": "V(plain) + ために",
+      "item_type": "grammar",
+      "lemma": "ために",
+      "meaning_bg": "цел",
+      "meaning_en": "purpose",
+      "reading": "ために",
+      "surface": "ために",
+      "translation_bg": "с цел, за да",
+      "translation_en": "in order to",
+      "usage_bg": "показва цел на действие",
+      "usage_en": "shows purpose of action"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "アメリカ",
+      "meaning_bg": "страна",
+      "meaning_en": "country",
+      "reading": "あめりか",
+      "surface": "アメリカ",
+      "translation_bg": "САЩ",
+      "translation_en": "the U.S.",
+      "usage_bg": "име на държава",
+      "usage_en": "country name"
+    },
+    {
+      "category_bg": "глагол",
+      "category_en": "verb",
+      "formation_bg": "речникова форма 着く → основа つき → добавяме минало време ました",
+      "formation_en": "dictionary form 着く → stem つき → add past polite ました",
+      "formula_bg": "着く → つき + ました",
+      "formula_en": "着く → つき + ました",
+      "item_type": "verb",
+      "lemma": "着く",
+      "meaning_bg": "да пристигнеш",
+      "meaning_en": "to arrive",
+      "reading": "つ",
+      "surface": "着きました",
+      "translation_bg": "пристигна (възх.)",
+      "translation_en": "arrived (polite)",
+      "usage_bg": "учтива минало време",
+      "usage_en": "polite past tense"
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "Xは",
+      "formula_en": "Xは",
+      "item_type": "grammar",
+      "lemma": "は",
+      "meaning_bg": "маркира тема",
+      "meaning_en": "marks topic",
+      "reading": "は",
+      "surface": "は",
+      "translation_bg": "тематична частица",
+      "translation_en": "topic particle",
+      "usage_bg": "поставя се след темата на изречението",
+      "usage_en": "placed after the sentence topic"
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "grammar",
+      "lemma": "と",
+      "meaning_bg": "партньор или свързване",
+      "meaning_en": "partner or linking",
+      "reading": "と",
+      "surface": "と",
+      "translation_bg": "с, и (съюз)",
+      "translation_en": "with, and (conjunction)",
+      "usage_bg": "показва с кого се извършва действието",
+      "usage_en": "shows with whom the action is done"
+    },
+    {
+      "category_bg": "съществително",
+      "category_en": "noun",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "noun",
+      "lemma": "19日",
+      "meaning_bg": "дата от месеца",
+      "meaning_en": "calendar date",
+      "reading": "じゅうくにち",
+      "surface": "19日",
+      "translation_bg": "19-ти ден",
+      "translation_en": "the 19th",
+      "usage_bg": "използва се за ден от месеца",
+      "usage_en": "used for day of the month"
+    },
+    {
+      "category_bg": "граматична конструкция",
+      "category_en": "grammar pattern",
+      "formation_bg": "",
+      "formation_en": "",
+      "formula_bg": "",
+      "formula_en": "",
+      "item_type": "grammar",
+      "lemma": "に",
+      "meaning_bg": "времева точка",
+      "meaning_en": "point in time",
+      "reading": "に",
+      "surface": "に",
+      "translation_bg": "в, на (време)",
+      "translation_en": "on, at (time)",
+      "usage_bg": "показва време на действие",
+      "usage_en": "indicates time of action"
+    }
+  ],
+  "85aaa8823f8596c2325e98a4c2603ecff3807048": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "речникова форма 着く → основа つき → добавяне на ました за учтиво минало",
+      "formation_en": "dictionary 着く → stem つき → add ました for polite past",
+      "formula_bg": "着く → つき + ました",
+      "formula_en": "着く → つき + ました",
+      "lemma": "着く",
+      "reading": "つ",
+      "reason": "‘着きました’ е учтивата минала форма на глагола 着く, а не отделна дума",
+      "surface": "着きました"
     }
   ],
   "85b711331b5dfdcd254aaca04b49d330a5dbf20d": [
@@ -12753,6 +13315,30 @@
       "label": "〜中で"
     }
   ],
+  "9c3d2308ac3e9a95be733c82e811a57ccd769c03": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "основата 話す минава през 話し (отпада う), добавя се たい → 話したい",
+      "formation_en": "base 話す becomes 話し (drop う), add たい → 話したい",
+      "formula_bg": "話す → 話し + たい",
+      "formula_en": "話す → 話し + たい",
+      "lemma": "話す",
+      "reading": "はな",
+      "reason": "したい е желателна форма на глагола 話す, не отделна дума",
+      "surface": "話をしたい"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "основата 言う минава през 言い (отпада う), добавя се ました → 言いました",
+      "formation_en": "base 言う becomes 言い (drop う), add ました → 言いました",
+      "formula_bg": "言う → 言い + ました",
+      "formula_en": "言う → 言い + ました",
+      "lemma": "言う",
+      "reading": "い",
+      "reason": "ました е учтиво минало време на глагола 言う, не отделна дума",
+      "surface": "言いました"
+    }
+  ],
   "9ef0188b4171a31d2f4f84905d5c580cd8722811": [
     {
       "explanation_bg": "Използва се за изразяване на възможност или съмнение относно настъпването на събитие. означава 'може би' или 'възможно е'.",
@@ -13038,6 +13624,19 @@
       "translation_en": "there was/were",
       "usage_bg": "показва съществуване в миналото",
       "usage_en": "shows existence in the past"
+    }
+  ],
+  "a13825ce5c74bbce5d98b0fd6f83e634793b689f": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "основа 'да' + свързваща гласна 'и' + помощен глагол 'има' в учтиво настояще",
+      "formation_en": "stem 'da' + linking vowel 'i' + helper verb 'imasu' in polite present",
+      "formula_bg": "出す → 出し + います",
+      "formula_en": "dasu → dashi + imasu",
+      "lemma": "出す",
+      "reading": "だ",
+      "reason": "出しています е форма на глагола 出す, а не самостоятелна лема",
+      "surface": "出しています"
     }
   ],
   "a1740ffb3a451b1f612b5a53eb948a5d7dfb7d18": {
@@ -17423,6 +18022,19 @@
       "label": "〜ぶりに"
     }
   ],
+  "b284b90b55b207febc19eb17c5904bd46be4826c": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "辞書形「着く」→連用形「着き」→過去・完了の助動詞「ました」",
+      "formation_en": "dictionary form tsuku → continuative form tsuki → past-polite auxiliary verb mashita",
+      "formula_bg": "連用形+ました",
+      "formula_en": "-i form + mashita",
+      "lemma": "着く",
+      "reading": "つ",
+      "reason": "「着きました」は動詞「着く」の丁寧過去形であり、複合語ではない",
+      "surface": "着きました"
+    }
+  ],
   "b30371612da76085fbaf64d2d57b1bcb5c6ec801": [
     {
       "category_bg": "съществително",
@@ -17533,6 +18145,79 @@
       "usage_en": ""
     }
   ],
+  "b3b74a62d1e14878389caa474435c265913c9823": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "1. Вземи речника: 話す. 2. Премахни す → остава 話. 3. Добави продължителната форма し. 4. Добави помощното て → 話して. 5. Добави вежливото помагателно いる → 話している. 6. Накрая сложи учтивото настояще ます → 話しています.",
+      "formation_en": "1. Take the dictionary form 話す. 2. Drop す → stem 話. 3. Add the continuative し. 4. Add the helper て → 話して. 5. Add the helper いる → 話している. 6. Finally add polite present ます → 話しています.",
+      "formula_bg": "話す → 話し → 話して → 話している → 話しています",
+      "formula_en": "話す → 話し → 話して → 話している → 話しています",
+      "lemma": "話す",
+      "reading": "はな",
+      "reason": "The surface form is the polite progressive of 話す, not a lemma itself.",
+      "surface": "話しています"
+    }
+  ],
+  "b3e905e08159a90a2aaa55cf6d99b5a0be3addba": [
+    {
+      "explanation_bg": "Показва промяна или начало на действие/състояние, идващо към говорещия.",
+      "explanation_en": "Indicates a change or beginning of an action/state coming toward the speaker.",
+      "label": "てくる"
+    },
+    {
+      "explanation_bg": "Описва момента, в който действието се случва точно сега.",
+      "explanation_en": "Describes the moment when the action is happening right now.",
+      "label": "ているところ"
+    },
+    {
+      "explanation_bg": "Изразява възможност да се каже нещо; „може да се каже“.",
+      "explanation_en": "Expresses possibility to say something; 'one could say'.",
+      "label": "と言ってもいい"
+    },
+    {
+      "explanation_bg": "Цитира или обозначава нещо; „се казва/означава“.",
+      "explanation_en": "Quotes or designates something; 'called / that says'.",
+      "label": "という"
+    },
+    {
+      "explanation_bg": "Показва общоприета информация; „се казва“.",
+      "explanation_en": "Shows widely accepted information; 'it is said that'.",
+      "label": "と言われている"
+    },
+    {
+      "explanation_bg": "Изразява лично мнение; „мисля, че“.",
+      "explanation_en": "Expresses personal opinion; 'I think that'.",
+      "label": "と思う"
+    },
+    {
+      "explanation_bg": "Дава примери в списък; „като… и т.н.“, „или нещо подобно“.",
+      "explanation_en": "Gives examples in a list; 'such as… and so on'.",
+      "label": "とか～とか"
+    },
+    {
+      "explanation_bg": "Означава място или момент; „място/точка“.",
+      "explanation_en": "Means place or point; 'place/spot'.",
+      "label": "ところ"
+    },
+    {
+      "explanation_bg": "Разговорен вариант на „という“; цитира или обозначава.",
+      "explanation_en": "Casual form of という; quotes or designates.",
+      "label": "って"
+    }
+  ],
+  "b5d74a5034080b0dfb40c1f6ad511ebfb1a98476": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "основната дума е 話す. За да се направи учтивата форма, първо се взема основата 話し-, после се добавя учтивото окончание ます. Преди глагола стои съществителното 話, затова се появява частицата を.",
+      "formation_en": "start from the verb 話す. Take its stem 話し-, add the polite ending ます. Because the noun 話 comes before it, the particle を is inserted.",
+      "formula_bg": "話す → 話し- + ます → 話をします",
+      "formula_en": "話す → 話し- + ます → 話をします",
+      "lemma": "話す",
+      "reading": "はなし",
+      "reason": "surface form is the polite form of 話す, not a compound lemma",
+      "surface": "話をします"
+    }
+  ],
   "b5de4b1a31d991b88035f37d2cb7960b0b22c5c2": [
     {
       "explanation_bg": "Това е граматическа структура, която се използва, за да покаже, че нещо е планирано или предвидено. Употребява се, когато искаме да обясним, че нещо е част от план или график.",
@@ -17548,6 +18233,30 @@
       "explanation_bg": "Това е граматическа структура, която се използва, за да покаже, че нещо е трудно или мъчно. Употребява се, когато искаме да обясним, че нещо не е лесно или е сложно.",
       "explanation_en": "This is a grammar structure used to show that something is difficult or hard. It is used when we want to explain that something is not easy or is complicated.",
       "label": "なかなか"
+    }
+  ],
+  "b67fa43049c3c6aa65587762c8628cb8bc039133": [
+    {
+      "confidence": 0.1,
+      "formation_bg": "日 е съществително, не глагол; „でした“ е просто минало време на „е“",
+      "formation_en": "日 is a noun, not a verb; でした is just the past of “to be”",
+      "formula_bg": "日 + でした",
+      "formula_en": "日 + でした",
+      "lemma": "日",
+      "reading": "ひ",
+      "reason": "не е глагол, а съществително с връзка „да бъде“",
+      "surface": "日でした"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "основа 答え + минало учтиво свършено ました",
+      "formation_en": "stem 答え + polite past ました",
+      "formula_bg": "答え + ました",
+      "formula_en": "答え + ました",
+      "lemma": "答える",
+      "reading": "こた",
+      "reason": "глагол във форма за минало учтиво действие",
+      "surface": "答えました"
     }
   ],
   "b699205990cccabd0dda8a28e699792b6461b9d4": [
@@ -17612,6 +18321,30 @@
       "explanation_bg": "Означава „наречен“ или „който се казва“; въвежда име или описание.",
       "explanation_en": "Means 'called' or 'that is'; introduces a name or description.",
       "label": "という"
+    }
+  ],
+  "b813f3c21cc2b7cc379d4c36a5be69d864fadaf5": [
+    {
+      "confidence": 0.9,
+      "formation_bg": "прилагателното 高い става наречение 高く, добавя се свързващата форма на なる (なり) и накрая продължителната форма на いる (いる)",
+      "formation_en": "the i-adjective 高い turns into adverb 高く, then the connecting form of なる (なり) is attached, and finally the continuous form of いる (いる)",
+      "formula_bg": "高い → 高く + なり + いる",
+      "formula_en": "高い → 高く + なり + いる",
+      "lemma": "高い",
+      "reading": "たか",
+      "reason": "高くなっている is a phrase built on the adjective 高い, not a single verb.",
+      "surface": "高くなっている"
+    },
+    {
+      "confidence": 0.95,
+      "formation_bg": "свързващата форма на 下がる е 下がり, към нея се добавя окончанието そу за предположение",
+      "formation_en": "the connecting form of 下がる is 下がり, to which the suffix そう for conjecture is added",
+      "formula_bg": "下がる → 下がり + そう",
+      "formula_en": "下がる → 下がり + そう",
+      "lemma": "下がる",
+      "reading": "さがりそう",
+      "reason": "surface form matches the regular そう prediction pattern.",
+      "surface": "下がりそう"
     }
   ],
   "b88a5e532b877d5a11c90c7432fcb5b914079465": [
@@ -17925,6 +18658,19 @@
       "label": "早くなる"
     }
   ],
+  "c321dc1e4ae2874f1a4a12d32ab2e782e7877de9": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "話す → 話し (отпада う) → 話して (добавяме て) → 話している (добавяме いる) → 話しています (добавяме ます) → 話していました (минало време на ます)",
+      "formation_en": "話す → 話し (drop う) → 話して (add て) → 話している (add いる) → 話しています (add ます) → 話していました (past of ます)",
+      "formula_bg": "話す + て + いる + ます (минало)",
+      "formula_en": "話す + て + いる + ます (past)",
+      "lemma": "話す",
+      "reading": "はな",
+      "reason": "Словосъчетанието е редовна последователност от て-форма + いる в учтивата минала форма.",
+      "surface": "話していました"
+    }
+  ],
   "c3df0c0c0e9716370c1fc6ef86c7c39590152284": [
     {
       "surface": "所がありました",
@@ -18066,6 +18812,30 @@
       "surface": "ガソリン",
       "translation_bg": "бензин",
       "translation_en": "gasoline"
+    }
+  ],
+  "c8e1ac50a174aab42e5365a18b3f9e8d38126948": [
+    {
+      "confidence": 0.9,
+      "formation_bg": "основата е 話す → 話し (отпада う) + を + します",
+      "formation_en": "base 話す → 話し (drop う) + を + します",
+      "formula_bg": "話す → 話し + を + します",
+      "formula_en": "話す → 話し + を + します",
+      "lemma": "話す",
+      "reading": "はなし",
+      "reason": "глаголът е 話す, а не цялата фраза; 話し е съществително тук, последвано от спомагателно します",
+      "surface": "話をします"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "основата е する → します (уважителна форма)",
+      "formation_en": "base する → します (polite form)",
+      "formula_bg": "する → します",
+      "formula_en": "する → します",
+      "lemma": "する",
+      "reading": "します",
+      "reason": "",
+      "surface": "します"
     }
   ],
   "c98ab712fabc235cd206a093da902a7991b213c9": [
@@ -18306,6 +19076,13 @@
       "usage_en": ""
     }
   ],
+  "c9fa7d07fbce275e2626a2d774860d9e9e9a765b": [
+    {
+      "explanation_bg": "означава „според“, „както е казано/желано“; показва, че нещо се случва точно според дадено желание или инструкция.",
+      "explanation_en": "means \"according to\" or \"as wished\"; indicates that something happens exactly as requested or instructed.",
+      "label": "とおりに"
+    }
+  ],
   "c9ff2a310c5402f0e9825700d11a05c586f713c2": [
     {
       "explanation_bg": "「中」означава „вътре в/сред“ и се използва за локализиране в рамките на нещо.",
@@ -18326,6 +19103,43 @@
       "explanation_bg": "「じゃない」е разговорна форма на отрицанието „не е“; омаловажава или отрича.",
       "explanation_en": "じゃない is the casual negative \"isn't\" and negates or downplays.",
       "label": "じゃない"
+    }
+  ],
+  "ca0df04d5e801605df757bd9e65dc4267aae681f": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "答える → 答え (основа) + ました (учтиво минало)",
+      "formation_en": "答える → 答え (stem) + ました (polite past)",
+      "formula_bg": "答える → 答え + ました",
+      "formula_en": "答える → 答え + ました",
+      "lemma": "答える",
+      "reading": "こた",
+      "reason": "Това е миналото учтиво време на глагола 答える.",
+      "surface": "答えました"
+    }
+  ],
+  "ca21bd9288406d18e6dab787d654b78e4986de94": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "話す → 話し（連用形）＋たい（希望の助動詞）",
+      "formation_en": "hanasu → hanashi (ren'yō) + tai (desiderative auxiliary)",
+      "formula_bg": "話す→話し+たい",
+      "formula_en": "hanasu→hanashi+tai",
+      "lemma": "話す",
+      "reading": "はなす",
+      "reason": "したい attaches to the 連用形 of the verb 話す, not to the noun 話.",
+      "surface": "話をしたい"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "言う → 言い（連用形）＋ました（丁寧過去）",
+      "formation_en": "iu → ii (ren'yō) + mashita (polite past)",
+      "formula_bg": "言う→言い+ました",
+      "formula_en": "iu→ii+mashita",
+      "lemma": "言う",
+      "reading": "いう",
+      "reason": "The verb 言う in 連用形 form (言い) combines with the polite past auxiliary ました.",
+      "surface": "言いました"
     }
   ],
   "cb85ece459ace2e3b8524b65c642f2d4f5f5e546": [
@@ -18534,6 +19348,19 @@
       "translation_en": "continue",
       "usage_bg": "описывает продолжающееся действие",
       "usage_en": "describes an ongoing action"
+    }
+  ],
+  "cecd289c24d9e2009636d296c786bee482e1898c": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "речникова форма 着く → основа つき → добавяме минало време ました",
+      "formation_en": "dictionary form 着く → stem つき → add past polite ました",
+      "formula_bg": "着く → つき + ました",
+      "formula_en": "着く → つき + ました",
+      "lemma": "着く",
+      "reading": "つ",
+      "reason": "‘着きました’ е минало време на глагола 着く, не самостоятелна дума.",
+      "surface": "着きました"
     }
   ],
   "cf0bfc0d0dfb5055e2f4710e9070bd6fe40d975b": [
@@ -18918,6 +19745,19 @@
       "explanation_bg": "Тази структура означава, че нещо се случва докато нещо друго се случва. Използва се за изразяване на едновременност.",
       "explanation_en": "This structure means that something happens while something else is happening. It is used to express simultaneity.",
       "label": "〜最中に"
+    }
+  ],
+  "cf58c753260e74d4e30950efdadb9a17949daf1a": [
+    {
+      "confidence": 0.9,
+      "formation_bg": "речникова форма 'ある' → основа 'ar' → добавяме 'i' за свързване → минало вежливо 'arimashita'",
+      "formation_en": "dict. 'aru' → stem 'ar' → add linking 'i' → polite past 'arimashita'",
+      "formula_bg": "aru → ar+i → arimashita",
+      "formula_en": "aru → ar+i → arimashita",
+      "lemma": "ある",
+      "reading": "ありました",
+      "reason": "'ありました' е вежливата минала форма на глагола 'ある', а '所' е просто съществително, което той определя.",
+      "surface": "所がありました"
     }
   ],
   "d0c7707a066952f3c3ec75b1228851920bd9b7a9": [
@@ -19707,6 +20547,19 @@
       "usage_en": "ends a polite statement"
     }
   ],
+  "d7459c40db86033db1417c4b742c1a1886d4b9ea": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "辞書形「続く」→ 連用形「続き」＋補助動詞「居る」の連用形「居」→ 促音便「続っ」＋「居る」のテ形「ている」",
+      "formation_en": "dictionary form tsuzuku → continuative tsuzuki + auxiliary verb iru (continuative i) → sokuonbin tsuzut-te + te-form of iru → tsuzutteiru",
+      "formula_bg": "連用形＋促音便＋ている",
+      "formula_en": "ren'yō + sokuonbin + te-iru",
+      "lemma": "続く",
+      "reading": "つづ",
+      "reason": "「続いている」は五段動詞「続く」の連用形に促音便が起こり「ている」と結びついた継続形である",
+      "surface": "続いている"
+    }
+  ],
   "d935dbca696fe2c8f39a6aa5aed78c9f6ced406c": [
     {
       "explanation_bg": "Показва контекста или средството, чрез което нещо се случва.",
@@ -20438,6 +21291,19 @@
       }
     ]
   },
+  "da75c653bc3baf7b84d0a21cbf456c2c38001f1c": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "話す → 話し (отпада う) + を + します",
+      "formation_en": "hanasu → hanashi (drop う) + を + shimasu",
+      "formula_bg": "V(う→し) + を + します",
+      "formula_en": "V(u→shi) + o + shimasu",
+      "lemma": "話す",
+      "reading": "はなす",
+      "reason": "Глаголът е 話す, а не цялата фраза; ます е учтивата форма.",
+      "surface": "話をします"
+    }
+  ],
   "db43724395d11fc5112467d41fa743f7d2a83d44": [
     {
       "explanation_bg": "означава „както е казано/според“; показва, че нещо става точно според дадено желание или инструкция.",
@@ -20475,6 +21341,19 @@
       "explanation_bg": "Означава „за малко“ или „за кратко“ и се използва, за да покаже кратък период от време.",
       "explanation_en": "Means 'for a short while' or 'for a little bit' and is used to show a short period of time.",
       "label": "しばらく"
+    }
+  ],
+  "dd6499adb596b5e296460374a267c61e2fe0f609": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "出す → 出し (連用形) + て + いる (補助動詞) → 出ている → 出ています (丁寧形)",
+      "formation_en": "dasu → dashi (ren'yō) + te + iru (aux.) → dete-iru → dete-imasu (polite)",
+      "formula_bg": "出す → 出し + て + います",
+      "formula_en": "dasu → dashi + te + imasu",
+      "lemma": "出す",
+      "reading": "だ",
+      "reason": "出ています is the progressive form of 出す, not a compound lemma.",
+      "surface": "出しています"
     }
   ],
   "dd7fb7a0a09ea51af86937159da7dfed3127cc46": [
@@ -21211,6 +22090,43 @@
       "translation_en": "plan to"
     }
   ],
+  "e9041227c861cac50da38faae4c32e15741ed04b": [
+    {
+      "confidence": 0.0,
+      "formation_bg": "名詞「日」＋助動詞「でした」",
+      "formation_en": "noun 日 + copula でした",
+      "formula_bg": "N + Cop",
+      "formula_en": "N + Cop",
+      "lemma": "日",
+      "reading": "ひ",
+      "reason": "「日」は名詞であり、動詞ではない",
+      "surface": "日でした"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "答える → 答え（連用形）＋助動詞「ます」＋過去「た」",
+      "formation_en": "答える → 答え (ren'yō) + polite masu + past ta",
+      "formula_bg": "V(連用)+ます+た",
+      "formula_en": "V(ren'yō)+masu+ta",
+      "lemma": "答える",
+      "reading": "こた",
+      "reason": "動詞「答える」の丁寧過去形",
+      "surface": "答えました"
+    }
+  ],
+  "eb28ec9cbd09cc361a8640cf37110510b2c3145e": [
+    {
+      "confidence": 0.9,
+      "formation_bg": "Прилагателното 高い става 高く (отпада い и се добавя く). Към него се прибавя глаголът なる в свързаната форма なり → なっ (промяна наради свързване) + て + いる. Получава се значението „е в състояние на ставане/ставащо“ – „става високо“.",
+      "formation_en": "The adjective 高い becomes 高く (drop い and add く). The verb なる is then attached in its connective form なり → なっ (sound change) + て + いる. This gives the progressive/resultant state „is becoming high“ or „has become high“.",
+      "formula_bg": "高い → 高く + なる → なっ + ている",
+      "formula_en": "高い → 高く + なる → なっ + ている",
+      "lemma": "高い",
+      "reading": "たか",
+      "reason": "高くなっている is not a verb lemma; it is the adjective 高い turned into an adverbial form and combined with the progressive of なる.",
+      "surface": "高くなっている"
+    }
+  ],
   "ed37a169a15c89fab3195364bb658508776faa6c": [
     {
       "explanation_bg": "Тази граматична структура означава, че нещо не може да бъде направено поради някаква причина или задължение. Тя се използва, когато някой иска да каже, че нещо е невъзможно или недопустимо.",
@@ -21550,6 +22466,32 @@
       "translation_en": "headlights"
     }
   ],
+  "f048d618935e88c14ad006fdc0242ed48cdd6958": [
+    {
+      "confidence": 0.95,
+      "formation_bg": "高い → 高く (отрицателна форма) + なって (от なる) + いる (показва продължително състояние)",
+      "formation_en": "高い → 高く (adverbial form) + なって (from なる) + いる (shows ongoing state)",
+      "formula_bg": "прилагателно 'висок' → наречна форма + глагол 'ставам' + продължителна частица",
+      "formula_en": "adj. 'high' → adverb form + verb 'become' + continuous particle",
+      "lemma": "高い",
+      "reading": "たか",
+      "reason": "高くなっている е форма на прилагателното 高い, а не самостоятелен глагол; основната дума е 高い.",
+      "surface": "高くなっている"
+    }
+  ],
+  "f09c5a5a0defbc4d3b65e184d49ff725580bea63": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "言う → 言っ (促音便) → 言って + いる → 言っている → 言っていま (丁寧語) → 言っていました (過去形)",
+      "formation_en": "iu → it (sokuon) → itte + iru → itteiru → itteima (polite) → itteimashita (past)",
+      "formula_bg": "言う → 言って + いる → いる → います → いました",
+      "formula_en": "iu → itte + iru → iru → imasu → imashita",
+      "lemma": "言う",
+      "reading": "い",
+      "reason": "The surface form is the past polite progressive of 言う, not a lemma.",
+      "surface": "言っていました"
+    }
+  ],
   "f1d967d66b0c44cf6b9ca1891a9bffd24522da21": [
     {
       "explanation_bg": "Показва цел или желан резултат: „за да не стане“, „така че да“; използва се след основна форма на глагол.",
@@ -21560,6 +22502,19 @@
       "explanation_bg": "Показва как изглежда нещо според наблюдателя: „изглежда, че ще“; използва се със свързана форма на глагол.",
       "explanation_en": "Shows how something appears to the speaker: 'it looks like/it seems that'; attaches to the verb stem.",
       "label": "ように見える"
+    }
+  ],
+  "f3d3497176daded82b02eadfbe8a8dbe94e67053": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "基本ната форма е 言う. Премахваме う и добавяме って → 言って. Към формата てта добавяме いる → 言っている. Променяме いる в минало време いた → 言っていた. Добавяме учтиво минало окончание ました → 言っていました.",
+      "formation_en": "Start from the dictionary form 言う. Drop う and add って → 言って. Attach いる to the て-form → 言っている. Change いる to its past いた → 言っていた. Add polite past ending ました → 言っていました.",
+      "formula_bg": "言う → 言って → 言っている → 言っていた → 言っていました",
+      "formula_en": "言う → 言って → 言っている → 言っていた → 言っていました",
+      "lemma": "言う",
+      "reading": "い",
+      "reason": "The surface form is the polite past progressive of the verb 言う, not a compound lemma.",
+      "surface": "言っていました"
     }
   ],
   "f7266e53fd605af855c73422f06c5b032893f1c9": [
@@ -21624,6 +22579,19 @@
       "explanation_bg": "Използва се за изразяване на трудност при извършване на нещо. означава \"много трудно е да\".",
       "explanation_en": "Used to express difficulty in doing something. means \"it's very hard to\".",
       "label": "なかなか～ない"
+    }
+  ],
+  "f88b585f727cd01e459d5589330da4f6f478d017": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "未然形 あら + 助動詞 れ + 連用形 れ + 助動詞 た → ありました",
+      "formation_en": "Negative stem ara + auxiliary re + continuative re + auxiliary ta → arimashita",
+      "formula_bg": "ある → あり + ました",
+      "formula_en": "aru → ari + mashita",
+      "lemma": "ある",
+      "reading": "ありました",
+      "reason": "surface was mis-segmented; ありました is the polite past of ある",
+      "surface": "ありました"
     }
   ],
   "f9d9497963ff4e95f482c83161b1131a5ff529e4": [
@@ -22606,6 +23574,60 @@
       "translation_en": "formality",
       "usage_bg": "уточнява ритуалната форма",
       "usage_en": "specifies the ritual form"
+    }
+  ],
+  "fa9de10d0007b2e4405df8d869fc6d6a839641c9": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "作る → 作り (премахни る) + ました (минало учтиво)",
+      "formation_en": "tsukuru → tsukuri (drop る) + mashita (past polite)",
+      "formula_bg": "作る → 作り + ました",
+      "formula_en": "tsukuru → tsukuri + mashita",
+      "lemma": "作る",
+      "reading": "つくる",
+      "reason": "作りました е учтивата минала форма на 作る.",
+      "surface": "作りました"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "合う → あっ (промени звука) + て + いました (бяха си)",
+      "formation_en": "au → atː (sound change) + te + imashita (were doing)",
+      "formula_bg": "合う → あっ + て + いました",
+      "formula_en": "au → atː + te + imashita",
+      "lemma": "合う",
+      "reading": "あう",
+      "reason": "合っていました е минало продължително учтиво на 合う.",
+      "surface": "合っていました"
+    }
+  ],
+  "fc0d9aaf8dc175dc836caf9d241dcb7f64b988d5": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "出す → 出し (премахване на す и добавяне на い) + て + います",
+      "formation_en": "dasu → dashi (drop す and add い) + て + います",
+      "formula_bg": "出す ます-стебло し + て + います",
+      "formula_en": "dasu masu-stem shi + te + imasu",
+      "lemma": "出す",
+      "reading": "だ",
+      "reason": "出しています е форма на глагола 出す, а не отделна дума",
+      "surface": "出しています"
+    }
+  ],
+  "fe3eef05d31e842e2cf7b07c196d56efa6461488": [
+    {
+      "explanation_bg": "Показва цел: „за да…“, „с цел…“. След него идва глагол в основна форма.",
+      "explanation_en": "Expresses purpose: „in order to…“. The following verb is in plain form.",
+      "label": "ために"
+    },
+    {
+      "explanation_bg": "Показва усилие да се поддържа или постигне дадено състояние: „старая се да…“, „да става така, че…“.",
+      "explanation_en": "Shows effort to keep or bring about a state: „make sure that…“, „see to it that…“.",
+      "label": "ようにする"
+    },
+    {
+      "explanation_bg": "Показва вече взето решение или план: „планира се…“, „предвидено е да…“.",
+      "explanation_en": "States a fixed plan or schedule: „is scheduled to…“, „is set to…“.",
+      "label": "予定だ"
     }
   ],
   "ff45fdd9e18ccce07f65900b3b7eb6ac8139affd": [

@@ -77,6 +77,9 @@ GROQ_MIN_REQUEST_INTERVAL = 3.0
 GROQ_ARTICLE_MAX_COMPLETION_TOKENS = 1200
 GROQ_GRAMMAR_MAX_COMPLETION_TOKENS = 500
 GROQ_GRAMMAR_PATTERN_CHUNK_SIZE = 28
+GROQ_VERB_CORRECTION_MAX_COMPLETION_TOKENS = 700
+GROQ_VERB_CORRECTION_MAX_PROMPT_CHARS = 8000
+GROQ_VERB_CORRECTION_MAX_ITEMS = 10
 
 PARTICLE_PREFIXES = ("が", "を", "に", "で", "は", "と", "へ", "や", "も", "の")
 GODAN_I_TO_U = {"い":"う","き":"く","ぎ":"ぐ","し":"す","ち":"つ","に":"ぬ","び":"ぶ","み":"む","り":"る"}
@@ -1306,6 +1309,73 @@ def is_detailed_ai_formation(text: str) -> bool:
     return len(value) >= 24 or any(marker in value for marker in markers)
 
 
+def choose_popup_lemma(surface: str, current_lemma: str, analysis) -> str:
+    surface = (surface or "").strip()
+    current_lemma = (current_lemma or "").strip()
+    analysis_lemma = ((analysis or {}).get("lemma") or "").strip()
+    candidates = unique_keep_order([current_lemma, analysis_lemma, lemmatize_japanese(surface), to_dictionary_form(surface), surface])
+    for candidate in candidates:
+        if not candidate or "->" in candidate:
+            continue
+        if is_suspicious_verb_lemma(surface, candidate) and candidate != surface:
+            continue
+        return candidate
+    return surface
+
+
+def extract_lemma_from_formula(formula: str) -> str:
+    formula = html_lib.unescape((formula or "").strip())
+    if not formula:
+        return ""
+    first = re.split(r"\s*(?:->|→)\s*", formula, maxsplit=1)[0].strip()
+    if not first or " " in first or first == "-":
+        return ""
+    return first
+
+
+def resolve_verb_popup_lemma(surface: str, lemma: str, formula: str = "") -> str:
+    surface = (surface or "").strip()
+    lemma = (lemma or "").strip()
+    formula_lemma = extract_lemma_from_formula(formula)
+    candidates = unique_keep_order([formula_lemma, lemma])
+    for candidate in candidates:
+        if not candidate:
+            continue
+        if candidate != surface and not is_suspicious_verb_lemma(surface, candidate):
+            return candidate
+    return lemma or formula_lemma or surface
+
+
+def build_plain_verb_formation_bg(surface: str, lemma: str, current: str = "", formula: str = "") -> str:
+    surface = (surface or "").strip()
+    lemma = (lemma or "").strip()
+    current = (current or "").strip()
+    formula = (formula or "").strip()
+    if not surface or not lemma:
+        return current
+    if current and current not in {"учтива форма", "учтива минала форма", "минала форма", "форма на 〜ている", "учтива форма на 〜ている", "учтива минала форма на 〜ている"}:
+        return current
+    formula_lemma = extract_lemma_from_formula(formula)
+    base_lemma = formula_lemma or lemma
+    if surface.endswith("ました") and base_lemma != surface:
+        stem = surface[:-3]
+        return f"речникова форма {base_lemma} → основа {stem} → добавяне на ました за учтиво минало"
+    if surface.endswith("ます") and base_lemma != surface:
+        stem = surface[:-2]
+        return f"речникова форма {base_lemma} → основа {stem} → добавяне на ます за учтива форма"
+    if surface.endswith("ていました") and base_lemma != surface:
+        return f"речникова форма {base_lemma} → форма て → добавяне на いる → минало いた → учтиво минало ました"
+    if surface.endswith("ています") and base_lemma != surface:
+        return f"речникова форма {base_lemma} → форма て → добавяне на いる → учтива форма ます"
+    if surface.endswith("ている") and base_lemma != surface:
+        return f"речникова форма {base_lemma} → форма て → добавяне на いる за продължително състояние"
+    if surface.endswith("でいる") and base_lemma != surface:
+        return f"речникова форма {base_lemma} → форма で → добавяне на いる за продължително състояние"
+    if surface.endswith("した") and base_lemma == "する":
+        return "речникова форма する → основа し → добавяне на た за минала форма"
+    return current
+
+
 def extend_reading_with_surface_kana(surface: str, reading: str) -> str:
     surface = (surface or "").strip()
     reading = normalize_katakana_to_hiragana((reading or "").strip())
@@ -1359,7 +1429,7 @@ def enrich_popup_item(item):
     reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
     lemma = (item.get("lemma") or item.get("word") or surface).strip()
     analysis = analyze_japanese_word(surface, reading_hint=reading, lemma_hint=lemma)
-    resolved_lemma = (analysis.get("lemma") or lemma or surface).strip()
+    resolved_lemma = choose_popup_lemma(surface, lemma, analysis)
     item_type = infer_popup_item_type(
         surface,
         analysis,
@@ -1411,6 +1481,17 @@ def enrich_popup_item(item):
             item["formation_en"] = ai_formation_en
         else:
             item["formation_en"] = ai_formula_en or ai_formation_en or analysis_formula_en or analysis_form_en
+        item["lemma"] = resolve_verb_popup_lemma(
+            surface,
+            item.get("lemma", ""),
+            item.get("formula_bg", "") or item.get("formula_en", ""),
+        )
+        item["formation_bg"] = build_plain_verb_formation_bg(
+            surface,
+            item.get("lemma", ""),
+            item.get("formation_bg", ""),
+            item.get("formula_bg", ""),
+        )
     if not item["translation_bg"] or not item["translation_en"]:
         contextual = contextual_surface_meaning(
             surface,
@@ -2506,6 +2587,43 @@ def prepare_article_render_data(article):
             block_text = (block.get("text") or "").strip()
             if not block_text:
                 continue
+            suspicious_verbs = []
+            for item in analysis_items:
+                surface = (item.get("surface") or "").strip()
+                if not surface or surface not in block_text:
+                    continue
+                if should_request_verb_lemma_correction(item):
+                    suspicious_verbs.append(item)
+            if suspicious_verbs:
+                corrected_map = {}
+                for items_chunk in chunk_list(suspicious_verbs, GROQ_VERB_CORRECTION_MAX_ITEMS):
+                    try:
+                        chunk_map = analyze_suspicious_verbs_with_groq(article_id, block_id, block_text, items_chunk)
+                    except Exception as e:
+                        print(f"Groq suspicious verb correction failed for {article_id} block {block_id}: {e}")
+                        chunk_map = {}
+                    if chunk_map:
+                        corrected_map.update(chunk_map)
+                if corrected_map:
+                    for item in analysis_items:
+                        surface = (item.get("surface") or "").strip()
+                        corrected = corrected_map.get(surface)
+                        if not corrected:
+                            continue
+                        if corrected.get("confidence", 0.0) < 0.6:
+                            continue
+                        item["item_type"] = "verb"
+                        item["lemma"] = corrected.get("lemma") or item.get("lemma") or surface
+                        if (corrected.get("reading") or "").strip():
+                            item["reading"] = corrected["reading"].strip()
+                        if (corrected.get("formation_bg") or "").strip():
+                            item["formation_bg"] = corrected["formation_bg"].strip()
+                        if (corrected.get("formation_en") or "").strip():
+                            item["formation_en"] = corrected["formation_en"].strip()
+                        if (corrected.get("formula_bg") or "").strip():
+                            item["formula_bg"] = corrected["formula_bg"].strip()
+                        if (corrected.get("formula_en") or "").strip():
+                            item["formula_en"] = corrected["formula_en"].strip()
             targets = []
             for item in analysis_items:
                 surface = (item.get("surface") or "").strip()
@@ -2940,6 +3058,203 @@ def sanitize_contextual_translation_item(item):
         "translation_bg": bg,
         "translation_en": en,
     }
+
+
+def is_suspicious_verb_lemma(surface: str, lemma: str) -> bool:
+    surface = (surface or "").strip()
+    lemma = (lemma or "").strip()
+    if not surface or not lemma:
+        return True
+    if "->" in lemma:
+        return True
+    if lemma in {"す", "る"} and surface not in {"した", "します", "したい", "して", "している", "していた", "していました", "しました"}:
+        return True
+    if re.fullmatch(r"[一-龯々]る", lemma) and surface.endswith(("っている", "っていた", "っていました", "った", "って")):
+        return True
+    if lemma.endswith(("言る", "買る", "使る", "合る", "着くる", "殺する", "話する")):
+        return True
+    if lemma == surface and surface.endswith(("ました", "ています", "でいます", "ている", "でいる", "ていた", "でいた")):
+        return True
+    return False
+
+
+def should_request_verb_lemma_correction(item) -> bool:
+    if not isinstance(item, dict):
+        return False
+    surface = (item.get("surface") or "").strip()
+    lemma = (item.get("lemma") or surface).strip()
+    item_type = (item.get("item_type") or "").strip().lower()
+    formation_bg = (item.get("formation_bg") or "").strip()
+    if not surface or not contains_japanese(surface):
+        return False
+    verb_like_surface = surface.endswith(("ました", "します", "した", "して", "ている", "でいる", "ていた", "でいた", "ています", "でいます", "ない", "たい"))
+    if item_type == "verb" and is_suspicious_verb_lemma(surface, lemma):
+        return True
+    if item_type == "verb" and surface != lemma:
+        return True
+    if item_type == "verb" and formation_bg in {"учтива форма", "учтива минала форма", "минала форма", "форма на 〜ている", "учтива форма на 〜ている", "учтива минала форма на 〜ている"}:
+        return True
+    if item_type == "compound" and verb_like_surface:
+        return True
+    if surface in {"りました", "っています", "した"}:
+        return True
+    return False
+
+
+def sanitize_verb_correction_item(item):
+    if not isinstance(item, dict):
+        return None
+    surface = (item.get("surface") or "").strip()
+    lemma = (item.get("lemma") or "").strip()
+    if not surface or not lemma or not contains_japanese(surface) or not contains_japanese(lemma):
+        return None
+    confidence_raw = item.get("confidence")
+    try:
+        confidence = float(confidence_raw)
+    except Exception:
+        confidence = 0.0
+    confidence = max(0.0, min(1.0, confidence))
+    formation_bg = simplify_bg_formation_text((item.get("formation_bg") or "").strip())
+    formation_en = simplify_en_formation_text((item.get("formation_en") or "").strip())
+    return {
+        "surface": surface,
+        "lemma": lemma,
+        "reading": normalize_katakana_to_hiragana((item.get("reading") or "").strip()),
+        "formation_bg": formation_bg,
+        "formation_en": formation_en,
+        "formula_bg": (item.get("formula_bg") or "").strip(),
+        "formula_en": (item.get("formula_en") or "").strip(),
+        "confidence": confidence,
+        "reason": (item.get("reason") or "").strip(),
+    }
+
+
+def simplify_bg_formation_text(text: str) -> str:
+    value = (text or "").strip()
+    if not value:
+        return ""
+    replacements = [
+        ("辞書形", "речниковата форма"),
+        ("連用形", "основата за учтива форма"),
+        ("過去・完了の助動詞", "помощната минала/завършена форма"),
+        ("過去・丁寧形", "миналата учтива форма"),
+        ("丁寧過去", "учтивата минала форма"),
+        ("丁寧語", "учтивата форма"),
+        ("過去形", "миналата форма"),
+        ("促音便", "промяна на основата пред って"),
+        ("補助動詞", "помощния глагол"),
+        ("助動詞", "помощната форма"),
+        ("て-форма", "формата て"),
+        ("te-form", "формата て"),
+        ("-te form", "формата て"),
+        ("辞書形「", "От "),
+        ("辞書形『", "От "),
+    ]
+    for src, dst in replacements:
+        value = value.replace(src, dst)
+    value = value.replace("」", "").replace("』", "")
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def simplify_en_formation_text(text: str) -> str:
+    value = (text or "").strip()
+    if not value:
+        return ""
+    replacements = [
+        ("dictionary form", "dictionary form"),
+        ("ren'yo-kei", "polite stem"),
+        ("continuative form", "polite stem"),
+        ("sokuonbin", "stem change before って"),
+        ("te-form", "て form"),
+        ("-te form", "て form"),
+        ("polite form", "polite form"),
+        ("past form", "past form"),
+        ("auxiliary verb", "helper verb"),
+    ]
+    for src, dst in replacements:
+        value = value.replace(src, dst)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def analyze_suspicious_verbs_with_groq(article_id: str, block_id: int, text: str, items):
+    if not GROQ_API_KEY or not text:
+        return {}
+    unique_items = []
+    seen = set()
+    for item in items or []:
+        surface = (item.get("surface") or "").strip()
+        if not surface or surface in seen:
+            continue
+        seen.add(surface)
+        unique_items.append(item)
+    if not unique_items:
+        return {}
+    compact_items = []
+    for item in unique_items[:GROQ_VERB_CORRECTION_MAX_ITEMS]:
+        compact_items.append(
+            {
+                "surface": (item.get("surface") or "").strip(),
+                "current_lemma": (item.get("lemma") or item.get("surface") or "").strip(),
+                "reading": normalize_katakana_to_hiragana((item.get("reading") or "").strip()),
+                "item_type": (item.get("item_type") or "").strip(),
+            }
+        )
+    cache_payload = {
+        "model": GROQ_MODEL,
+        "task": "verb_lemma_correction_v3",
+        "article_id": article_id,
+        "block_id": block_id,
+        "text": text,
+        "items": compact_items,
+    }
+    cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    cached = _GEMINI_CACHE.get(cache_key)
+    if isinstance(cached, list):
+        cleaned = [v for v in (sanitize_verb_correction_item(x) for x in cached) if v]
+        return {v["surface"]: v for v in cleaned}
+
+    prompt = (
+        "You are correcting suspicious Japanese verb analyses in a short NHK Easy paragraph.\n"
+        "Return strict JSON only in this shape:\n"
+        "{\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\",\"confidence\":0.0,"
+        "\"formation_bg\":\"...\",\"formation_en\":\"...\",\"formula_bg\":\"...\",\"formula_en\":\"...\",\"reason\":\"...\"}]}\n"
+        "Rules:\n"
+        "- Only correct actual verb forms that appear exactly in the paragraph.\n"
+        "- lemma must be the dictionary form of the exact Japanese verb.\n"
+        "- confidence must be between 0 and 1.\n"
+        "- formation_bg and formation_en must explain step by step how the dictionary form became the surface form.\n"
+        "- Do not use Japanese linguistic terminology like 辞書形, 連用形, 促音便, 丁寧形, 助動詞, 補助動詞.\n"
+        "- Use Japanese script endings and particles such as う, て, ます, ました, いる, ない directly. Do not use romaji like te-form, masu-stem, plain form.\n"
+        "- Use plain learner-friendly Bulgarian and English instead.\n"
+        "- formula_bg and formula_en should stay compact.\n"
+        "- If an item is not really a verb, keep the current lemma and give low confidence.\n"
+        f"Paragraph:\n{text}\n"
+        f"Suspicious items:\n{json.dumps(compact_items, ensure_ascii=False)}"
+    )
+    if len(prompt) > GROQ_VERB_CORRECTION_MAX_PROMPT_CHARS:
+        shortened_items = compact_items[:max(1, min(5, len(compact_items)))]
+        prompt = (
+            "You are correcting suspicious Japanese verb analyses in a short NHK Easy paragraph.\n"
+            "Return strict JSON only.\n"
+            "{\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\",\"confidence\":0.0,"
+            "\"formation_bg\":\"...\",\"formation_en\":\"...\",\"formula_bg\":\"...\",\"formula_en\":\"...\",\"reason\":\"...\"}]}\n"
+            "Correct only exact verb forms.\n"
+            f"Paragraph:\n{text[:3000]}\n"
+            f"Suspicious items:\n{json.dumps(shortened_items, ensure_ascii=False)}"
+        )
+    parsed = extract_json_object(
+        groq_chat_completion(
+            prompt,
+            max_completion_tokens=min(GROQ_VERB_CORRECTION_MAX_COMPLETION_TOKENS, GROQ_GRAMMAR_MAX_COMPLETION_TOKENS + 200),
+        )
+    )
+    if not isinstance(parsed, dict):
+        return {}
+    cleaned = [v for v in (sanitize_verb_correction_item(x) for x in (parsed.get("items") or [])) if v]
+    cache_gemini_result(cache_key, cleaned)
+    return {v["surface"]: v for v in cleaned}
 
 
 def should_request_contextual_popup_translation(item) -> bool:
