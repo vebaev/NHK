@@ -1806,6 +1806,67 @@ def is_person_name_span(tokens_slice) -> bool:
     markers = ("人名", "姓", "名")
     return any(any(m in (p2 or "") for m in markers) for p2 in pos2s)
 
+
+ENTITY_MARKERS = ("固有名詞", "人名", "地名", "国", "地域", "組織")
+ENTITY_SUFFIXES = (
+    "さん", "氏", "君", "ちゃん",
+    "市", "県", "町", "村", "区", "州", "国",
+    "大学", "高校", "中学校", "小学校",
+    "会社", "銀行", "政府", "省", "庁", "署", "裁判所", "委員会",
+    "病院", "空港", "駅", "議会", "大統領", "首相", "総理大臣",
+)
+KNOWN_ENTITY_SURFACES = {
+    "日本", "アメリカ", "イラン", "中国", "韓国", "北朝鮮", "ロシア",
+    "東京", "大阪", "札幌", "沖縄", "北海道",
+}
+
+
+@lru_cache(maxsize=16384)
+def is_named_entity_surface(surface: str) -> bool:
+    surface = (surface or "").strip()
+    if not surface or not contains_japanese(surface):
+        return False
+    if surface in KNOWN_ENTITY_SURFACES:
+        return True
+    tagger = get_mecab_tagger()
+    if tagger is None:
+        return any(surface.endswith(suffix) and len(surface) > len(suffix) for suffix in ENTITY_SUFFIXES)
+    try:
+        tokens = list(tagger(surface))
+    except Exception:
+        tokens = []
+    if tokens and is_person_name_span(tokens):
+        return True
+    if tokens:
+        for token in tokens:
+            feat = token_feature(token)
+            values = [
+                safe_feature_value(feat, "pos1"),
+                safe_feature_value(feat, "pos2"),
+                safe_feature_value(feat, "pos3"),
+                safe_feature_value(feat, "pos4"),
+            ]
+            if any(marker and marker in value for value in values for marker in ENTITY_MARKERS):
+                return True
+    return any(surface.endswith(suffix) and len(surface) > len(suffix) for suffix in ENTITY_SUFFIXES)
+
+
+def is_named_entity_item(item) -> bool:
+    if not isinstance(item, dict):
+        return False
+    item_type = (item.get("item_type") or "").strip().lower()
+    if item_type in {"verb", "adjective", "grammar"}:
+        return False
+    surface = (item.get("surface") or "").strip()
+    lemma = (item.get("lemma") or "").strip()
+    if is_named_entity_surface(surface) or (lemma and is_named_entity_surface(lemma)):
+        return True
+    translation_en = (item.get("translation_en") or item.get("meaning_en") or "").strip()
+    if re.fullmatch(r"[ァ-ヶー]+", surface) and len(surface) >= 3 and translation_en:
+        if re.match(r"[A-Z][A-Za-z]+(?:[ -][A-Z][A-Za-z]+)*$", translation_en):
+            return True
+    return False
+
 def is_matchable_token_span(tokens_slice) -> bool:
     if not tokens_slice:
         return False
@@ -2083,6 +2144,8 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     span["data-formula-en"] = (item.get("formula_en") or "").strip()
     span["data-usage-bg"] = (item.get("usage_bg") or "").strip()
     span["data-usage-en"] = (item.get("usage_en") or "").strip()
+    if is_named_entity_item(item):
+        span["class"] = "dict-word named-entity"
 
     if "<" not in inner_html and ">" not in inner_html:
         span.string = inner_html
@@ -4614,9 +4677,9 @@ def build_html(articles, grammar_points=None, build_version="", build_code="", g
 <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"favicon-32x32.png?v=__BUILD_VERSION__\">
 <link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png?v=__BUILD_VERSION__\">
 <style>
-:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--verb-accent:#f2b38a;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--verb-accent:#d9905f;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
-body.theme-sepia{--bg:#f3eadb;--card:#fbf4e7;--card2:#f4ead9;--text:#3c2f22;--muted:#6e5d4b;--accent:#8a5a22;--verb-accent:#c98754;--border:#d8c7b0;--jp-panel:#fffaf0;--trans-text:#4e3f31;--popup:#fffaf0}
+:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--verb-accent:#f2b38a;--entity-accent:#9ecfa6;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--verb-accent:#d9905f;--entity-accent:#6ea97a;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
+body.theme-sepia{--bg:#f3eadb;--card:#fbf4e7;--card2:#f4ead9;--text:#3c2f22;--muted:#6e5d4b;--accent:#8a5a22;--verb-accent:#c98754;--entity-accent:#71956d;--border:#d8c7b0;--jp-panel:#fffaf0;--trans-text:#4e3f31;--popup:#fffaf0}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui-font);line-height:1.8}
 .wrap{max-width:980px;margin:0 auto;padding:26px 16px 40px}
@@ -4651,6 +4714,7 @@ h2{margin:0 0 10px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font);l
 .control-label{font-size:.92rem;color:var(--muted);margin-bottom:6px}
 .grammar-word{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px}
 .dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
+.dict-word.named-entity{text-decoration-color:var(--entity-accent);text-decoration-thickness:2px}
 .dict-word[data-item-type="verb"]{text-decoration-color:var(--verb-accent);text-decoration-thickness:2px}
 .dict-word.grammar-word{text-decoration-color:var(--accent);text-decoration-thickness:2px}
 .dict-word.is-active{background:rgba(138,180,255,.18)}
