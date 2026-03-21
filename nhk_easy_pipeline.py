@@ -4469,6 +4469,128 @@ def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None)
         unit_cursor = end_unit
     rebuilt.extend(unit["html"] for unit in units[unit_cursor:])
     return "".join(rebuilt)
+
+
+def normalize_grammar_highlight_text(value: str) -> str:
+    value = (value or "").strip()
+    if not value:
+        return ""
+    value = value.replace("〜", "").replace("～", "").replace("／", "/")
+    value = re.sub(r"\s+", "", value)
+    return value
+
+
+def grammar_label_variants(label: str):
+    base = normalize_grammar_highlight_text(label)
+    if not base:
+        return set()
+    variants = {base}
+    if base.endswith("だ"):
+        stem = base[:-1]
+        if stem:
+            variants.add(stem)
+            variants.add(stem + "です")
+    if base.endswith("です"):
+        stem = base[:-2]
+        if stem:
+            variants.add(stem)
+            variants.add(stem + "だ")
+    split_parts = re.split(r"[/・]", base)
+    if len(split_parts) > 1:
+        for part in split_parts:
+            part = part.strip()
+            if part:
+                variants.add(part)
+    return {v for v in variants if v}
+
+
+def build_grammar_highlight_variants(grammar_points=None):
+    variants = set()
+    for item in grammar_points or []:
+        variants.update(grammar_label_variants((item or {}).get("label", "")))
+    return sorted(variants, key=lambda value: (-len(value), value))
+
+
+def add_class_to_tag(tag, class_name: str):
+    existing = tag.get("class") or []
+    if class_name not in existing:
+        tag["class"] = list(existing) + [class_name]
+
+
+def find_text_matches(text: str, variants):
+    text = text or ""
+    matches = []
+    occupied = [False] * len(text)
+    for variant in variants or []:
+        start = 0
+        while True:
+            idx = text.find(variant, start)
+            if idx == -1:
+                break
+            end = idx + len(variant)
+            if not any(occupied[pos] for pos in range(idx, end)):
+                matches.append((idx, end))
+                for pos in range(idx, end):
+                    occupied[pos] = True
+            start = idx + 1
+    matches.sort()
+    return matches
+
+
+def highlight_grammar_in_text_node(text_node, variants):
+    parent = getattr(text_node, "parent", None)
+    if parent is None:
+        return
+    original = str(text_node)
+    matches = find_text_matches(original, variants)
+    if not matches:
+        return
+    soup = parent if isinstance(parent, BeautifulSoup) else parent.parent or BeautifulSoup("", "html.parser")
+    fragments = []
+    cursor = 0
+    for start, end in matches:
+        if start > cursor:
+            fragments.append(original[cursor:start])
+        span = soup.new_tag("span")
+        span["class"] = "grammar-word"
+        span.string = original[start:end]
+        fragments.append(span)
+        cursor = end
+    if cursor < len(original):
+        fragments.append(original[cursor:])
+    for fragment in reversed(fragments):
+        text_node.insert_after(fragment)
+    text_node.extract()
+
+
+def add_grammar_highlights_to_html(html_fragment: str, grammar_points=None) -> str:
+    variants = build_grammar_highlight_variants(grammar_points)
+    if not html_fragment or not variants:
+        return html_fragment
+
+    soup = BeautifulSoup(html_fragment, "html.parser")
+
+    for span in soup.select(".dict-word"):
+        candidates = [
+            span.get("data-surface") or "",
+            span.get("data-lemma") or "",
+            span.get_text("", strip=True) or "",
+        ]
+        normalized_candidates = [normalize_grammar_highlight_text(v) for v in candidates if normalize_grammar_highlight_text(v)]
+        if any(variant in candidate for variant in variants for candidate in normalized_candidates):
+            add_class_to_tag(span, "grammar-word")
+
+    for text_node in list(soup.find_all(string=True)):
+        parent = getattr(text_node, "parent", None)
+        if parent is None:
+            continue
+        if getattr(parent, "name", None) in {"rt", "rp", "script", "style"}:
+            continue
+        if parent.find_parent(class_="dict-word") is not None:
+            continue
+        highlight_grammar_in_text_node(text_node, variants)
+
+    return str(soup)
 def build_html(articles, grammar_points=None, build_version="", build_code="", generated_at=""):
     grammar_points = [
         g for g in (grammar_points or [])
@@ -4492,9 +4614,9 @@ def build_html(articles, grammar_points=None, build_version="", build_code="", g
 <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"favicon-32x32.png?v=__BUILD_VERSION__\">
 <link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png?v=__BUILD_VERSION__\">
 <style>
-:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
-body.theme-sepia{--bg:#f3eadb;--card:#fbf4e7;--card2:#f4ead9;--text:#3c2f22;--muted:#6e5d4b;--accent:#8a5a22;--border:#d8c7b0;--jp-panel:#fffaf0;--trans-text:#4e3f31;--popup:#fffaf0}
+:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--verb-accent:#f2b38a;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--verb-accent:#d9905f;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
+body.theme-sepia{--bg:#f3eadb;--card:#fbf4e7;--card2:#f4ead9;--text:#3c2f22;--muted:#6e5d4b;--accent:#8a5a22;--verb-accent:#c98754;--border:#d8c7b0;--jp-panel:#fffaf0;--trans-text:#4e3f31;--popup:#fffaf0}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui-font);line-height:1.8}
 .wrap{max-width:980px;margin:0 auto;padding:26px 16px 40px}
@@ -4527,7 +4649,10 @@ h2{margin:0 0 10px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font);l
 .control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .control-grid select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font:inherit}
 .control-label{font-size:.92rem;color:var(--muted);margin-bottom:6px}
+.grammar-word{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px}
 .dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
+.dict-word[data-item-type="verb"]{text-decoration-color:var(--verb-accent);text-decoration-thickness:2px}
+.dict-word.grammar-word{text-decoration-color:var(--accent);text-decoration-thickness:2px}
 .dict-word.is-active{background:rgba(138,180,255,.18)}
 
 .shadow-sentence{display:block;margin:2px 0;padding-left:10px}
@@ -4572,6 +4697,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
         html += "<div class='section-title' data-ui='text'></div>"
         for block in article["blocks"]:
             wrapped_html = block.get("wrapped_html") or block.get("html", "")
+            wrapped_html = add_grammar_highlights_to_html(wrapped_html, grammar_points=grammar_points)
             html += f"<div class='jp-block'>{wrapped_html}</div>"
             block_bg = html_lib.escape(block.get('translation_bg', ''), quote=True)
             block_en = html_lib.escape(block.get('translation_en', ''), quote=True)
