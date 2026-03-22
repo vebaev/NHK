@@ -320,6 +320,66 @@ def get_gemini_cache_path(output_path: str = "") -> str:
     return "gemini_verbs_cache.json"
 
 
+def get_feed_state_path(output_path: str = "") -> str:
+    candidates = []
+    if output_path:
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            candidates.append(os.path.join(output_dir, "nhk_easy_feed_state.json"))
+    candidates.extend(
+        [
+            os.path.join("docs", "nhk_easy_feed_state.json"),
+            os.path.join(os.path.dirname(__file__), "docs", "nhk_easy_feed_state.json"),
+            "nhk_easy_feed_state.json",
+        ]
+    )
+    for candidate in candidates:
+        if candidate:
+            return candidate
+    return "nhk_easy_feed_state.json"
+
+
+def load_feed_state(path: str):
+    if not path:
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_feed_state(path: str, state: dict):
+    if not path:
+        return
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(state or {}, f, ensure_ascii=False, indent=2, sort_keys=True)
+
+
+def build_feed_fingerprint(items, count: int = 4):
+    normalized = []
+    for item in (items or [])[:max(1, count)]:
+        link = (item.get("link") or "").strip()
+        news_id = extract_ne_id(link) or (item.get("news_id") or "").strip()
+        normalized.append(
+            {
+                "news_id": news_id,
+                "published": (item.get("published") or "").strip(),
+                "title": (item.get("title") or "").strip(),
+            }
+        )
+    payload = {
+        "count": max(1, int(count or 1)),
+        "items": normalized,
+    }
+    signature = hashlib.sha1(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    return {"signature": signature, "items": normalized}
+
+
 def load_translation_cache(path: str):
     global _TRANSLATION_CACHE, _TRANSLATION_CACHE_DIRTY
     if _TRANSLATION_CACHE:
@@ -5611,6 +5671,7 @@ def main():
     parser.add_argument("--gemini-model", default=os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL))
     parser.add_argument("--groq-key", default=os.environ.get("GROQ_API_KEY", os.environ.get("GROQ_API", "")))
     parser.add_argument("--groq-model", default=os.environ.get("GROQ_MODEL", ""))
+    parser.add_argument("--state-file", default="")
     args = parser.parse_args()
 
     DEEPL_API_KEY = (args.deepl_key or "").strip()
@@ -5622,10 +5683,30 @@ def main():
     output_dir = os.path.dirname(args.output)
     translation_cache_path = get_translation_cache_path(args.output)
     gemini_cache_path = get_gemini_cache_path(args.output)
+    feed_state_path = (args.state_file or get_feed_state_path(args.output)).strip()
     load_translation_cache(translation_cache_path)
     load_gemini_cache(gemini_cache_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
+
+    direct_items = get_nhk_easy_items(max(args.count, 4))
+    current_feed_state = build_feed_fingerprint(direct_items, count=args.count)
+    previous_feed_state = load_feed_state(feed_state_path)
+    if previous_feed_state.get("signature") == current_feed_state.get("signature"):
+        print("NHK feed unchanged; skipping rebuild.")
+        return
+
+    save_feed_state(
+        feed_state_path,
+        {
+            "signature": current_feed_state.get("signature") or "",
+            "count": max(1, int(args.count or 1)),
+            "items": current_feed_state.get("items") or [],
+            "updated_at": generated_at,
+        },
+    )
+
+    if output_dir:
         write_pwa_files(output_dir, build_version=build_version)
 
     articles = get_articles(args.count)
