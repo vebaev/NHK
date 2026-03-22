@@ -2704,78 +2704,56 @@ def prepare_article_render_data(article):
         analysis_items.append(item)
     for item in build_local_analysis_items_from_blocks(article.get("blocks") or []):
         analysis_items.append(item)
-    if GEMINI_API_KEY and not CI_CONSERVATIVE_GEMINI:
+    analysis_items = [enrich_popup_item(item) for item in analysis_items]
+    if GEMINI_API_KEY:
         article_id = extract_ne_id(article.get("link") or "") or hashlib.sha1((article.get("title") or "").encode("utf-8")).hexdigest()[:10]
-        for block_id, block in enumerate((article.get("blocks") or []), start=1):
-            block_text = (block.get("text") or "").strip()
-            if not block_text:
+        predicate_targets = []
+        seen_targets = set()
+        for item in analysis_items:
+            surface = (item.get("surface") or "").strip()
+            item_type = (item.get("item_type") or "").strip().lower()
+            if not surface or item_type not in {"verb", "adjective"}:
                 continue
-            suspicious_verbs = []
-            for item in analysis_items:
-                surface = (item.get("surface") or "").strip()
-                if not surface or surface not in block_text:
-                    continue
-                if should_request_verb_lemma_correction(item):
-                    suspicious_verbs.append(item)
-            if suspicious_verbs:
-                corrected_map = {}
-                for items_chunk in chunk_list(suspicious_verbs, AI_VERB_CORRECTION_MAX_ITEMS):
-                    try:
-                        chunk_map = analyze_suspicious_verbs_with_groq(article_id, block_id, block_text, items_chunk)
-                    except Exception as e:
-                        print(f"Gemini suspicious verb correction failed for {article_id} block {block_id}: {e}")
-                        chunk_map = {}
-                    if chunk_map:
-                        corrected_map.update(chunk_map)
-                if corrected_map:
-                    for item in analysis_items:
-                        surface = (item.get("surface") or "").strip()
-                        corrected = corrected_map.get(surface)
-                        if not corrected:
-                            continue
-                        if corrected.get("confidence", 0.0) < 0.6:
-                            continue
-                        item["item_type"] = "verb"
-                        item["lemma"] = corrected.get("lemma") or item.get("lemma") or surface
-                        if (corrected.get("reading") or "").strip():
-                            item["reading"] = corrected["reading"].strip()
-                        if (corrected.get("formation_bg") or "").strip():
-                            item["formation_bg"] = corrected["formation_bg"].strip()
-                        if (corrected.get("formation_en") or "").strip():
-                            item["formation_en"] = corrected["formation_en"].strip()
-                        if (corrected.get("formula_bg") or "").strip():
-                            item["formula_bg"] = corrected["formula_bg"].strip()
-                        if (corrected.get("formula_en") or "").strip():
-                            item["formula_en"] = corrected["formula_en"].strip()
-            targets = []
-            for item in analysis_items:
-                surface = (item.get("surface") or "").strip()
-                if not surface or surface not in block_text:
-                    continue
-                if should_request_contextual_popup_translation(item):
-                    targets.append(surface)
-            if not targets:
+            key = (surface, item_type)
+            if key in seen_targets:
                 continue
+            seen_targets.add(key)
+            predicate_targets.append(item)
+        if predicate_targets:
             try:
-                contextual_map = analyze_contextual_popup_translations_with_groq(article_id, block_id, block_text, targets[:12])
+                predicate_map = analyze_popup_predicates_with_groq(
+                    article_id,
+                    title,
+                    article.get("blocks") or [],
+                    predicate_targets,
+                )
             except Exception as e:
-                print(f"Gemini contextual popup translation failed for {article_id} block {block_id}: {e}")
-                contextual_map = {}
-            if not contextual_map:
-                continue
-            for item in analysis_items:
-                surface = (item.get("surface") or "").strip()
-                contextual = contextual_map.get(surface)
-                if not contextual:
-                    continue
-                if (contextual.get("translation_bg") or "").strip():
-                    item["translation_bg"] = contextual["translation_bg"].strip()
-                if (contextual.get("translation_en") or "").strip():
-                    item["translation_en"] = contextual["translation_en"].strip()
-                if not (item.get("meaning_bg") or "").strip() and (contextual.get("translation_bg") or "").strip():
-                    item["meaning_bg"] = contextual["translation_bg"].strip()
-                if not (item.get("meaning_en") or "").strip() and (contextual.get("translation_en") or "").strip():
-                    item["meaning_en"] = contextual["translation_en"].strip()
+                print(f"Gemini predicate popup enrichment failed for {article_id}: {e}")
+                predicate_map = {}
+            if predicate_map:
+                for item in analysis_items:
+                    surface = (item.get("surface") or "").strip()
+                    item_type = (item.get("item_type") or "").strip().lower()
+                    enriched = predicate_map.get(surface)
+                    if not enriched or item_type not in {"verb", "adjective"}:
+                        continue
+                    item["item_type"] = (enriched.get("item_type") or item_type).strip() or item_type
+                    for field in (
+                        "lemma",
+                        "reading",
+                        "translation_bg",
+                        "translation_en",
+                        "meaning_bg",
+                        "meaning_en",
+                        "formation_bg",
+                        "formation_en",
+                        "formula_bg",
+                        "formula_en",
+                        "usage_bg",
+                        "usage_en",
+                    ):
+                        if (enriched.get(field) or "").strip():
+                            item[field] = enriched[field].strip()
     article["analysis_items"] = analysis_items
     analysis_lookup = build_analysis_lookup(analysis_items) if analysis_items else {}
     vocab_lookup = build_vocab_lookup(article.get("vocab") or [])
@@ -3456,6 +3434,87 @@ def analyze_contextual_popup_translations_with_groq(article_id: str, block_id: i
     items = [v for v in (sanitize_contextual_translation_item(x) for x in (parsed.get("items") or [])) if v]
     cache_gemini_result(cache_key, items)
     return {v["surface"]: v for v in items}
+
+
+def analyze_popup_predicates_with_groq(article_id: str, title: str, blocks, targets):
+    if not GEMINI_API_KEY:
+        return {}
+    article_text = "\n\n".join(((block or {}).get("text") or "").strip() for block in (blocks or []))
+    article_text = article_text.strip()
+    if not article_text:
+        return {}
+    compact_targets = []
+    seen = set()
+    for item in targets or []:
+        surface = (item.get("surface") or "").strip()
+        item_type = (item.get("item_type") or "").strip().lower()
+        if not surface or item_type not in {"verb", "adjective"}:
+            continue
+        key = (surface, item_type)
+        if key in seen:
+            continue
+        seen.add(key)
+        compact_targets.append(
+            {
+                "surface": surface,
+                "lemma": (item.get("lemma") or surface).strip(),
+                "reading": normalize_katakana_to_hiragana((item.get("reading") or "").strip()),
+                "item_type": item_type,
+            }
+        )
+    if not compact_targets:
+        return {}
+
+    cache_payload = {
+        "model": GEMINI_MODEL,
+        "task": "predicate_popup_batch_v1",
+        "article_id": article_id,
+        "title": title,
+        "text": article_text,
+        "targets": compact_targets,
+    }
+    cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    cached = _GEMINI_CACHE.get(cache_key)
+    if isinstance(cached, list):
+        items = [item for item in (sanitize_gemini_analysis_item(v) for v in cached) if item]
+        return {(item.get("surface") or "").strip(): item for item in items if (item.get("surface") or "").strip()}
+
+    prompt = (
+        "Analyze the Japanese NHK Easy article text and enrich all requested predicate popup items.\n"
+        "Return strict JSON only.\n"
+        "You must cover every target item from the targets list.\n"
+        "Return this exact JSON shape:\n"
+        "{\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\","
+        "\"item_type\":\"verb|adjective\",\"translation_bg\":\"...\",\"translation_en\":\"...\","
+        "\"meaning_bg\":\"...\",\"meaning_en\":\"...\",\"formation_bg\":\"...\",\"formation_en\":\"...\","
+        "\"formula_bg\":\"...\",\"formula_en\":\"...\",\"usage_bg\":\"...\",\"usage_en\":\"...\"}]}\n"
+        "Rules:\n"
+        "- surface must be exactly one target surface from the list\n"
+        "- return one item for every target\n"
+        "- item_type must stay verb or adjective\n"
+        "- lemma must be the correct dictionary form for the exact surface in context\n"
+        "- reading should be hiragana when possible\n"
+        "- translation_bg/translation_en must be short contextual popup translations\n"
+        "- meaning_bg/meaning_en may match the translation if that is the clearest learner-facing meaning\n"
+        "- formation_bg/formation_en must explain step by step how the dictionary form becomes the surface form in the article\n"
+        "- formula_bg/formula_en should be compact transformation formulas\n"
+        "- usage_bg/usage_en should be short learner-facing notes only when useful; otherwise empty strings\n"
+        "- do not omit any target and do not invent extra items\n"
+        f"Article title: {title}\n"
+        f"Targets:\n{json.dumps(compact_targets, ensure_ascii=False)}\n"
+        f"Article text:\n{article_text}"
+    )
+    parsed = extract_json_object(
+        gemini_chat_completion(
+            prompt,
+            max_completion_tokens=min(1800, AI_ARTICLE_MAX_COMPLETION_TOKENS + 600),
+        )
+    )
+    if not isinstance(parsed, dict):
+        return {}
+    items = [item for item in (sanitize_gemini_analysis_item(v) for v in (parsed.get("items") or [])) if item]
+    cache_gemini_result(cache_key, items)
+    return {(item.get("surface") or "").strip(): item for item in items if (item.get("surface") or "").strip()}
 
 
 def analyze_article_with_groq(article_id: str, title: str, blocks):
