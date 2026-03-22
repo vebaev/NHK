@@ -1113,6 +1113,70 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
             return word[:-1] + "ければ"
         return word + "ば"
 
+    def te_form(word: str) -> str:
+        word = (word or "").strip()
+        if not word:
+            return ""
+        via_jinf = jinf_convert(word, ctype, "基本連用テ接続")
+        if via_jinf:
+            return via_jinf
+        if word.endswith("する"):
+            return word[:-2] + "して"
+        if word.endswith("くる"):
+            return word[:-2] + "きて"
+        if word.endswith("来る"):
+            return word[:-2] + "来て"
+        if word.endswith("う") or word.endswith("つ") or word.endswith("る"):
+            return word[:-1] + "って"
+        if word.endswith("む") or word.endswith("ぶ") or word.endswith("ぬ"):
+            return word[:-1] + "んで"
+        if word.endswith("く"):
+            return word[:-1] + "いて"
+        if word.endswith("ぐ"):
+            return word[:-1] + "いで"
+        if word.endswith("す"):
+            return word[:-1] + "して"
+        if word.endswith("い"):
+            return word[:-1] + "くて"
+        return ""
+
+    def past_form(word: str) -> str:
+        word = (word or "").strip()
+        if not word:
+            return ""
+        via_jinf = jinf_convert(word, ctype, "基本連用タ接続")
+        if via_jinf:
+            return via_jinf
+        te = te_form(word)
+        if te.endswith("て"):
+            return te[:-1] + "た"
+        if te.endswith("で"):
+            return te[:-1] + "だ"
+        if word.endswith("い"):
+            return word[:-1] + "かった"
+        return ""
+
+    def volitional_form(word: str) -> str:
+        word = (word or "").strip()
+        if not word:
+            return ""
+        via_jinf = jinf_convert(word, ctype, "未然ウ接続")
+        if via_jinf:
+            return via_jinf
+        if word.endswith("する"):
+            return word[:-2] + "しよう"
+        if word.endswith("くる"):
+            return word[:-2] + "こよう"
+        if word.endswith("来る"):
+            return word[:-2] + "来よう"
+        if word.endswith("る") and len(word) >= 2:
+            prev = word[-2]
+            if prev in "えけげせぜてでねへべぺめれいきぎしじちぢにひびぴみり":
+                return word[:-1] + "よう"
+        if word[-1] in GODAN_U_TO_O:
+            return word[:-1] + GODAN_U_TO_O[word[-1]] + "う"
+        return ""
+
     if s == l:
         return out(l, l)
 
@@ -1141,7 +1205,7 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
     ]
     for suffix, formula in te_iru_map:
         if s.endswith(suffix) and len(s) > len(suffix):
-            return chain(l, "te-form", s)
+            return chain(l, te_form(l), s)
 
     te_oku_map = [
         ("ておきませんでした", "ておく"),
@@ -1217,11 +1281,11 @@ def build_japanese_form_formula(surface: str, lemma: str = "", pos1: str = "", p
     if s.endswith("くて") and len(s) > 2 and pos1 == "形容詞":
         return out(f"{l[:-1] if l.endswith('い') else l} + くて", f"{l[:-1] if l.endswith('い') else l} + くて")
     if s.endswith(("て", "で")) and len(s) > 1:
-        return out(f"{l} -> te-form", f"{l} -> te-form")
+        return out(f"{l} -> {te_form(l) or s}", f"{l} -> {te_form(l) or s}")
     if s.endswith(("た", "だ")) and len(s) > 1:
-        return out(f"{l} -> past form", f"{l} -> past form")
+        return out(f"{l} -> {past_form(l) or s}", f"{l} -> {past_form(l) or s}")
     if s.endswith(("よう", "おう")) and len(s) > 2:
-        return out(f"{l} -> volitional", f"{l} -> volitional")
+        return out(f"{l} -> {volitional_form(l) or s}", f"{l} -> {volitional_form(l) or s}")
     return out(f"{l} -> {s}", f"{l} -> {s}")
 
 @lru_cache(maxsize=8192)
@@ -1424,13 +1488,21 @@ def build_plain_verb_formation_bg(surface: str, lemma: str, current: str = "", f
         stem = surface[:-2]
         return f"речникова форма {base_lemma} → основа {stem} → добавяне на ます за учтива форма"
     if surface.endswith("ていました") and base_lemma != surface:
-        return f"речникова форма {base_lemma} → форма て → добавяне на いる → минало いた → учтиво минало ました"
+        parts = [p.strip() for p in re.split(r"\s*(?:->|→)\s*", formula) if p.strip()]
+        te = parts[1] if len(parts) >= 2 else "формата на て"
+        return f"речникова форма {base_lemma} → {te} → {te[:-1] + 'いた' if te.endswith('て') else te[:-1] + 'いだ' if te.endswith('で') else 'минала форма с いる'} → добавяне на ました"
     if surface.endswith("ています") and base_lemma != surface:
-        return f"речникова форма {base_lemma} → форма て → добавяне на いる → учтива форма ます"
+        parts = [p.strip() for p in re.split(r"\s*(?:->|→)\s*", formula) if p.strip()]
+        te = parts[1] if len(parts) >= 2 else "формата на て"
+        return f"речникова форма {base_lemma} → {te} → добавяне на います"
     if surface.endswith("ている") and base_lemma != surface:
-        return f"речникова форма {base_lemma} → форма て → добавяне на いる за продължително състояние"
+        parts = [p.strip() for p in re.split(r"\s*(?:->|→)\s*", formula) if p.strip()]
+        te = parts[1] if len(parts) >= 2 else "формата на て"
+        return f"речникова форма {base_lemma} → {te} → добавяне на いる за продължително състояние"
     if surface.endswith("でいる") and base_lemma != surface:
-        return f"речникова форма {base_lemma} → форма で → добавяне на いる за продължително състояние"
+        parts = [p.strip() for p in re.split(r"\s*(?:->|→)\s*", formula) if p.strip()]
+        de = parts[1] if len(parts) >= 2 else "формата на で"
+        return f"речникова форма {base_lemma} → {de} → добавяне на いる за продължително състояние"
     if surface.endswith("した") and base_lemma == "する":
         return "речникова форма する → основа し → добавяне на た за минала форма"
     return current
@@ -3498,6 +3570,7 @@ def analyze_popup_predicates_with_groq(article_id: str, title: str, blocks, targ
         "- meaning_bg/meaning_en may match the translation if that is the clearest learner-facing meaning\n"
         "- formation_bg/formation_en must explain step by step how the dictionary form becomes the surface form in the article\n"
         "- formula_bg/formula_en should be compact transformation formulas\n"
+        "- Use real Japanese intermediate forms such as 読んで, 読んでいる, 読んだ, 読もう instead of labels like te-form, past form, volitional, dictionary form label chains\n"
         "- usage_bg/usage_en should be short learner-facing notes only when useful; otherwise empty strings\n"
         "- do not omit any target and do not invent extra items\n"
         f"Article title: {title}\n"
