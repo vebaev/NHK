@@ -66,6 +66,7 @@ DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
 DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite-preview"
 GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API") or "").strip()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
+CI_CONSERVATIVE_GEMINI = os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
 _TRANSLATION_CACHE = {}
 _TRANSLATION_STATS = {"deepl": 0, "google": 0}
 _GEMINI_CACHE = {}
@@ -2703,7 +2704,7 @@ def prepare_article_render_data(article):
         analysis_items.append(item)
     for item in build_local_analysis_items_from_blocks(article.get("blocks") or []):
         analysis_items.append(item)
-    if GEMINI_API_KEY:
+    if GEMINI_API_KEY and not CI_CONSERVATIVE_GEMINI:
         article_id = extract_ne_id(article.get("link") or "") or hashlib.sha1((article.get("title") or "").encode("utf-8")).hexdigest()[:10]
         for block_id, block in enumerate((article.get("blocks") or []), start=1):
             block_text = (block.get("text") or "").strip()
@@ -2846,7 +2847,8 @@ def gemini_chat_completion(prompt: str, max_completion_tokens: int = AI_ARTICLE_
         raise RuntimeError("Missing GEMINI_API_KEY")
     last_error = None
     estimated_tokens = estimate_gemini_tokens(prompt, max_completion_tokens)
-    for attempt in range(6):
+    max_attempts = 2 if CI_CONSERVATIVE_GEMINI else 6
+    for attempt in range(max_attempts):
         response = None
         try:
             gemini_rate_limit_pause(estimated_tokens)
@@ -2881,8 +2883,9 @@ def gemini_chat_completion(prompt: str, max_completion_tokens: int = AI_ARTICLE_
         except Exception as e:
             last_error = e
             status = getattr(response, "status_code", None)
-            if status == 429 and attempt < 5:
-                time.sleep(12 * (attempt + 1))
+            if status == 429 and attempt < max_attempts - 1:
+                delay = 3 * (attempt + 1) if CI_CONSERVATIVE_GEMINI else 12 * (attempt + 1)
+                time.sleep(delay)
                 continue
             break
     raise last_error
