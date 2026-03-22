@@ -78,11 +78,14 @@ _THREAD_LOCAL = threading.local()
 _TRANSLATION_CACHE_DIRTY = False
 _GEMINI_CACHE_DIRTY = False
 _GEMINI_RATE_LOCK = threading.Lock()
+_GEMINI_CALL_LOCK = threading.Lock()
 _GEMINI_REQUEST_TIMES = deque()
 _GEMINI_TOKEN_USAGE = deque()
+_GEMINI_LAST_REQUEST_AT = 0.0
 
-GEMINI_REQUESTS_PER_MINUTE = 15
+GEMINI_REQUESTS_PER_MINUTE = 6 if CI_CONSERVATIVE_GEMINI else 12
 GEMINI_TOKENS_PER_MINUTE = 250000
+GEMINI_MIN_REQUEST_INTERVAL_SECONDS = 10.0 if CI_CONSERVATIVE_GEMINI else 4.0
 AI_ARTICLE_MAX_COMPLETION_TOKENS = 1200
 AI_GRAMMAR_MAX_COMPLETION_TOKENS = 500
 AI_GRAMMAR_PATTERN_CHUNK_SIZE = 28
@@ -2873,6 +2876,7 @@ def estimate_gemini_tokens(prompt: str, max_completion_tokens: int) -> int:
 
 
 def gemini_rate_limit_pause(estimated_tokens: int):
+    global _GEMINI_LAST_REQUEST_AT
     while True:
         with _GEMINI_RATE_LOCK:
             now = time.time()
@@ -2884,13 +2888,15 @@ def gemini_rate_limit_pause(estimated_tokens: int):
             used_tokens = sum(tokens for _, tokens in _GEMINI_TOKEN_USAGE)
             request_wait = 60 - (now - _GEMINI_REQUEST_TIMES[0]) if len(_GEMINI_REQUEST_TIMES) >= GEMINI_REQUESTS_PER_MINUTE else 0.0
             token_wait = 60 - (now - _GEMINI_TOKEN_USAGE[0][0]) if _GEMINI_TOKEN_USAGE and used_tokens + estimated_tokens > GEMINI_TOKENS_PER_MINUTE else 0.0
-            wait_for = max(request_wait, token_wait, 0.0)
+            spacing_wait = max(0.0, GEMINI_MIN_REQUEST_INTERVAL_SECONDS - (now - _GEMINI_LAST_REQUEST_AT))
+            wait_for = max(request_wait, token_wait, spacing_wait, 0.0)
             if wait_for <= 0:
                 stamp = time.time()
+                _GEMINI_LAST_REQUEST_AT = stamp
                 _GEMINI_REQUEST_TIMES.append(stamp)
                 _GEMINI_TOKEN_USAGE.append((stamp, estimated_tokens))
                 return
-        time.sleep(min(wait_for, 5.0))
+        time.sleep(min(wait_for, 2.0 if CI_CONSERVATIVE_GEMINI else 5.0))
 
 
 def gemini_chat_completion(prompt: str, max_completion_tokens: int = AI_ARTICLE_MAX_COMPLETION_TOKENS) -> str:
@@ -2902,28 +2908,29 @@ def gemini_chat_completion(prompt: str, max_completion_tokens: int = AI_ARTICLE_
     for attempt in range(max_attempts):
         response = None
         try:
-            gemini_rate_limit_pause(estimated_tokens)
-            response = get_http_session().post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
-                params={"key": GEMINI_API_KEY},
-                headers={"Content-Type": "application/json"},
-                json={
-                    "system_instruction": {
-                        "parts": [{"text": "Return only the requested content. Prefer strict JSON when asked."}]
+            with _GEMINI_CALL_LOCK:
+                gemini_rate_limit_pause(estimated_tokens)
+                response = get_http_session().post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+                    params={"key": GEMINI_API_KEY},
+                    headers={"Content-Type": "application/json"},
+                    json={
+                        "system_instruction": {
+                            "parts": [{"text": "Return only the requested content. Prefer strict JSON when asked."}]
+                        },
+                        "contents": [
+                            {
+                                "role": "user",
+                                "parts": [{"text": prompt}],
+                            }
+                        ],
+                        "generationConfig": {
+                            "temperature": 0.1,
+                            "maxOutputTokens": max_completion_tokens,
+                        },
                     },
-                    "contents": [
-                        {
-                            "role": "user",
-                            "parts": [{"text": prompt}],
-                        }
-                    ],
-                    "generationConfig": {
-                        "temperature": 0.1,
-                        "maxOutputTokens": max_completion_tokens,
-                    },
-                },
-                timeout=180,
-            )
+                    timeout=180,
+                )
             response.raise_for_status()
             payload = response.json()
             candidates = payload.get("candidates") or []
@@ -2935,7 +2942,7 @@ def gemini_chat_completion(prompt: str, max_completion_tokens: int = AI_ARTICLE_
             last_error = e
             status = getattr(response, "status_code", None)
             if status == 429 and attempt < max_attempts - 1:
-                delay = 3 * (attempt + 1) if CI_CONSERVATIVE_GEMINI else 12 * (attempt + 1)
+                delay = 20 * (attempt + 1) if CI_CONSERVATIVE_GEMINI else 12 * (attempt + 1)
                 time.sleep(delay)
                 continue
             break
