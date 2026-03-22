@@ -1512,6 +1512,39 @@ def build_plain_verb_formation_bg(surface: str, lemma: str, current: str = "", f
     return current
 
 
+def build_plain_adjective_formation_bg(surface: str, lemma: str, current: str = "", formula: str = "") -> str:
+    surface = (surface or "").strip()
+    lemma = (lemma or "").strip()
+    current = (current or "").strip()
+    formula = (formula or "").strip()
+    if not surface or not lemma:
+        return current
+    base = lemma[:-1] if lemma.endswith("い") else lemma
+    if current and current not in {
+        "форма на прилагателно",
+        "минала форма на i-прилагателно",
+        "отрицателна форма на i-прилагателно",
+        "свързваща форма на i-прилагателно",
+    }:
+        return current
+    if surface.endswith("くなかった") and lemma != surface and base:
+        return f"речникова форма {lemma} → махаме い и получаваме {base} → добавяме くない → {base}くない → добавяме かった → {surface}"
+    if surface.endswith("くない") and lemma != surface and base:
+        return f"речникова форма {lemma} → махаме い и получаваме {base} → добавяме くない → {surface}"
+    if surface.endswith("かった") and lemma != surface and base:
+        return f"речникова форма {lemma} → махаме い и получаваме {base} → добавяме かった → {surface}"
+    if surface.endswith("くて") and lemma != surface and base:
+        return f"речникова форма {lemma} → махаме い и получаваме {base} → добавяме くて → {surface}"
+    if surface.endswith(("そう", "そうだ", "そうです", "そうで", "そうな", "そうに")) and lemma != surface and base:
+        suffix = surface[len(base):]
+        if suffix:
+            return f"речникова форма {lemma} → махаме い и получаваме {base} → добавяме {suffix} → {surface}"
+    parts = [p.strip() for p in re.split(r"\s*(?:->|→)\s*", formula) if p.strip()]
+    if len(parts) >= 2 and parts[0] == lemma:
+        return f"речникова форма {lemma} → " + " → ".join(parts[1:])
+    return current
+
+
 def extend_reading_with_surface_kana(surface: str, reading: str) -> str:
     surface = (surface or "").strip()
     reading = normalize_katakana_to_hiragana((reading or "").strip())
@@ -1626,6 +1659,17 @@ def enrich_popup_item(item):
             surface,
             item.get("lemma", ""),
             item.get("formation_bg", ""),
+            item.get("formula_bg", ""),
+        )
+    elif item_type == "adjective":
+        if not (item.get("formula_bg") or "").strip():
+            item["formula_bg"] = (analysis.get("formula_bg") or "").strip()
+        if not (item.get("formula_en") or "").strip():
+            item["formula_en"] = (analysis.get("formula_en") or "").strip()
+        item["formation_bg"] = build_plain_adjective_formation_bg(
+            surface,
+            item.get("lemma", ""),
+            item.get("formation_bg", "") or analysis.get("form_bg", ""),
             item.get("formula_bg", ""),
         )
     if not item["translation_bg"] or not item["translation_en"]:
