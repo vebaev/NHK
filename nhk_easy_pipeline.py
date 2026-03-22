@@ -3458,16 +3458,18 @@ def analyze_contextual_popup_translations_with_groq(article_id: str, block_id: i
     return {v["surface"]: v for v in items}
 
 
-def analyze_article_block_with_groq(article_id: str, block_id: int, title: str, text: str):
-    if not text:
+def analyze_article_with_groq(article_id: str, title: str, blocks):
+    texts = [((block or {}).get("text") or "").strip() for block in (blocks or [])]
+    texts = [text for text in texts if text]
+    if not texts:
         return []
+    article_text = "\n\n".join(texts)
     cache_payload = {
         "model": GEMINI_MODEL,
-        "task": "article_elements_groq_block_v1",
+        "task": "article_elements_groq_article_v1",
         "article_id": article_id,
-        "block_id": block_id,
         "title": title,
-        "text": text,
+        "text": article_text,
     }
     cache_key = hashlib.sha1(json.dumps(cache_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     cached = _GEMINI_CACHE.get(cache_key)
@@ -3475,20 +3477,20 @@ def analyze_article_block_with_groq(article_id: str, block_id: int, title: str, 
         return [item for item in (sanitize_gemini_analysis_item(v) for v in cached) if item]
 
     prompt = (
-        "Analyze this short Japanese NHK Easy paragraph and return strict JSON only.\n"
+        "Analyze this Japanese NHK Easy article and return strict JSON only.\n"
         "Be exhaustive rather than selective.\n"
         "Extract as many learner-relevant language elements as possible that actually appear in the text.\n"
         "Include nouns, katakana words, adjectives, conjugated verb forms, useful compounds, particles as grammar, auxiliary patterns, and grammar constructions.\n"
-        "Use exact surface spans from the paragraph.\n"
-        "Deduplicate only exact same encountered surface form within this paragraph.\n"
-        "Cover the whole paragraph and do not stop after only a few examples.\n"
+        "Use exact surface spans from the article text.\n"
+        "Deduplicate only exact same encountered surface form within this article.\n"
+        "Cover the whole article and do not stop after only a few examples.\n"
         "Return this JSON shape exactly:\n"
         "{\"items\":[{\"surface\":\"...\",\"lemma\":\"...\",\"reading\":\"...\","
         "\"item_type\":\"noun|adjective|verb|compound|grammar|particle\",\"translation_bg\":\"...\",\"translation_en\":\"...\","
         "\"meaning_bg\":\"...\",\"meaning_en\":\"...\",\"formation_bg\":\"...\",\"formation_en\":\"...\","
         "\"formula_bg\":\"...\",\"formula_en\":\"...\",\"usage_bg\":\"...\",\"usage_en\":\"...\"}]}\n"
         "Rules:\n"
-        "- surface: exact form as written in the paragraph\n"
+        "- surface: exact form as written in the article text\n"
         "- lemma: dictionary/base form or canonical grammar pattern\n"
         "- reading: hiragana reading of the exact surface whenever possible; if uncertain, still provide the other fields\n"
         "- Include short grammar elements if they are genuinely useful to explain\n"
@@ -3499,11 +3501,11 @@ def analyze_article_block_with_groq(article_id: str, block_id: int, title: str, 
         "- Good verb formation example en: \"From 発表する: remove する to get the stem 発表し, then add the polite past ending ました to make 発表しました.\"\n"
         "- For adjectives and verbs, formula_bg/formula_en should stay compact, while formation_bg/formation_en should be the fuller explanation.\n"
         "- For grammar items, explain meaning, usage, and compact formula\n"
-        "- Do not invent anything not literally present in the paragraph\n"
-        "- Aim for 15 to 50 items when possible\n"
+        "- Do not invent anything not literally present in the article\n"
+        "- Aim for 20 to 80 items when possible\n"
         "- It is better to return many correct items than only a few polished ones\n"
         f"Article title: {title}\n"
-        f"Paragraph text:\n{text}"
+        f"Article text:\n{article_text}"
     )
     parsed = extract_json_object(gemini_chat_completion(prompt, max_completion_tokens=AI_ARTICLE_MAX_COMPLETION_TOKENS))
     if not isinstance(parsed, dict):
@@ -3530,42 +3532,38 @@ def analyze_articles_with_groq(articles):
                 normalize_gemini_match_key(item.get("item_type")),
             )
             merged[key] = item
-        for block_id, block in enumerate((article.get("blocks") or []), start=1):
-            text = (block.get("text") or "").strip()
-            if not text:
+        try:
+            items = analyze_article_with_groq(article_id, title, article.get("blocks") or [])
+        except Exception as e:
+            print(f"Gemini article analysis failed for {article_id}: {e}")
+            items = []
+        for item in items:
+            key = (
+                normalize_gemini_match_key(item.get("surface")),
+                normalize_gemini_match_key(item.get("lemma")),
+                normalize_gemini_match_key(item.get("item_type")),
+            )
+            existing = merged.get(key)
+            if existing is None:
+                merged[key] = item
                 continue
-            try:
-                items = analyze_article_block_with_groq(article_id, block_id, title, text)
-            except Exception as e:
-                print(f"Gemini article analysis failed for {article_id} block {block_id}: {e}")
-                items = []
-            for item in items:
-                key = (
-                    normalize_gemini_match_key(item.get("surface")),
-                    normalize_gemini_match_key(item.get("lemma")),
-                    normalize_gemini_match_key(item.get("item_type")),
-                )
-                existing = merged.get(key)
-                if existing is None:
-                    merged[key] = item
-                    continue
-                for field in (
-                    "reading",
-                    "translation_bg",
-                    "translation_en",
-                    "meaning_bg",
-                    "meaning_en",
-                    "formation_bg",
-                    "formation_en",
-                    "formula_bg",
-                    "formula_en",
-                    "usage_bg",
-                    "usage_en",
-                    "category_bg",
-                    "category_en",
-                ):
-                    if not existing.get(field) and item.get(field):
-                        existing[field] = item[field]
+            for field in (
+                "reading",
+                "translation_bg",
+                "translation_en",
+                "meaning_bg",
+                "meaning_en",
+                "formation_bg",
+                "formation_en",
+                "formula_bg",
+                "formula_en",
+                "usage_bg",
+                "usage_en",
+                "category_bg",
+                "category_en",
+            ):
+                if not existing.get(field) and item.get(field):
+                    existing[field] = item[field]
         try:
             article["analysis_items"] = list(merged.values())
         except Exception:
