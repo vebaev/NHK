@@ -5,6 +5,7 @@ import argparse
 import html as html_lib
 import hashlib
 import json
+import subprocess
 import time
 import uuid
 from collections import deque
@@ -48,6 +49,11 @@ except Exception:
     Jinf = None
 
 EASY_SITEMAP_URL = "https://news.web.nhk/news/easy/sitemap/sitemap.xml"
+NHK_EASY_HOME_URL = "https://news.web.nhk/news/easy/"
+NHK_EASY_BUILD_AUTHORIZE_URL = "https://news.web.nhk/tix/build_authorize?idp=a-alaz&profileType=abroad&redirect_uri=https%3A%2F%2Fnews.web.nhk%2Fnews%2Feasy%2F&entity=none&area=130&pref=13&jisx0402=13101&postal=1000001"
+NHK_EASY_NEWS_LIST_URL = "https://news.web.nhk/news/easy/news-list.json"
+NHK_EASY_WWW_BASE_URL = "http://www3.nhk.or.jp"
+NHK_CURL_USER_AGENT = "curl/8.14.1"
 NHKEASIER_FEED_URL = "https://nhkeasier.com/feed/"
 DEFAULT_OUTPUT = "docs/index.html"
 DEFAULT_ANKI_FILENAME = "anki_cards_bg.tsv"
@@ -206,6 +212,47 @@ def get_http_session():
         session.headers.update({"User-Agent": "nhk-easy-pipeline/1.0"})
         _THREAD_LOCAL.http_session = session
     return session
+
+
+def nhk_request(session, method: str, url: str, **kwargs):
+    headers = dict(kwargs.pop("headers", {}) or {})
+    headers.setdefault("User-Agent", NHK_CURL_USER_AGENT)
+    return session.request(method, url, headers=headers, **kwargs)
+
+
+def parse_m3u8_attribute(line: str, name: str) -> str:
+    m = re.search(rf'{re.escape(name)}="([^"]+)"', line or "")
+    return m.group(1) if m else ""
+
+
+def strip_id3_tag(data: bytes) -> bytes:
+    if not data.startswith(b"ID3") or len(data) < 10:
+        return data
+    flags = data[5]
+    size = ((data[6] & 0x7F) << 21) | ((data[7] & 0x7F) << 14) | ((data[8] & 0x7F) << 7) | (data[9] & 0x7F)
+    total = 10 + size + (10 if flags & 0x10 else 0)
+    return data[total:] if total < len(data) else b""
+
+
+def decrypt_hls_aes128_segment(data: bytes, key: bytes, iv_int: int) -> bytes:
+    proc = subprocess.run(
+        [
+            "openssl",
+            "enc",
+            "-d",
+            "-aes-128-cbc",
+            "-K",
+            key.hex(),
+            "-iv",
+            f"{iv_int:032x}",
+        ],
+        input=data,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        stderr = proc.stderr.decode("utf-8", errors="ignore")
+        raise RuntimeError(f"openssl decrypt failed: {stderr.strip()}")
+    return proc.stdout
 
 
 def get_sudachi_tokenizer():
@@ -797,6 +844,16 @@ def get_article_blocks(content):
             continue
         blocks.append({"text": txt, "html": "".join(str(x) for x in el.contents).strip()})
     return blocks
+
+
+def normalize_nhk_easy_block_html(content):
+    if content is None:
+        return content
+    for span in list(content.select("span")):
+        classes = span.get("class") or []
+        if classes and all(cls.startswith("color") for cls in classes):
+            span.unwrap()
+    return content
 
 def get_mecab_tagger():
     global _MECAB_TAGGER
@@ -4147,6 +4204,254 @@ def extract_grammar_points(articles):
 def extract_ne_id(text: str) -> str:
     m = re.search(r"(ne\d{10,})", text or "")
     return m.group(1) if m else ""
+
+
+def build_nhk_easy_article_url(news_id: str) -> str:
+    news_id = (news_id or "").strip()
+    if not news_id:
+        return ""
+    return f"{NHK_EASY_WWW_BASE_URL}/news/easy/{news_id}/{news_id}.html"
+
+
+def absolute_nhk_asset_url(value: str, news_id: str = "") -> str:
+    value = (value or "").strip()
+    if not value:
+        return ""
+    if value.startswith(("http://", "https://")):
+        return value
+    if value.startswith("/"):
+        return urljoin(f"{NHK_EASY_WWW_BASE_URL}/", value)
+    if news_id:
+        return f"{NHK_EASY_WWW_BASE_URL}/news/easy/{news_id}/{value.lstrip('/')}"
+    return urljoin(f"{NHK_EASY_WWW_BASE_URL}/", value)
+
+
+def authenticate_nhk_easy(session=None):
+    session = session or get_http_session()
+    home = nhk_request(session, "GET", NHK_EASY_HOME_URL, timeout=20)
+    home.raise_for_status()
+    auth = nhk_request(session, "GET", NHK_EASY_BUILD_AUTHORIZE_URL, timeout=20)
+    auth.raise_for_status()
+    return auth
+
+
+def get_nhk_easy_news_list():
+    session = get_http_session()
+    response = nhk_request(session, "GET", NHK_EASY_NEWS_LIST_URL, timeout=20)
+    if response.status_code in (401, 403):
+        authenticate_nhk_easy(session)
+        response = nhk_request(session, "GET", NHK_EASY_NEWS_LIST_URL, timeout=20)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_nhk_easy_access_token(session=None) -> str:
+    session = session or get_http_session()
+    token = (session.cookies.get("z_at") or "").strip()
+    if token:
+        return token
+    authenticate_nhk_easy(session)
+    token = (session.cookies.get("z_at") or "").strip()
+    if not token:
+        raise RuntimeError("NHK auth did not provide z_at token")
+    return token
+
+
+def get_nhk_easy_media_token(session=None) -> str:
+    session = session or get_http_session()
+    access_token = get_nhk_easy_access_token(session)
+    response = nhk_request(
+        session,
+        "GET",
+        "https://mediatoken.web.nhk/v1/token",
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=20,
+    )
+    response.raise_for_status()
+    token = (response.json().get("token") or "").strip()
+    if not token:
+        raise RuntimeError("NHK media token response did not include token")
+    return token
+
+
+def build_nhk_easy_audio_master_url(voice_uri: str, session=None) -> str:
+    voice_uri = (voice_uri or "").strip()
+    if not voice_uri:
+        return ""
+    voice_id = voice_uri[:-4] if voice_uri.endswith(".m4a") else voice_uri
+    media_token = get_nhk_easy_media_token(session)
+    return f"https://media.vd.st.nhk/news/easy_audio/{voice_id}/index.m3u8?hdnts={media_token}"
+
+
+def download_nhk_easy_audio_file(news_id: str, voice_uri: str, output_dir: str) -> str:
+    news_id = (news_id or "").strip()
+    voice_uri = (voice_uri or "").strip()
+    if not news_id or not voice_uri or not output_dir:
+        return ""
+    audio_dir = os.path.join(output_dir, "audio")
+    os.makedirs(audio_dir, exist_ok=True)
+    rel_path = f"audio/{news_id}.aac"
+    abs_path = os.path.join(output_dir, rel_path)
+    if os.path.exists(abs_path) and os.path.getsize(abs_path) > 0:
+        return rel_path
+
+    session = get_http_session()
+    master_url = build_nhk_easy_audio_master_url(voice_uri, session=session)
+    master = nhk_request(session, "GET", master_url, timeout=20)
+    master.raise_for_status()
+    master_lines = [ln.strip() for ln in master.text.splitlines() if ln.strip()]
+    variant_ref = next((ln for ln in master_lines if not ln.startswith("#")), "")
+    if not variant_ref:
+        raise RuntimeError(f"No HLS variant found for {news_id}")
+
+    variant_url = urljoin(master_url, variant_ref)
+    variant = nhk_request(session, "GET", variant_url, timeout=20)
+    variant.raise_for_status()
+    variant_lines = [ln.strip() for ln in variant.text.splitlines() if ln.strip()]
+    key_line = next((ln for ln in variant_lines if ln.startswith("#EXT-X-KEY")), "")
+    key_url = parse_m3u8_attribute(key_line, "URI")
+    if not key_url:
+        raise RuntimeError(f"No HLS key URL found for {news_id}")
+    key_response = nhk_request(session, "GET", key_url, timeout=20)
+    key_response.raise_for_status()
+    key = key_response.content
+    if len(key) != 16:
+        raise RuntimeError(f"Unexpected HLS key length for {news_id}: {len(key)}")
+
+    media_sequence = 0
+    for line in variant_lines:
+        if line.startswith("#EXT-X-MEDIA-SEQUENCE:"):
+            try:
+                media_sequence = int(line.split(":", 1)[1].strip())
+            except Exception:
+                media_sequence = 0
+            break
+
+    combined = bytearray()
+    seq = media_sequence
+    for line in variant_lines:
+        if line.startswith("#") or not line:
+            continue
+        segment_url = urljoin(variant_url, line)
+        segment_response = nhk_request(session, "GET", segment_url, timeout=20)
+        segment_response.raise_for_status()
+        decrypted = decrypt_hls_aes128_segment(segment_response.content, key, seq)
+        combined.extend(strip_id3_tag(decrypted))
+        seq += 1
+
+    if not combined:
+        raise RuntimeError(f"No audio segments downloaded for {news_id}")
+    with open(abs_path, "wb") as f:
+        f.write(combined)
+    return rel_path
+
+
+def download_nhk_easy_image_file(news_id: str, image_url: str, output_dir: str) -> str:
+    news_id = (news_id or "").strip()
+    image_url = (image_url or "").strip()
+    if not news_id or not image_url or not output_dir:
+        return ""
+    images_dir = os.path.join(output_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
+    ext = os.path.splitext(urlparse(image_url).path)[1].lower() or ".jpg"
+    if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
+        ext = ".jpg"
+    rel_path = f"images/{news_id}{ext}"
+    abs_path = os.path.join(output_dir, rel_path)
+    if os.path.exists(abs_path) and os.path.getsize(abs_path) > 0:
+        return rel_path
+
+    session = get_http_session()
+    try:
+        get_nhk_easy_access_token(session)
+    except Exception:
+        pass
+    response = session.get(
+        image_url,
+        headers={
+            "User-Agent": NHK_CURL_USER_AGENT,
+            "Referer": NHK_EASY_HOME_URL,
+        },
+        timeout=20,
+    )
+    response.raise_for_status()
+    with open(abs_path, "wb") as f:
+        f.write(response.content)
+    return rel_path
+
+
+def fetch_nhk_easy_page_image_url(link: str) -> str:
+    link = (link or "").strip()
+    if not link:
+        return ""
+    session = get_http_session()
+    try:
+        get_nhk_easy_access_token(session)
+    except Exception:
+        pass
+    response = nhk_request(session, "GET", link, timeout=20)
+    response.raise_for_status()
+    html_text = response.content.decode("utf-8", errors="replace")
+    psoup = BeautifulSoup(html_text, "html.parser")
+    for sel in ['meta[property="og:image"]', 'meta[name="og:image"]', ".article-body img[src]", "article img[src]", "main img[src]", "img[src]"]:
+        el = psoup.select_one(sel)
+        if not el:
+            continue
+        candidate = (el.get("content") or el.get("src") or "").strip()
+        if candidate:
+            return urljoin(link, candidate)
+    return ""
+
+
+def get_nhk_easy_items(n=4):
+    payload = get_nhk_easy_news_list()
+    groups = []
+    if isinstance(payload, list):
+        for entry in payload:
+            if isinstance(entry, dict):
+                groups.append(entry)
+    elif isinstance(payload, dict):
+        groups.append(payload)
+    items = []
+    for group in groups:
+        for date_key, stories in group.items():
+            if not isinstance(stories, list):
+                continue
+            for info in stories:
+                if not isinstance(info, dict):
+                    continue
+                news_id = extract_ne_id(info.get("news_id") or "")
+                if not news_id:
+                    continue
+                published = (info.get("news_prearranged_time") or str(date_key) or "").strip()
+                title = (info.get("title") or info.get("title_with_ruby") or "").strip()
+                image_url = absolute_nhk_asset_url(info.get("news_web_image_uri") or "", news_id=news_id)
+                if not image_url:
+                    image_url = absolute_nhk_asset_url(info.get("news_easy_image_uri") or "", news_id=news_id)
+                items.append({
+                    "news_id": news_id,
+                    "published": published,
+                    "title": title,
+                    "title_html": (info.get("title_with_ruby") or title).strip(),
+                    "image_url": image_url,
+                    "audio_url": "",
+                    "voice_uri": (info.get("news_easy_voice_uri") or "").strip(),
+                    "link": build_nhk_easy_article_url(news_id),
+                })
+    items.sort(key=lambda item: ((item.get("published") or ""), (item.get("news_id") or "")), reverse=True)
+    seen = set()
+    result = []
+    for item in items:
+        key = item["news_id"]
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(item)
+        if len(result) >= n:
+            break
+    return result
+
+
 def get_nhkeasier_items():
     r = get_http_session().get(NHKEASIER_FEED_URL, timeout=20)
     r.raise_for_status()
@@ -4220,16 +4525,29 @@ def extract_easy_article_links_from_sitemap(n=4):
         if len(links) >= n:
             break
     return links
-def parse_article_from_nhk_easy(link: str):
-    page = get_http_session().get(link, timeout=20)
+def parse_article_from_nhk_easy(link: str, fallback: dict | None = None):
+    session = get_http_session()
+    try:
+        get_nhk_easy_access_token(session)
+    except Exception:
+        pass
+    page = nhk_request(session, "GET", link, timeout=20)
     page.raise_for_status()
-    psoup = BeautifulSoup(page.text, "html.parser")
+    html_text = page.content.decode("utf-8", errors="replace")
+    psoup = BeautifulSoup(html_text, "html.parser")
     title_tag = psoup.select_one("h1")
     title = ""
     title_html = ""
+    if fallback:
+        title = (fallback.get("title") or "").strip()
+        title_html = (fallback.get("title_html") or title).strip()
     if title_tag:
-        title = title_tag.get_text(" ", strip=True)
-        title_html = "".join(str(x) for x in title_tag.contents).strip() or title
+        parsed_title = title_tag.get_text(" ", strip=True)
+        parsed_title_html = "".join(str(x) for x in title_tag.contents).strip() or parsed_title
+        if not title:
+            title = parsed_title
+        if not title_html:
+            title_html = parsed_title_html
     if not title:
         og_title = psoup.select_one('meta[property="og:title"]')
         if og_title:
@@ -4239,7 +4557,7 @@ def parse_article_from_nhk_easy(link: str):
     if not title_html:
         title_html = title
     image_url = ""
-    for sel in ['meta[property="og:image"]', 'meta[name="og:image"]', "article img[src]", "main img[src]", "img[src]"]:
+    for sel in ['meta[property="og:image"]', 'meta[name="og:image"]', ".article-body img[src]", "article img[src]", "main img[src]", "img[src]"]:
         el = psoup.select_one(sel)
         if not el:
             continue
@@ -4247,6 +4565,8 @@ def parse_article_from_nhk_easy(link: str):
         if candidate:
             image_url = urljoin(link, candidate)
             break
+    if not image_url and fallback:
+        image_url = (fallback.get("image_url") or "").strip()
     audio_url = ""
     for sel in ["audio source[src]", "audio[src]", 'a[href$=".mp3"]', 'a[href*=".mp3"]']:
         el = psoup.select_one(sel)
@@ -4257,16 +4577,19 @@ def parse_article_from_nhk_easy(link: str):
             audio_url = urljoin(link, candidate)
             break
     if not audio_url:
-        mp3_match = re.search(r"https?://[^\"'\s]+\.mp3(?:\?[^\"'\s]*)?", page.text)
+        mp3_match = re.search(r"https?://[^\"'\s]+\.mp3(?:\?[^\"'\s]*)?", html_text)
         if mp3_match:
             audio_url = mp3_match.group(0)
     if not audio_url:
-        audio_field_match = re.search(r'"(?:audio|voice|sound|movie)Url"\s*:\s*"([^"]+)"', page.text, re.IGNORECASE)
+        audio_field_match = re.search(r'"(?:audio|voice|sound|movie)Url"\s*:\s*"([^"]+)"', html_text, re.IGNORECASE)
         if audio_field_match:
             audio_url = urljoin(link, audio_field_match.group(1))
-    content = psoup.select_one(".article-main__body") or psoup.select_one(".module--content") or psoup.select_one("#js-article-body") or psoup.select_one(".content--detail-body") or psoup.select_one("article") or psoup.select_one("main")
+    if not audio_url and fallback:
+        audio_url = (fallback.get("audio_url") or "").strip()
+    content = psoup.select_one(".article-body") or psoup.select_one(".article-main__body") or psoup.select_one(".module--content") or psoup.select_one("#js-article-body") or psoup.select_one(".content--detail-body") or psoup.select_one("article") or psoup.select_one("main")
     filtered_blocks = []
     if content is not None:
+        normalize_nhk_easy_block_html(content)
         for bad in content.select("script, style, nav, footer, header, aside, form"):
             bad.decompose()
         for b in get_article_blocks(content):
@@ -4276,7 +4599,7 @@ def parse_article_from_nhk_easy(link: str):
             filtered_blocks.append(b)
     if not filtered_blocks:
         payload_texts = []
-        for txt in re.findall(r'"children":"([^"]{10,}?)"', page.text):
+        for txt in re.findall(r'"children":"([^"]{10,}?)"', html_text):
             if "NHK" in txt or "トップ" in txt or "ニュース・防災" in txt:
                 continue
             if not re.search(r"[ぁ-んァ-ン一-龯]", txt):
@@ -4300,7 +4623,16 @@ def parse_article_from_nhk_easy(link: str):
     if not filtered_blocks:
         return None
     vocab = extract_vocab_from_blocks(filtered_blocks)
-    article = {"title": title, "title_html": title_html, "link": link, "image_url": image_url, "audio_url": audio_url, "blocks": filtered_blocks, "vocab": vocab}
+    article = {
+        "title": title,
+        "title_html": title_html,
+        "link": link,
+        "image_url": image_url,
+        "audio_url": audio_url,
+        "voice_uri": (fallback.get("voice_uri") or "").strip() if fallback else "",
+        "blocks": filtered_blocks,
+        "vocab": vocab,
+    }
     return prepare_article_render_data(article)
 
 
@@ -4314,6 +4646,7 @@ def build_article_from_fallback(link: str, fallback: dict):
         "link": link,
         "image_url": (fallback.get("image_url") or "").strip(),
         "audio_url": (fallback.get("audio_url") or "").strip(),
+        "voice_uri": (fallback.get("voice_uri") or "").strip(),
         "blocks": [{"html": b["html"], "text": b["text"]} for b in fallback.get("blocks") or [] if (b.get("text") or "").strip()],
         "vocab": extract_vocab_from_blocks(fallback.get("blocks") or []),
     }
@@ -4321,60 +4654,107 @@ def build_article_from_fallback(link: str, fallback: dict):
 
 
 def get_articles(n=4):
-    nhkeasier_items = {}
+    direct_items = []
     try:
-        nhkeasier_items = get_nhkeasier_items()
+        direct_items = get_nhk_easy_items(max(n * 8, n))
     except Exception as e:
-        print(f"Could not load nhkeasier fallback feed: {e}")
+        print(f"Could not load direct NHK Easy news list: {e}")
     articles = []
-
-    # Prefer nhkeasier feed because it contains full text blocks and mp3 audio.
-    for ne_id, fallback in list(nhkeasier_items.items())[:n]:
-        link = (fallback.get("original_link") or fallback.get("post_link") or "").strip()
-        article = build_article_from_fallback(link, fallback)
-        if article and article.get("blocks"):
-            articles.append(article)
-
-    if len(articles) >= n:
-        return articles[:n]
-
-    links = extract_easy_article_links_from_sitemap(max(n * 8, n))
-    existing_links = {(a.get("link") or "").strip() for a in articles}
+    item_by_link = {(item.get("link") or "").strip(): item for item in direct_items if (item.get("link") or "").strip()}
+    links = list(item_by_link.keys())
+    if not links:
+        links = extract_easy_article_links_from_sitemap(max(n * 8, n))
+    existing_links = set()
+    article_by_link = {}
     max_workers = min(8, max(1, n * 2))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(parse_article_from_nhk_easy, link): link for link in links if link not in existing_links}
+        futures = {
+            executor.submit(parse_article_from_nhk_easy, link, item_by_link.get(link)): link
+            for link in links
+            if link not in existing_links
+        }
         for future in as_completed(futures):
             link = futures[future]
-            ne_id = extract_ne_id(link)
-            fallback = nhkeasier_items.get(ne_id)
             try:
                 article = future.result()
-                if article and fallback and fallback.get("blocks"):
-                    article["blocks"] = [{"html": b["html"], "text": b["text"]} for b in fallback["blocks"]]
-                    article["vocab"] = extract_vocab_from_blocks(fallback["blocks"])
-                    if fallback.get("audio_url"):
-                        article["audio_url"] = fallback["audio_url"]
-                    if fallback.get("image_url"):
-                        article["image_url"] = fallback["image_url"]
-                    prepare_article_render_data(article)
-                if not article and fallback:
-                    article = build_article_from_fallback(link, fallback)
                 if article and article.get("blocks"):
-                    articles.append(article)
-                if len(articles) >= n:
-                    break
+                    article_by_link[link] = article
+                    existing_links.add(link)
             except Exception as e:
-                if fallback:
-                    article = build_article_from_fallback(link, fallback)
-                    if article and article.get("blocks"):
-                        articles.append(article)
-                        print(f"Used nhkeasier fallback for {link} after error: {e}")
-                        if len(articles) >= n:
-                            break
-                        continue
                 print(f"Skipping article because of error: {e}")
                 continue
+
+    for link in links:
+        article = article_by_link.get(link)
+        if article and article.get("blocks"):
+            articles.append(article)
+        if len(articles) >= n:
+            break
+
+    if len(articles) < n and not direct_items:
+        nhkeasier_items = {}
+        try:
+            nhkeasier_items = get_nhkeasier_items()
+        except Exception as e:
+            print(f"Could not load nhkeasier fallback feed: {e}")
+        for ne_id, fallback in list(nhkeasier_items.items())[:n]:
+            link = (fallback.get("original_link") or fallback.get("post_link") or "").strip()
+            if not link or link in existing_links:
+                continue
+            article = build_article_from_fallback(link, fallback)
+            if article and article.get("blocks"):
+                articles.append(article)
+                existing_links.add(link)
+            if len(articles) >= n:
+                break
     return articles[:n]
+
+
+def materialize_article_audio(articles, output_dir: str):
+    if not output_dir:
+        return
+    for article in articles or []:
+        if (article.get("audio_url") or "").strip():
+            continue
+        news_id = extract_ne_id(article.get("link") or "")
+        voice_uri = (article.get("voice_uri") or "").strip()
+        if not news_id or not voice_uri:
+            continue
+        try:
+            article["audio_url"] = download_nhk_easy_audio_file(news_id, voice_uri, output_dir)
+        except Exception as e:
+            print(f"Could not download NHK audio for {news_id}: {e}")
+
+
+def materialize_article_images(articles, output_dir: str):
+    if not output_dir:
+        return
+    for article in articles or []:
+        image_url = (article.get("image_url") or "").strip()
+        if not image_url:
+            continue
+        news_id = extract_ne_id(article.get("link") or "")
+        if not news_id:
+            continue
+        try:
+            article["image_url"] = download_nhk_easy_image_file(news_id, image_url, output_dir)
+        except Exception as e:
+            fallback_url = ""
+            try:
+                fallback_url = fetch_nhk_easy_page_image_url(article.get("link") or "")
+            except Exception:
+                fallback_url = ""
+            if fallback_url and fallback_url != image_url:
+                try:
+                    article["image_url"] = download_nhk_easy_image_file(news_id, fallback_url, output_dir)
+                    continue
+                except Exception as inner_e:
+                    print(f"Could not download NHK image for {news_id}: {inner_e}")
+                    article["image_url"] = ""
+                    continue
+            print(f"Could not download NHK image for {news_id}: {e}")
+            article["image_url"] = ""
+
 def wrap_vocab_words_in_html(html_fragment, vocab_items=None, vocab_lookup=None):
     if not html_fragment:
         return html_fragment
@@ -4991,6 +5371,9 @@ def main():
     articles = get_articles(args.count)
     if not articles:
         raise RuntimeError("No articles were extracted.")
+
+    materialize_article_images(articles, output_dir)
+    materialize_article_audio(articles, output_dir)
 
     analyze_articles_with_groq(articles)
     for article in articles:
