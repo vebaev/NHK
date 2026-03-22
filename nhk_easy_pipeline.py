@@ -1570,6 +1570,13 @@ def build_plain_adjective_formation_bg(surface: str, lemma: str, current: str = 
     return current
 
 
+def is_probable_verb_te_surface(surface: str) -> bool:
+    surface = (surface or "").strip()
+    if not surface or len(surface) < 2:
+        return False
+    return bool(re.search(r"(って|んで|いて|いで|して|きて|て|で)$", surface))
+
+
 def extend_reading_with_surface_kana(surface: str, reading: str) -> str:
     surface = (surface or "").strip()
     reading = normalize_katakana_to_hiragana((reading or "").strip())
@@ -1606,6 +1613,8 @@ def infer_popup_item_type(surface: str, analysis, current_item_type: str = "", l
         return "verb"
     if any(marker in formula_bg for marker in ("te-form", "volitional", "past form", "れる/られる", "せる/させる")):
         return "verb"
+    if is_probable_verb_te_surface(surface) and lemma and lemma != surface:
+        return "verb"
     if lemma and surface and lemma != surface and lemma.endswith(("る", "う", "く", "ぐ", "す", "つ", "ぬ", "ぶ", "む")):
         if surface.endswith(("そうです", "そうだ", "ます", "ました", "ません", "ない", "なかった", "たい", "れる", "られる", "ている", "でいる", "ていた", "でいた")):
             return "verb"
@@ -1622,6 +1631,12 @@ def enrich_popup_item(item):
         return item
     reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
     lemma = (item.get("lemma") or item.get("word") or surface).strip()
+    if is_probable_verb_te_surface(surface):
+        normalized = to_dictionary_form(surface)
+        if normalized and normalized != surface:
+            lemma = normalized
+            if not (item.get("item_type") or "").strip():
+                item["item_type"] = "verb"
     analysis = analyze_japanese_word(surface, reading_hint=reading, lemma_hint=lemma)
     resolved_lemma = choose_popup_lemma(surface, lemma, analysis)
     item_type = infer_popup_item_type(
