@@ -781,10 +781,35 @@ def extract_predicate_tail_from_compound(surface: str) -> str:
     return tail
 
 
+def strip_predicate_grammar_tail(surface: str) -> str:
+    value = (surface or "").strip()
+    if not value:
+        return ""
+    patterns = [
+        r"(ため(?:に)?)$",
+        r"(よう(?:に)?)$",
+        r"(こと(?:に|が|を|は)?)$",
+        r"(ところ)$",
+        r"(など)$",
+    ]
+    changed = True
+    while changed and value:
+        changed = False
+        for pattern in patterns:
+            trimmed = re.sub(pattern, "", value).strip()
+            if trimmed and trimmed != value:
+                value = trimmed
+                changed = True
+                break
+    return value
+
+
 def should_skip_mixed_clause_surface(surface: str) -> bool:
     surface = (surface or "").strip()
     if not surface:
         return False
+    if surface != strip_predicate_grammar_tail(surface):
+        return True
     if extract_predicate_tail_from_compound(surface):
         return True
     return bool(
@@ -1859,6 +1884,18 @@ def to_dictionary_form(word: str) -> str:
         stem = (stem or "").strip()
         if not stem:
             return stem
+        if stem.endswith("言"):
+            return stem + "う"
+        if stem.endswith("合"):
+            return stem + "う"
+        if stem.endswith("貼"):
+            return stem + "る"
+        if stem.endswith("切"):
+            return stem + "る"
+        if stem.endswith("帰"):
+            return stem + "る"
+        if stem.endswith("光"):
+            return stem + "る"
         if stem.endswith("っ"):
             return stem[:-1] + "る"
         if stem.endswith("ん"):
@@ -1961,6 +1998,18 @@ def to_dictionary_form(word: str) -> str:
     for src, dst in [("いて", "く"), ("いで", "ぐ"), ("して", "す"), ("した", "す"), ("いた", "く"), ("いだ", "ぐ")]:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
+    for src in ["って", "った"]:
+        if w.endswith(src) and len(w) > len(src):
+            stem = w[:-len(src)] + "っ"
+            normalized = te_base_to_dictionary(stem)
+            if normalized and normalized != stem:
+                return normalized
+    for src in ["んで", "んだ"]:
+        if w.endswith(src) and len(w) > len(src):
+            stem = w[:-len(src)] + "ん"
+            normalized = te_base_to_dictionary(stem)
+            if normalized and normalized != stem:
+                return normalized
     for src, dst in [("かった", "い"), ("くて", "い"), ("くない", "い")]:
         if w.endswith(src) and len(w) > len(src):
             return w[:-len(src)] + dst
@@ -2204,6 +2253,8 @@ def should_keep_popup_token(surface: str, pos1: str = "", pos2: str = "", lemma:
         return False
     if surface in WEAK_FALLBACK_SURFACES and pos1 not in {"動詞", "形容詞"}:
         return False
+    if surface != strip_predicate_grammar_tail(surface) and pos1 in {"動詞", "形容詞"}:
+        return False
     if re.match(r"^[一-龯々]+(?:には|では|から|まで|より|[がをにではもへとのとやか])[ぁ-んー]+$", surface):
         return False
     if re.fullmatch(r"[ぁ-んー]{1,3}", surface) and pos1 not in {"動詞", "形容詞", "副詞"}:
@@ -2225,6 +2276,7 @@ def trim_fallback_popup_surface(surface: str) -> str:
     value = (surface or "").strip()
     if not value:
         return ""
+    value = strip_predicate_grammar_tail(value)
     patterns = [
         r"(かもしれ(?:ない|ません))$",
         r"(ことに(?:する|した|して|します|しました|したい|しよう))$",
@@ -2452,6 +2504,13 @@ def build_analysis_lookup(items):
             derived["item_type"] = ""
             item = derived
         item = enrich_popup_item(item)
+        stripped_surface = strip_predicate_grammar_tail((item.get("surface") or "").strip())
+        if stripped_surface and stripped_surface != (item.get("surface") or "").strip():
+            derived = dict(item)
+            derived["surface"] = stripped_surface
+            derived["lemma"] = to_dictionary_form(stripped_surface)
+            derived["reading"] = get_reading_for_word(stripped_surface, fallback=(item.get("reading") or ""))
+            item = enrich_popup_item(derived)
         surface = (item.get("surface") or "").strip()
         if not surface:
             continue
