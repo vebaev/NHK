@@ -4633,7 +4633,7 @@ def parse_article_from_nhk_easy(link: str, fallback: dict | None = None):
         "blocks": filtered_blocks,
         "vocab": vocab,
     }
-    return prepare_article_render_data(article)
+    return article
 
 
 def build_article_from_fallback(link: str, fallback: dict):
@@ -4650,13 +4650,14 @@ def build_article_from_fallback(link: str, fallback: dict):
         "blocks": [{"html": b["html"], "text": b["text"]} for b in fallback.get("blocks") or [] if (b.get("text") or "").strip()],
         "vocab": extract_vocab_from_blocks(fallback.get("blocks") or []),
     }
-    return prepare_article_render_data(article)
+    return article
 
 
 def get_articles(n=4):
     direct_items = []
+    direct_limit = max(n + 2, n)
     try:
-        direct_items = get_nhk_easy_items(max(n * 8, n))
+        direct_items = get_nhk_easy_items(direct_limit)
     except Exception as e:
         print(f"Could not load direct NHK Easy news list: {e}")
     articles = []
@@ -4666,7 +4667,7 @@ def get_articles(n=4):
         links = extract_easy_article_links_from_sitemap(max(n * 8, n))
     existing_links = set()
     article_by_link = {}
-    max_workers = min(8, max(1, n * 2))
+    max_workers = min(3, max(1, n))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(parse_article_from_nhk_easy, link, item_by_link.get(link)): link
