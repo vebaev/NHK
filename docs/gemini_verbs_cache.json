@@ -190,6 +190,70 @@
       "label": "〜終わる"
     }
   ],
+  "06f779a43aefc23c675bc3452edd34c1ec136679": [
+    {
+      "surface": "戦い",
+      "translation_bg": "конфликт, борба",
+      "translation_en": "conflict, struggle"
+    },
+    {
+      "surface": "アメリカ",
+      "translation_bg": "САЩ",
+      "translation_en": "USA"
+    },
+    {
+      "surface": "イラン",
+      "translation_bg": "Иран",
+      "translation_en": "Iran"
+    },
+    {
+      "surface": "続い",
+      "translation_bg": "продължава",
+      "translation_en": "continuing"
+    }
+  ],
+  "072a07bfc37364d5f44b9cd212188267f52fc213": [
+    {
+      "surface": "日",
+      "translation_bg": "den",
+      "translation_en": "day"
+    },
+    {
+      "surface": "韓国",
+      "translation_bg": "Yuzhna Koreya",
+      "translation_en": "South Korea"
+    },
+    {
+      "surface": "ソウル",
+      "translation_bg": "Seul",
+      "translation_en": "Seoul"
+    },
+    {
+      "surface": "人気",
+      "translation_bg": "populyaren",
+      "translation_en": "popular"
+    },
+    {
+      "surface": "グループ",
+      "translation_bg": "grupa",
+      "translation_en": "group"
+    },
+    {
+      "surface": "無料",
+      "translation_bg": "bezplaten",
+      "translation_en": "free"
+    },
+    {
+      "surface": "コンサート",
+      "translation_bg": "kontsert",
+      "translation_en": "concert"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "chovek",
+      "translation_en": "person"
+    }
+  ],
   "08177f83534973b8e81f2ce6503f93f0e6a2e620": [
     {
       "explanation_bg": "Използва се за вземане на решение относно действие, което ще бъде извършено в бъдеще. означава 'решил съм да направя нещо'",
@@ -3369,6 +3433,53 @@
       "usage_en": "shows where the action takes place"
     }
   ],
+  "154fef50635ffc92498da2ff0cf6b4872f9a7a01": [
+    {
+      "surface": "日本",
+      "translation_bg": "Япония",
+      "translation_en": "Japan"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "ден",
+      "translation_en": "day"
+    },
+    {
+      "surface": "高市",
+      "translation_bg": "Такаичи (фамилия)",
+      "translation_en": "Takaichi (surname)"
+    },
+    {
+      "surface": "総理大臣",
+      "translation_bg": "министър-председател",
+      "translation_en": "Prime Minister"
+    },
+    {
+      "surface": "法律",
+      "translation_bg": "закон",
+      "translation_en": "law"
+    },
+    {
+      "surface": "できる",
+      "translation_bg": "възможно е / може да се направи",
+      "translation_en": "is possible / can be done"
+    },
+    {
+      "surface": "対応",
+      "translation_bg": "справяне / предприемане на мерки",
+      "translation_en": "handling / taking action"
+    },
+    {
+      "surface": "説明",
+      "translation_bg": "обяснение",
+      "translation_en": "explanation"
+    },
+    {
+      "surface": "総理大臣は",
+      "translation_bg": "министър-председателят (като тема)",
+      "translation_en": "the Prime Minister (as topic)"
+    }
+  ],
   "163d41da8fe7e121132ca190300f5f40f8e88e5b": [
     {
       "explanation_bg": "Показва взето решение: „решавам да…“",
@@ -4869,6 +4980,58 @@
       "label": "ぶりに"
     }
   ],
+  "2f0e14611768e45c7329cea73d87107cd0ad4276": [
+    {
+      "surface": "年",
+      "translation_bg": "година",
+      "translation_en": "year"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "човек",
+      "translation_en": "person"
+    },
+    {
+      "surface": "軍の",
+      "translation_bg": "военен",
+      "translation_en": "military"
+    },
+    {
+      "surface": "メンバー",
+      "translation_bg": "член",
+      "translation_en": "member"
+    },
+    {
+      "surface": "前",
+      "translation_bg": "преди",
+      "translation_en": "ago"
+    },
+    {
+      "surface": "軍隊",
+      "translation_bg": "армия",
+      "translation_en": "military"
+    },
+    {
+      "surface": "入り",
+      "translation_bg": "влизане",
+      "translation_en": "entering"
+    },
+    {
+      "surface": "全員",
+      "translation_bg": "всички",
+      "translation_en": "all members"
+    },
+    {
+      "surface": "軍",
+      "translation_bg": "армия",
+      "translation_en": "military"
+    },
+    {
+      "surface": "仕事",
+      "translation_bg": "служба",
+      "translation_en": "service/duty"
+    }
+  ],
   "30862f00ee8fc3ccb73c06f6282f56bca691b7f1": [
     {
       "explanation_bg": "Използва се за изразяване на логическо заключение или резултат. означава 'следователно' или 'затова'.",
@@ -4984,6 +5147,19 @@
       "reading": "さげ",
       "reason": "'下げました' е учтивата минала форма на глагола '下げる' (свалям, намалявам)",
       "surface": "下げました"
+    }
+  ],
+  "371e387a5af66e06b2e0506b756315e2b050fee7": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 話す (говоря) се променя в основа 話し, към която се добавя ます, а след това се поставя в минало време чрез ました.",
+      "formation_en": "The verb 話す (to speak) changes to the stem 話し, to which ます is added, and then it is put into the past tense using ました.",
+      "formula_bg": "話す → 話し + ました",
+      "formula_en": "話す → 話し + ました",
+      "lemma": "話す",
+      "reading": "はなしました",
+      "reason": "Това е глагол в учтива форма за минало време.",
+      "surface": "話しました"
     }
   ],
   "3859d1aef93f88595015e50e3675c65d5b0489f9": [
@@ -7579,6 +7755,41 @@
       "label": "て / で"
     }
   ],
+  "46bbb3813545257d8b3932f714a9b384012abf92": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 使う (използвам) се променя в формата て (使って) и се добавя いる за продължително действие.",
+      "formation_en": "The verb 使う (to use) changes to the て-form (使って) and adds いる for a continuous action.",
+      "formula_bg": "使う → 使って + いる",
+      "formula_en": "使う → 使って + いる",
+      "lemma": "使う",
+      "reading": "つかっています",
+      "reason": "Това е глагол в сегашно продължително време.",
+      "surface": "使っています"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 行く (отивам) се променя в отрицателна форма чрез замяна на звука う с あ и добавяне на ない.",
+      "formation_en": "The verb 行く (to go) changes to the negative form by replacing the う sound with あ and adding ない.",
+      "formula_bg": "行く → 行か + ない",
+      "formula_en": "行く → 行か + ない",
+      "lemma": "行く",
+      "reading": "いかない",
+      "reason": "Това е глагол в отрицателна форма.",
+      "surface": "行かない"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 言う (казвам) се променя в формата て (言って) и се добавя いる за състояние или повтарящо се действие.",
+      "formation_en": "The verb 言う (to say) changes to the て-form (言って) and adds いる for a state or repeated action.",
+      "formula_bg": "言う → 言って + いる",
+      "formula_en": "言う → 言って + いる",
+      "lemma": "言う",
+      "reading": "いっています",
+      "reason": "Това е глагол в сегашно продължително време.",
+      "surface": "言っています"
+    }
+  ],
   "46d35c92df216bb371bb2220c08fb40611615cd2": [
     {
       "confidence": 1.0,
@@ -7590,6 +7801,58 @@
       "reading": "つづ",
       "reason": "続いている е продължителна форма на глагола 続く, а не отделна дума.",
       "surface": "続いている"
+    }
+  ],
+  "474d5b3b3c8f80b6eecbd448704d4041ef9c4db5": [
+    {
+      "surface": "運ぶ",
+      "translation_bg": "пренасям / транспортирам",
+      "translation_en": "to transport / to carry"
+    },
+    {
+      "surface": "通る",
+      "translation_bg": "минавам през",
+      "translation_en": "to pass through"
+    },
+    {
+      "surface": "近く",
+      "translation_bg": "наблизо",
+      "translation_en": "near / vicinity"
+    },
+    {
+      "surface": "今",
+      "translation_bg": "сега",
+      "translation_en": "now"
+    },
+    {
+      "surface": "船が",
+      "translation_bg": "корабът (подлог)",
+      "translation_en": "ship (subject marker)"
+    },
+    {
+      "surface": "ホルムズ",
+      "translation_bg": "Хормуз",
+      "translation_en": "Hormuz"
+    },
+    {
+      "surface": "海峡",
+      "translation_bg": "проток",
+      "translation_en": "strait"
+    },
+    {
+      "surface": "石油",
+      "translation_bg": "петрол",
+      "translation_en": "oil"
+    },
+    {
+      "surface": "船",
+      "translation_bg": "кораб",
+      "translation_en": "ship"
+    },
+    {
+      "surface": "たくさん",
+      "translation_bg": "много",
+      "translation_en": "many / a lot"
     }
   ],
   "47778a6aad1da79a61924976232ef5701bdc8419": [
@@ -8462,6 +8725,19 @@
       "usage_en": "polite continuous form"
     }
   ],
+  "4cbbaa9ff070720223048b653ec5d091d7aa41b5": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 言う (казвам) се променя в формата て (言っ) и се добавя спомагателният глагол いる (състояние) в сегашно време (います).",
+      "formation_en": "The verb 言う (to say) changes to the て form (言っ) and the helper verb いる (state) is added in the present tense (います).",
+      "formula_bg": "言う → 言って + いる → 言っています",
+      "formula_en": "言う → 言って + いる → 言っています",
+      "lemma": "言う",
+      "reading": "いっています",
+      "reason": "Това е глагол в продължително време, описващ текущо действие.",
+      "surface": "言っています"
+    }
+  ],
   "4d0b57e830b812bbf5c220366457e2ac2cbe1ee1": [
     {
       "explanation_bg": "Тази структура се използва, когато нещо е неизбежно или задължително. Тя означава 'непременно' или 'задължително'.",
@@ -8986,6 +9262,58 @@
       "translation_en": "held",
       "usage_bg": "показва действие в миналото",
       "usage_en": "shows action in the past"
+    }
+  ],
+  "4f8b3a2f245fadae04f8690d209f99cad5538deb": [
+    {
+      "surface": "戦い",
+      "translation_bg": "битка, война",
+      "translation_en": "battle, war"
+    },
+    {
+      "surface": "国際",
+      "translation_bg": "международен",
+      "translation_en": "international"
+    },
+    {
+      "surface": "早く",
+      "translation_bg": "бързо, скоро",
+      "translation_en": "quickly, soon"
+    },
+    {
+      "surface": "エネルギー",
+      "translation_bg": "енергия",
+      "translation_en": "energy"
+    },
+    {
+      "surface": "機関",
+      "translation_bg": "организация, агенция",
+      "translation_en": "organization, agency"
+    },
+    {
+      "surface": "言っ",
+      "translation_bg": "казвам",
+      "translation_en": "saying"
+    },
+    {
+      "surface": "終わり",
+      "translation_bg": "край, завършек",
+      "translation_en": "end"
+    },
+    {
+      "surface": "問題",
+      "translation_bg": "проблем",
+      "translation_en": "problem"
+    },
+    {
+      "surface": "もっと",
+      "translation_bg": "повече, още",
+      "translation_en": "more"
+    },
+    {
+      "surface": "大きく",
+      "translation_bg": "голям",
+      "translation_en": "bigger"
     }
   ],
   "503e6ee3c1718ca8739d4458f89a88e974a8b5bb": [
@@ -9818,6 +10146,77 @@
       "surface": "着き",
       "translation_bg": "пристигна (форма на глагола 着く)",
       "translation_en": "arrived (stem form of 着く)"
+    }
+  ],
+  "5c3b8f1031dad34d0f790655d9ec398529b69643": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 会う се променя в основа за учтива форма 会い, към която се добавя ます, а след това и минало време した.",
+      "formation_en": "The verb 会う changes to the polite stem 会い, followed by ます, and then the past tense suffix した.",
+      "formula_bg": "会う → 会い + ます + した",
+      "formula_en": "会う → 会い + ます + した",
+      "lemma": "会う",
+      "reading": "あいました",
+      "reason": "Това е учтива форма в минало време на глагола 会う.",
+      "surface": "会いました"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 伝える се променя в основа 伝え, към която се добавя ます, а след това и минало време した.",
+      "formation_en": "The verb 伝える changes to the stem 伝え, followed by ます, and then the past tense suffix した.",
+      "formula_bg": "伝える → 伝え + ます + した",
+      "formula_en": "伝える → 伝え + ます + した",
+      "lemma": "伝える",
+      "reading": "つたえました",
+      "reason": "Това е учтива форма в минало време на глагола 伝える.",
+      "surface": "伝えました"
+    }
+  ],
+  "5cfde3a2028ab17f780f460cab35461a3a9877b3": [
+    {
+      "surface": "年",
+      "translation_bg": "година",
+      "translation_en": "year"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "човек",
+      "translation_en": "person"
+    },
+    {
+      "surface": "年に",
+      "translation_bg": "през годината",
+      "translation_en": "in the year"
+    },
+    {
+      "surface": "狭い",
+      "translation_bg": "тесен",
+      "translation_en": "narrow"
+    },
+    {
+      "surface": "場所",
+      "translation_bg": "място",
+      "translation_en": "place"
+    },
+    {
+      "surface": "たくさん",
+      "translation_bg": "много",
+      "translation_en": "many"
+    },
+    {
+      "surface": "集まっ",
+      "translation_bg": "събраха се",
+      "translation_en": "gathered"
+    },
+    {
+      "surface": "亡くなり",
+      "translation_bg": "починаха",
+      "translation_en": "died"
+    },
+    {
+      "surface": "警察",
+      "translation_bg": "полиция",
+      "translation_en": "police"
     }
   ],
   "5dd03dc182dbf4fbf6417381e70a50b211b44126": [
@@ -11371,6 +11770,28 @@
       "label": "〜ていく"
     }
   ],
+  "66777984288b0f8260232bed90f3809419a3521d": [
+    {
+      "surface": "アメリカ",
+      "translation_bg": "Америка",
+      "translation_en": "America"
+    },
+    {
+      "surface": "イラン",
+      "translation_bg": "Иран",
+      "translation_en": "Iran"
+    },
+    {
+      "surface": "戦い",
+      "translation_bg": "битка / конфликт",
+      "translation_en": "battle / conflict"
+    },
+    {
+      "surface": "続い",
+      "translation_bg": "продължава",
+      "translation_en": "continuing"
+    }
+  ],
   "67f2f06e03a6666fd7c58ae8a771bfac357a5585": [
     {
       "explanation_bg": "Тази структура се използва за изразяване на изминалото време от последното извършване на нещо. Тя означава 'след толкова време' или 'от толкова време'.",
@@ -11791,6 +12212,48 @@
       "explanation_bg": "Използва се за изразяване на мнение или мисъл. означава 'мислим че'",
       "explanation_en": "Used to express an opinion or thought. means 'I think that'",
       "label": "〜思う"
+    }
+  ],
+  "794f12655057afab27c6c4c1385cdb2d4d1846e7": [
+    {
+      "surface": "船が",
+      "translation_bg": "корабът (подлог)",
+      "translation_en": "the ship (subject)"
+    },
+    {
+      "surface": "通る",
+      "translation_bg": "преминава",
+      "translation_en": "passes through"
+    },
+    {
+      "surface": "ホルムズ",
+      "translation_bg": "Хормуз",
+      "translation_en": "Hormuz"
+    },
+    {
+      "surface": "海峡",
+      "translation_bg": "проток",
+      "translation_en": "strait"
+    },
+    {
+      "surface": "船",
+      "translation_bg": "кораб",
+      "translation_en": "ship"
+    },
+    {
+      "surface": "難しい",
+      "translation_bg": "труден",
+      "translation_en": "difficult"
+    },
+    {
+      "surface": "問題",
+      "translation_bg": "проблем",
+      "translation_en": "issue/problem"
+    },
+    {
+      "surface": "話し",
+      "translation_bg": "говорихме",
+      "translation_en": "talked about"
     }
   ],
   "7acddef5998224800781423b7346400c125d3866": [
@@ -12924,6 +13387,19 @@
       "label": "ようにする"
     }
   ],
+  "8bef1189aa5cb99836f9fc47eee714f7888e1fb1": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 言う (казвам) се променя в формата て (言っ) и се добавя спомагателният глагол いる (състояние) в сегашно време (ます).",
+      "formation_en": "The verb 言う (to say) changes to the て-form (言っ) and the helper verb いる (state) is added in the present tense (ます).",
+      "formula_bg": "言う → 言って + いる → 言っています",
+      "formula_en": "言う → 言って + いる → 言っています",
+      "lemma": "言う",
+      "reading": "いっています",
+      "reason": "Това е глагол в сегашно продължително време, описващ текущо действие.",
+      "surface": "言っています"
+    }
+  ],
   "8c3deb9fdd79e066e245bd6c614655aedf2402c0": [
     {
       "explanation_bg": "Изразява желание някой друг да извърши действие. Използва се за искане или очакване.",
@@ -12934,6 +13410,19 @@
       "explanation_bg": "Описва външен вид или впечатление, че нещо изглежда по определен начин.",
       "explanation_en": "Describes an appearance or impression that something looks a certain way.",
       "label": "そうに・そうな"
+    }
+  ],
+  "8e339445d560b8699e45d8581521a107d7212d8f": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 説明する се променя в основа, след което се добавя ます, а накрая се добавя ました за минало време.",
+      "formation_en": "The verb 説明する changes to its stem, then ます is added, and finally ました is added for past tense.",
+      "formula_bg": "説明する → 説明し + ました",
+      "formula_en": "説明する → 説明し + ました",
+      "lemma": "説明する",
+      "reading": "せつめいしました",
+      "reason": "Това е глагол в учтива форма за минало време.",
+      "surface": "説明しました"
     }
   ],
   "8f5271afb955681a72eceb579413b6b6139dd41d": [
@@ -13020,6 +13509,38 @@
       "explanation_bg": "Изразът показва продължаване на действие или състояние. Използва се, когато нещо продължава или се развива.",
       "explanation_en": "This expression indicates continuation of an action or state. It's used when something continues or develops.",
       "label": "ていく"
+    }
+  ],
+  "910e16b2ecd4177341704550d31d9100b9557e08": [
+    {
+      "surface": "高市",
+      "translation_bg": "Такаичи (фамилия)",
+      "translation_en": "Takaichi (surname)"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "Япония (в составе слова)",
+      "translation_en": "Japan (as part of a word)"
+    },
+    {
+      "surface": "法律",
+      "translation_bg": "закон",
+      "translation_en": "law"
+    },
+    {
+      "surface": "できる",
+      "translation_bg": "возможно / можно",
+      "translation_en": "possible / can do"
+    },
+    {
+      "surface": "対応",
+      "translation_bg": "реагирование / принятие мер",
+      "translation_en": "handling / taking action"
+    },
+    {
+      "surface": "説明",
+      "translation_bg": "объяснение",
+      "translation_en": "explanation"
     }
   ],
   "933b9f86611ec90370f589a73ca903946b005930": [
@@ -13873,6 +14394,19 @@
       "explanation_bg": "Използва се за изразяване на очакване или предположение въз основа на логика или доказателства. означава 'трябва да' или 'очаква се'.",
       "explanation_en": "Used to express expectation or assumption based on logic or evidence. means 'should' or 'expected to'.",
       "label": "はずだ"
+    }
+  ],
+  "9f9dbdf59381df2c8656f0e34660923a351c171a": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът в речникова форма 亡くなる се променя в 亡くなり (премахва се る и се добавя い), след което се добавя ますした за минало време.",
+      "formation_en": "The dictionary form 亡くなる changes to 亡くなり (drop る and add い), then ますした is added for past tense.",
+      "formula_bg": "亡くなる → 亡くなり + ました",
+      "formula_en": "亡くなる → 亡くなり + ました",
+      "lemma": "亡くなる",
+      "reading": "なくなりました",
+      "reason": "Това е глагол в учтива форма за минало време.",
+      "surface": "亡くなりました"
     }
   ],
   "a0a200f8fe4a36b6767f75f1f198588a11799de9": [
@@ -17961,6 +18495,63 @@
       "label": "予定だ"
     }
   ],
+  "a541eaa0bc9c7b3ff6f2377f2a8ad70738f7c77f": [
+    {
+      "surface": "通る",
+      "translation_bg": "преминавам",
+      "translation_en": "to pass through"
+    },
+    {
+      "surface": "船が",
+      "translation_bg": "корабът (подлог)",
+      "translation_en": "the ship (subject)"
+    },
+    {
+      "surface": "日の",
+      "translation_bg": "на деня",
+      "translation_en": "of the day"
+    },
+    {
+      "surface": "朝",
+      "translation_bg": "сутрин",
+      "translation_en": "morning"
+    },
+    {
+      "surface": "時間",
+      "translation_bg": "време",
+      "translation_en": "time"
+    },
+    {
+      "surface": "攻撃する",
+      "translation_bg": "атакувам",
+      "translation_en": "to attack"
+    },
+    {
+      "surface": "時",
+      "translation_bg": "когато",
+      "translation_en": "when / time"
+    },
+    {
+      "surface": "船",
+      "translation_bg": "кораб",
+      "translation_en": "ship"
+    },
+    {
+      "surface": "海",
+      "translation_bg": "море",
+      "translation_en": "sea"
+    },
+    {
+      "surface": "トランプ大統領",
+      "translation_bg": "президентът Тръмп",
+      "translation_en": "President Trump"
+    },
+    {
+      "surface": "日本",
+      "translation_bg": "Япония",
+      "translation_en": "Japan"
+    }
+  ],
   "a5efca809c962aff62037ebd73a8c57bc9d7bf5a": [
     {
       "explanation_bg": "Показва нещо, което изглежда така според наблюдение – „изглежда, че...“",
@@ -18365,6 +18956,19 @@
       "label": "代わりに"
     }
   ],
+  "aa1aadd5bbc2246122263a600929bcfb1d184697": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 続く (продължавам) се променя в формата て (続いて) и към него се добавя спомагателният глагол います за изразяване на продължаващо действие.",
+      "formation_en": "The verb 続く (to continue) changes to the て-form (続いて) and is followed by the helper verb います to indicate a continuous action.",
+      "formula_bg": "続く → 続いて + います",
+      "formula_en": "続く → 続いて + います",
+      "lemma": "続く",
+      "reading": "つづいています",
+      "reason": "Това е глагол в сегашно продължително време, образуван от корена на глагола и спомагателна част.",
+      "surface": "続いています"
+    }
+  ],
   "ac515bb25e11fa07e6a93fa9c04eb958ca1ec888": [
     {
       "surface": "円に",
@@ -18390,6 +18994,63 @@
       "surface": "半分",
       "translation_bg": "половина",
       "translation_en": "half"
+    }
+  ],
+  "ad06dc45583bef3abcab98e2ee1198a50d93d374": [
+    {
+      "surface": "戦い",
+      "translation_bg": "конфликт",
+      "translation_en": "conflict"
+    },
+    {
+      "surface": "国際",
+      "translation_bg": "международен",
+      "translation_en": "international"
+    },
+    {
+      "surface": "使う",
+      "translation_bg": "използвам",
+      "translation_en": "to use"
+    },
+    {
+      "surface": "量が",
+      "translation_bg": "количество (субект)",
+      "translation_en": "amount (subject)"
+    },
+    {
+      "surface": "方を",
+      "translation_bg": "начин/метод (обект)",
+      "translation_en": "way/method (object)"
+    },
+    {
+      "surface": "アメリカ",
+      "translation_bg": "САЩ",
+      "translation_en": "USA"
+    },
+    {
+      "surface": "イラン",
+      "translation_bg": "Иран",
+      "translation_en": "Iran"
+    },
+    {
+      "surface": "石油",
+      "translation_bg": "петрол",
+      "translation_en": "oil"
+    },
+    {
+      "surface": "値段",
+      "translation_bg": "цена",
+      "translation_en": "price"
+    },
+    {
+      "surface": "とても",
+      "translation_bg": "много",
+      "translation_en": "very"
+    },
+    {
+      "surface": "高く",
+      "translation_bg": "високо (скъпо)",
+      "translation_en": "high (expensive)"
     }
   ],
   "ad27d1c2db8805c2e1c53185a9fd2f47fff316d4": [
@@ -18724,6 +19385,58 @@
       "label": "って"
     }
   ],
+  "b4d259d298d5ca128ffb41c303dcf3048c9bc6cd": [
+    {
+      "surface": "通る",
+      "translation_bg": "преминавам",
+      "translation_en": "to pass through"
+    },
+    {
+      "surface": "船が",
+      "translation_bg": "корабите (подлог)",
+      "translation_en": "ships (subject)"
+    },
+    {
+      "surface": "船",
+      "translation_bg": "кораб",
+      "translation_en": "ship"
+    },
+    {
+      "surface": "海",
+      "translation_bg": "море",
+      "translation_en": "sea"
+    },
+    {
+      "surface": "発電所",
+      "translation_bg": "електроцентрала",
+      "translation_en": "power plant"
+    },
+    {
+      "surface": "攻撃",
+      "translation_bg": "атака",
+      "translation_en": "attack"
+    },
+    {
+      "surface": "受け",
+      "translation_bg": "получавам (бивам атакуван)",
+      "translation_en": "to receive (to be attacked)"
+    },
+    {
+      "surface": "場合",
+      "translation_bg": "в случай че",
+      "translation_en": "in the case of"
+    },
+    {
+      "surface": "全部",
+      "translation_bg": "всички",
+      "translation_en": "all"
+    },
+    {
+      "surface": "言っ",
+      "translation_bg": "казвам",
+      "translation_en": "to say"
+    }
+  ],
   "b5d74a5034080b0dfb40c1f6ad511ebfb1a98476": [
     {
       "confidence": 1.0,
@@ -19014,6 +19727,58 @@
       "translation_en": "side"
     }
   ],
+  "bbfd8ba0b67381df16485f37ff4fe237c38e9e8e": [
+    {
+      "surface": "月",
+      "translation_bg": "месец",
+      "translation_en": "month"
+    },
+    {
+      "surface": "高市",
+      "translation_bg": "Такаичи (фамилия)",
+      "translation_en": "Takaichi (surname)"
+    },
+    {
+      "surface": "総理大臣は",
+      "translation_bg": "министър-председателят (тема)",
+      "translation_en": "the Prime Minister (topic)"
+    },
+    {
+      "surface": "戦い",
+      "translation_bg": "битка, конфликт",
+      "translation_en": "battle, conflict"
+    },
+    {
+      "surface": "早く",
+      "translation_bg": "бързо",
+      "translation_en": "quickly"
+    },
+    {
+      "surface": "日本",
+      "translation_bg": "Япония",
+      "translation_en": "Japan"
+    },
+    {
+      "surface": "時間",
+      "translation_bg": "време",
+      "translation_en": "time"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "ден",
+      "translation_en": "day"
+    },
+    {
+      "surface": "総理大臣",
+      "translation_bg": "министър-председател",
+      "translation_en": "Prime Minister"
+    },
+    {
+      "surface": "アメリカ",
+      "translation_bg": "Америка (САЩ)",
+      "translation_en": "America (USA)"
+    }
+  ],
   "bc654416148abc148bb6559cf0e8cb3ba5322861": [
     {
       "explanation_bg": "Показва взето решение; „решавам да…“",
@@ -19173,6 +19938,58 @@
       "usage_en": "Closes the sentence in polite style."
     }
   ],
+  "bed9e49162ff0d237b86a7bcc6251a946f556d0c": [
+    {
+      "surface": "船",
+      "translation_bg": "кораб",
+      "translation_en": "ship"
+    },
+    {
+      "surface": "海",
+      "translation_bg": "море",
+      "translation_en": "sea"
+    },
+    {
+      "surface": "発電所",
+      "translation_bg": "електроцентрала",
+      "translation_en": "power plant"
+    },
+    {
+      "surface": "攻撃",
+      "translation_bg": "атака",
+      "translation_en": "attack"
+    },
+    {
+      "surface": "受け",
+      "translation_bg": "получавам (бивам атакуван)",
+      "translation_en": "receive (to be attacked)"
+    },
+    {
+      "surface": "場合",
+      "translation_bg": "в случай че",
+      "translation_en": "in the case of"
+    },
+    {
+      "surface": "全部",
+      "translation_bg": "всички",
+      "translation_en": "all"
+    },
+    {
+      "surface": "言っ",
+      "translation_bg": "казвам",
+      "translation_en": "say"
+    },
+    {
+      "surface": "通る",
+      "translation_bg": "преминавам",
+      "translation_en": "pass through"
+    },
+    {
+      "surface": "船が",
+      "translation_bg": "корабите (подлог)",
+      "translation_en": "ships (subject)"
+    }
+  ],
   "c012300c884696a4aaeea697a4f08bfd0ab2fcab": [
     {
       "explanation_bg": "Използва се за вземане на решение относно действие, което ще бъде извършено в бъдеще. означава 'реших да направя нещо'",
@@ -19316,6 +20133,19 @@
       "surface": "話していました"
     }
   ],
+  "c3ba07dc54e2780af2a9e4eef2a3d9f3aef02391": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 言う (казвам) се променя в формата て (言っ) и се добавя спомагателният глагол いる (състояние) в учтива форма ます.",
+      "formation_en": "The verb 言う (to say) changes to the て-form (言っ) and the helper verb いる (state) is added in the polite form ます.",
+      "formula_bg": "言う → 言って + いる → 言っています",
+      "formula_en": "言う → 言って + いる → 言っています",
+      "lemma": "言う",
+      "reading": "いっています",
+      "reason": "Това е глагол в сегашно продължително време, изразяващ текущо състояние или действие.",
+      "surface": "言っています"
+    }
+  ],
   "c3df0c0c0e9716370c1fc6ef86c7c39590152284": [
     {
       "surface": "所がありました",
@@ -19437,6 +20267,63 @@
       "label": "でした"
     }
   ],
+  "c66b1748454854664eb67ccd75861c03aacb6a3d": [
+    {
+      "surface": "人",
+      "translation_bg": "човек",
+      "translation_en": "person"
+    },
+    {
+      "surface": "万",
+      "translation_bg": "десет хиляди",
+      "translation_en": "ten thousand"
+    },
+    {
+      "surface": "来た",
+      "translation_bg": "дошла",
+      "translation_en": "came"
+    },
+    {
+      "surface": "特別",
+      "translation_bg": "специално",
+      "translation_en": "specially"
+    },
+    {
+      "surface": "会場",
+      "translation_bg": "място на събитието",
+      "translation_en": "venue"
+    },
+    {
+      "surface": "作り",
+      "translation_bg": "направихме/изградихме",
+      "translation_en": "built/made"
+    },
+    {
+      "surface": "世界",
+      "translation_bg": "свят",
+      "translation_en": "world"
+    },
+    {
+      "surface": "以上",
+      "translation_bg": "повече от",
+      "translation_en": "more than"
+    },
+    {
+      "surface": "ファン",
+      "translation_bg": "фенове",
+      "translation_en": "fans"
+    },
+    {
+      "surface": "集まり",
+      "translation_bg": "се събраха",
+      "translation_en": "gathered"
+    },
+    {
+      "surface": "大阪",
+      "translation_bg": "Осака",
+      "translation_en": "Osaka"
+    }
+  ],
   "c74dd49eab1b542ed48bcc9ee3e1cf4666f62a4f": [
     {
       "surface": "値段",
@@ -19464,6 +20351,105 @@
       "explanation_bg": "Изразява външно впечатление или състояние на някого/нещо. Използва се с глаголи или прилагателни, за да покаже, че някой изглежда по определен начин.",
       "explanation_en": "Expresses an outward appearance or impression. Used with verbs or adjectives to indicate that someone or something looks a certain way.",
       "label": "そうに・そうな"
+    }
+  ],
+  "c8a94022e4bb158e0fcd617dfa54d47f743aabf3": [
+    {
+      "surface": "戦い",
+      "translation_bg": "битка / конфликт",
+      "translation_en": "battle / conflict"
+    },
+    {
+      "surface": "時間",
+      "translation_bg": "време",
+      "translation_en": "time"
+    },
+    {
+      "surface": "午前",
+      "translation_bg": "преди обяд",
+      "translation_en": "a.m. / morning"
+    },
+    {
+      "surface": "時",
+      "translation_bg": "час",
+      "translation_en": "o'clock / hour"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "ден (от месеца)",
+      "translation_en": "day (of the month)"
+    },
+    {
+      "surface": "分",
+      "translation_bg": "минута",
+      "translation_en": "minute"
+    },
+    {
+      "surface": "激しく",
+      "translation_bg": "интензивно / ожесточено",
+      "translation_en": "intensely / fiercely"
+    },
+    {
+      "surface": "世界",
+      "translation_bg": "светът",
+      "translation_en": "the world"
+    },
+    {
+      "surface": "心配",
+      "translation_bg": "притеснение / безпокойство",
+      "translation_en": "worry / concern"
+    }
+  ],
+  "c8d0428af3263d6e0d8f7e58b2cdaee95a9abde6": [
+    {
+      "surface": "戦い",
+      "translation_bg": "битка, война",
+      "translation_en": "battle, war"
+    },
+    {
+      "surface": "国際",
+      "translation_bg": "международен",
+      "translation_en": "international"
+    },
+    {
+      "surface": "エネルギー",
+      "translation_bg": "енергия",
+      "translation_en": "energy"
+    },
+    {
+      "surface": "機関",
+      "translation_bg": "организация, агенция",
+      "translation_en": "agency, organization"
+    },
+    {
+      "surface": "言っ",
+      "translation_bg": "казвам",
+      "translation_en": "saying"
+    },
+    {
+      "surface": "早く",
+      "translation_bg": "бързо, скоро",
+      "translation_en": "quickly, soon"
+    },
+    {
+      "surface": "終わり",
+      "translation_bg": "край, завършек",
+      "translation_en": "end"
+    },
+    {
+      "surface": "問題",
+      "translation_bg": "проблем",
+      "translation_en": "problem, issue"
+    },
+    {
+      "surface": "もっと",
+      "translation_bg": "повече, още",
+      "translation_en": "more"
+    },
+    {
+      "surface": "大きく",
+      "translation_bg": "голям, сериозен",
+      "translation_en": "bigger, larger"
     }
   ],
   "c8e1ac50a174aab42e5365a18b3f9e8d38126948": [
@@ -21110,6 +22096,68 @@
       "usage_en": ""
     }
   ],
+  "d4f42e4171061b134a04d0cf5b5ddc08f7f9187f": [
+    {
+      "surface": "メンバー",
+      "translation_bg": "членове",
+      "translation_en": "members"
+    },
+    {
+      "surface": "年",
+      "translation_bg": "години",
+      "translation_en": "years"
+    },
+    {
+      "surface": "前",
+      "translation_bg": "преди",
+      "translation_en": "ago"
+    },
+    {
+      "surface": "軍隊",
+      "translation_bg": "армия",
+      "translation_en": "military"
+    },
+    {
+      "surface": "入り",
+      "translation_bg": "влизане (в)",
+      "translation_en": "entering"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "души",
+      "translation_en": "people"
+    },
+    {
+      "surface": "全員",
+      "translation_bg": "всички",
+      "translation_en": "all members"
+    },
+    {
+      "surface": "軍",
+      "translation_bg": "армейска",
+      "translation_en": "military"
+    },
+    {
+      "surface": "仕事",
+      "translation_bg": "служба",
+      "translation_en": "service/duty"
+    },
+    {
+      "surface": "終わっ",
+      "translation_bg": "приключи",
+      "translation_en": "finished"
+    },
+    {
+      "surface": "活動",
+      "translation_bg": "дейност",
+      "translation_en": "activities"
+    },
+    {
+      "surface": "始め",
+      "translation_bg": "започнаха",
+      "translation_en": "started"
+    }
+  ],
   "d56c64dcb671e204b07149b9086fe4c9b1a51702": [
     {
       "surface": "円に",
@@ -21140,6 +22188,19 @@
       "surface": "半分",
       "translation_bg": "наполовина",
       "translation_en": "half"
+    }
+  ],
+  "d57a254b508fc04ef8dd19a4186f1e0e5d9ddef2": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 書く (пиша) в основа за учтива форма 書か + наставка ました.",
+      "formation_en": "The verb 書く (to write) in its polite stem form 書か + the suffix ました.",
+      "formula_bg": "書く → 書か + ました",
+      "formula_en": "書く → 書か + ました",
+      "lemma": "書く",
+      "reading": "かきました",
+      "reason": "Това е минало време на учтивата форма на глагола 書く.",
+      "surface": "書きました"
     }
   ],
   "d5882007042bee046d1ec1f14c203de3b7562da2": [
@@ -21465,6 +22526,48 @@
       "explanation_bg": "Показва, че нещо вече се е случило или е станало.",
       "explanation_en": "Indicates that something has already happened or occurred.",
       "label": "もう"
+    }
+  ],
+  "d9e15b556de7e5936ca7d70e8cc128ae6bc53334": [
+    {
+      "surface": "日",
+      "translation_bg": "ден",
+      "translation_en": "day"
+    },
+    {
+      "surface": "人",
+      "translation_bg": "човек",
+      "translation_en": "person"
+    },
+    {
+      "surface": "韓国",
+      "translation_bg": "Южна Корея",
+      "translation_en": "South Korea"
+    },
+    {
+      "surface": "ソウル",
+      "translation_bg": "Сеул",
+      "translation_en": "Seoul"
+    },
+    {
+      "surface": "人気",
+      "translation_bg": "популярен",
+      "translation_en": "popular"
+    },
+    {
+      "surface": "グループ",
+      "translation_bg": "група",
+      "translation_en": "group"
+    },
+    {
+      "surface": "無料",
+      "translation_bg": "безплатен",
+      "translation_en": "free"
+    },
+    {
+      "surface": "コンサート",
+      "translation_bg": "концерт",
+      "translation_en": "concert"
     }
   ],
   "d9e34732623c29f97cd01dd5916aed33af662dae": {
@@ -22404,6 +23507,63 @@
       "label": "ように / ような"
     }
   ],
+  "e19a28f29ccd6ecab9529528d8863ea0ebecb1cc": [
+    {
+      "surface": "ホルムズ",
+      "translation_bg": "Хормуз",
+      "translation_en": "Hormuz"
+    },
+    {
+      "surface": "海峡",
+      "translation_bg": "проток",
+      "translation_en": "strait"
+    },
+    {
+      "surface": "石油",
+      "translation_bg": "петрол",
+      "translation_en": "oil"
+    },
+    {
+      "surface": "運ぶ",
+      "translation_bg": "превозвам",
+      "translation_en": "to transport"
+    },
+    {
+      "surface": "船",
+      "translation_bg": "кораб",
+      "translation_en": "ship"
+    },
+    {
+      "surface": "たくさん",
+      "translation_bg": "много",
+      "translation_en": "many"
+    },
+    {
+      "surface": "通る",
+      "translation_bg": "минавам през",
+      "translation_en": "to pass through"
+    },
+    {
+      "surface": "海",
+      "translation_bg": "море",
+      "translation_en": "sea"
+    },
+    {
+      "surface": "近く",
+      "translation_bg": "близо до",
+      "translation_en": "near"
+    },
+    {
+      "surface": "今",
+      "translation_bg": "сега",
+      "translation_en": "now"
+    },
+    {
+      "surface": "難しい",
+      "translation_bg": "трудно",
+      "translation_en": "difficult"
+    }
+  ],
   "e1d82a6285465fbbc7ee4319e85498bbec1b93a2": [
     {
       "confidence": 1.0,
@@ -22947,6 +24107,30 @@
       "usage_en": "Connecting action with object"
     }
   ],
+  "e75b96efa2ff4914ba56111ba7638ccba08f309b": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 入る (влизам) се променя в минало учтиво време чрез добавяне на ます и ました.",
+      "formation_en": "The verb 入る (to enter) is changed into polite past tense by adding ます and ました.",
+      "formula_bg": "入る → 入り + ました",
+      "formula_en": "入る → 入り + ました",
+      "lemma": "入る",
+      "reading": "はいりました",
+      "reason": "Това е глагол в минало учтиво време.",
+      "surface": "入りました"
+    },
+    {
+      "confidence": 1.0,
+      "formation_bg": "Глаголът 始める (започвам) се променя в минало учтиво време чрез добавяне на ます и ました.",
+      "formation_en": "The verb 始める (to start) is changed into polite past tense by adding ます and ました.",
+      "formula_bg": "始める → 始め + ました",
+      "formula_en": "始める → 始め + ました",
+      "lemma": "始める",
+      "reading": "はじめました",
+      "reason": "Това е глагол в минало учтиво време.",
+      "surface": "始めました"
+    }
+  ],
   "e7972dd4479883ad3159e4dd66a196c8bb5e8a59": [
     {
       "explanation_bg": "Показва промяна или начало на състояние/действие, идващо към момента на говорене.",
@@ -23089,6 +24273,19 @@
       "surface": "答えました"
     }
   ],
+  "ea3d780f88feac7f2eb9c7a4e981bedf35c37ba3": [
+    {
+      "confidence": 1.0,
+      "formation_bg": "Съществително име 心配 + глагол する в сегашно продължително време (ている).",
+      "formation_en": "Noun 心配 + verb する in present continuous form (ている).",
+      "formula_bg": "心配 + する → している",
+      "formula_en": "心配 + する → している",
+      "lemma": "心配する",
+      "reading": "しんぱいしています",
+      "reason": "Това е съставен глагол, образуван от съществително име и глагола する, поставен в продължителна форма.",
+      "surface": "心配しています"
+    }
+  ],
   "eb28ec9cbd09cc361a8640cf37110510b2c3145e": [
     {
       "confidence": 0.9,
@@ -23151,6 +24348,30 @@
       "explanation_bg": "「〜そうだ」показва изглеждащо се или очаквано състояние: нещо изглежда, че ще бъде в определено положение.",
       "explanation_en": "〜そうだ expresses that something appears or is likely to be in a certain state based on outward signs.",
       "label": "〜そうだ"
+    }
+  ],
+  "ee1f89eb6cf9d08131db655417fa2ff9d092fb93": [
+    {
+      "confidence": 0.95,
+      "formation_bg": "Прилагателното 高い се превръща в наречие чрез добавяне на く, след което се добавя глаголът なる (ставам) в формата て и накрая спомагателният глагол いる за продължително действие.",
+      "formation_en": "The adjective 高い becomes an adverb by adding く, followed by the verb なる (to become) in て-form, and finally the helper verb いる for continuous action.",
+      "formula_bg": "高い + く + なる + て + いる",
+      "formula_en": "高い + く + なる + て + いる",
+      "lemma": "高い",
+      "reading": "たかくなっています",
+      "reason": "Това е съставна форма, базирана на прилагателно, която описва текущо състояние на промяна.",
+      "surface": "高くなっています"
+    },
+    {
+      "confidence": 0.98,
+      "formation_bg": "Съществителното 発表 се комбинира с глагола する, след което се добавя ます в минало време (ました).",
+      "formation_en": "The noun 発表 is combined with the verb する, followed by the addition of ます in the past tense (ました).",
+      "formula_bg": "発表 + する + ました",
+      "formula_en": "発表 + する + ました",
+      "lemma": "発表する",
+      "reading": "はっぴょうしました",
+      "reason": "Това е глагол от трета група, образуван от съществително име и глагола する.",
+      "surface": "発表しました"
     }
   ],
   "ee2e5fd844ca7725ddef0c19c0023136f5291e7b": [
@@ -23543,6 +24764,58 @@
       "label": "ように見える"
     }
   ],
+  "f26a6a90d57fbc19015956291d7b53d0dd9a6ac1": [
+    {
+      "surface": "日本",
+      "translation_bg": "Япония",
+      "translation_en": "Japan"
+    },
+    {
+      "surface": "時間",
+      "translation_bg": "време",
+      "translation_en": "time"
+    },
+    {
+      "surface": "日",
+      "translation_bg": "ден",
+      "translation_en": "day"
+    },
+    {
+      "surface": "午前",
+      "translation_bg": "преди обяд",
+      "translation_en": "a.m."
+    },
+    {
+      "surface": "時",
+      "translation_bg": "час",
+      "translation_en": "o'clock"
+    },
+    {
+      "surface": "分",
+      "translation_bg": "минута",
+      "translation_en": "minute"
+    },
+    {
+      "surface": "激しく",
+      "translation_bg": "интензивно / ожесточено",
+      "translation_en": "intensely / fiercely"
+    },
+    {
+      "surface": "世界",
+      "translation_bg": "свят",
+      "translation_en": "the world"
+    },
+    {
+      "surface": "心配",
+      "translation_bg": "притеснение",
+      "translation_en": "worry / concern"
+    },
+    {
+      "surface": "戦い",
+      "translation_bg": "битка / война",
+      "translation_en": "battle / fighting"
+    }
+  ],
   "f3d3497176daded82b02eadfbe8a8dbe94e67053": [
     {
       "confidence": 1.0,
@@ -23576,6 +24849,48 @@
       "explanation_bg": "Учтива форма за отправяне на молба или инструкция към някого.",
       "explanation_en": "A polite way to make a request or give instructions to someone.",
       "label": "てください"
+    }
+  ],
+  "f51adcf1f7f34b5252c32ab637a2a9bc69471513": [
+    {
+      "surface": "ホルムズ",
+      "translation_bg": "Хормуз (име)",
+      "translation_en": "Hormuz (name)"
+    },
+    {
+      "surface": "海峡",
+      "translation_bg": "проток",
+      "translation_en": "strait"
+    },
+    {
+      "surface": "船",
+      "translation_bg": "кораб",
+      "translation_en": "ship"
+    },
+    {
+      "surface": "通る",
+      "translation_bg": "преминавам",
+      "translation_en": "to pass through"
+    },
+    {
+      "surface": "難しい",
+      "translation_bg": "труден",
+      "translation_en": "difficult"
+    },
+    {
+      "surface": "問題",
+      "translation_bg": "проблем",
+      "translation_en": "problem/issue"
+    },
+    {
+      "surface": "話し",
+      "translation_bg": "говорихме",
+      "translation_en": "talked about"
+    },
+    {
+      "surface": "船が",
+      "translation_bg": "корабът (подлог)",
+      "translation_en": "the ship (subject)"
     }
   ],
   "f7266e53fd605af855c73422f06c5b032893f1c9": [
