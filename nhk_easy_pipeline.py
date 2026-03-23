@@ -5046,6 +5046,32 @@ def materialize_article_audio(articles, output_dir: str):
             print(f"Could not download NHK audio for {news_id}: {e}")
 
 
+def cleanup_unused_audio_files(articles, output_dir: str):
+    if not output_dir:
+        return
+    audio_dir = os.path.join(output_dir, "audio")
+    if not os.path.isdir(audio_dir):
+        return
+    keep = set()
+    for article in articles or []:
+        audio_url = (article.get("audio_url") or "").strip()
+        if not audio_url or audio_url.startswith(("http://", "https://", "/")):
+            continue
+        normalized = audio_url.replace("\\", "/")
+        if normalized.startswith("audio/"):
+            keep.add(os.path.basename(normalized))
+    for name in os.listdir(audio_dir):
+        abs_path = os.path.join(audio_dir, name)
+        if not os.path.isfile(abs_path):
+            continue
+        if name in keep:
+            continue
+        try:
+            os.remove(abs_path)
+        except OSError:
+            pass
+
+
 def materialize_article_images(articles, output_dir: str):
     if not output_dir:
         return
@@ -5715,6 +5741,7 @@ def main():
 
     materialize_article_images(articles, output_dir)
     materialize_article_audio(articles, output_dir)
+    cleanup_unused_audio_files(articles, output_dir)
 
     analyze_articles_with_groq(articles)
     for article in articles:
