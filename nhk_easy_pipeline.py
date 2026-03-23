@@ -1656,23 +1656,32 @@ def extend_reading_with_surface_kana(surface: str, reading: str) -> str:
 def infer_popup_item_type(surface: str, analysis, current_item_type: str = "", lemma: str = "", formation_bg: str = "") -> str:
     current_item_type = (current_item_type or "").strip().lower()
     pos1 = (analysis.get("pos1") or "").strip()
-    if pos1 == "動詞":
-        return "verb"
-    if pos1 == "形容詞":
-        return "adjective"
-    if pos1 == "名詞":
-        return "noun"
-    if current_item_type and current_item_type != "compound":
-        return current_item_type
-
     formation_bg = (formation_bg or "").strip().lower()
     formula_bg = (analysis.get("formula_bg") or "").strip().lower()
+    non_adjective_i_words = {"戦い", "違い", "願い", "祝い", "笑い"}
+    if pos1 == "動詞":
+        return "verb"
     if "прилагателно" in formation_bg or any(marker in formula_bg for marker in (" + かった", " + くない", " + くて")):
         return "adjective"
+    if pos1 == "形容詞":
+        return "adjective"
+    if current_item_type and current_item_type != "compound":
+        return current_item_type
     if any(marker in formation_bg for marker in ("глагол", "ている", "учтива форма", "минала форма", "отрицателна форма")):
         return "verb"
     if any(marker in formula_bg for marker in ("te-form", "volitional", "past form", "れる/られる", "せる/させる")):
         return "verb"
+    if surface in non_adjective_i_words:
+        return "noun"
+    if surface.endswith(("かった", "くない", "くて")):
+        return "adjective"
+    if surface.endswith("い") and not surface.endswith(("して", "ない", "たい")):
+        if len(surface) >= 3 or re.search(r"[ぁ-ん]い$", surface):
+            return "adjective"
+        if len(surface) == 2 and re.search(r"[一-龯々]い$", surface) and surface not in non_adjective_i_words:
+            return "adjective"
+    if pos1 == "名詞":
+        return "noun"
     if is_probable_verb_te_surface(surface) and lemma and lemma != surface:
         return "verb"
     if lemma and surface and lemma != surface and lemma.endswith(("る", "う", "く", "ぐ", "す", "つ", "ぬ", "ぶ", "む")):
@@ -4266,30 +4275,163 @@ def format_analysis_anki_back(item, lang="bg"):
     return "<br>".join(lines)
 
 
+def normalize_anki_term(item):
+    item = dict(item or {})
+    surface = (item.get("surface") or "").strip()
+    lemma = (item.get("lemma") or surface).strip()
+    reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
+    current_item_type = (item.get("item_type") or "").strip().lower()
+    formula = (item.get("formula_bg") or item.get("formula_en") or "").strip()
+    analysis = analyze_japanese_word(surface, reading_hint=reading, lemma_hint=lemma)
+    item_type = infer_popup_item_type(
+        surface,
+        analysis,
+        current_item_type=current_item_type,
+        lemma=lemma,
+        formation_bg=(item.get("formation_bg") or item.get("form_bg") or ""),
+    )
+
+    base = lemma or surface
+    if item_type == "verb":
+        base = (
+            (analysis.get("lemma") or "").strip()
+            or resolve_verb_popup_lemma(surface, lemma, formula)
+            or to_dictionary_form(lemma or surface)
+            or base
+        )
+    elif item_type == "adjective":
+        base = (analysis.get("lemma") or "").strip() or lemma or surface
+    else:
+        base = strip_trailing_particles(base)
+        base = strip_predicate_grammar_tail(base)
+        if (analysis.get("pos1") or "").strip() == "動詞" or is_probable_verb_te_surface(surface):
+            base = (
+                (analysis.get("lemma") or "").strip()
+                or to_dictionary_form(surface)
+                or to_dictionary_form(base)
+                or base
+            )
+
+    base = (base or "").strip()
+    base = strip_trailing_particles(base)
+    if not base:
+        return "", ""
+    normalized_reading = get_reading_for_word(base, fallback=reading)
+    return base, normalized_reading
+
+
+def build_anki_ruby_reading_map(blocks):
+    reading_map = {}
+    for block in blocks or []:
+        html_fragment = (block.get("html") or "").strip()
+        if not html_fragment or "<ruby" not in html_fragment:
+            continue
+        try:
+            soup = BeautifulSoup(html_fragment, "html.parser")
+        except Exception:
+            continue
+        for ruby in soup.find_all("ruby"):
+            base = ruby_base_text(ruby).strip()
+            reading = normalize_katakana_to_hiragana("".join(rt.get_text("", strip=True) for rt in ruby.find_all("rt")).strip())
+            if base and reading and contains_japanese(base):
+                reading_map.setdefault(base, reading)
+    return reading_map
+
+
+def choose_anki_term_reading(term: str, item_reading: str = "", ruby_reading_map=None) -> str:
+    term = (term or "").strip()
+    item_reading = normalize_katakana_to_hiragana((item_reading or "").strip())
+    ruby_reading_map = ruby_reading_map or {}
+    if not term:
+        return ""
+    if re.search(r"[一-龯々]", term):
+        ruby_reading = normalize_katakana_to_hiragana((ruby_reading_map.get(term) or "").strip())
+        if ruby_reading:
+            return ruby_reading
+    return get_reading_for_word(term, fallback=item_reading)
+
+
+def build_anki_dictionary_translation(item, term: str, reading: str = "", lang: str = "bg") -> str:
+    dest = "bg" if lang == "bg" else "en"
+    translated = best_effort_popup_translation(term, lemma=term, reading_surface=reading, reading_lemma=reading, dest=dest).strip()
+    if translated:
+        return translated
+    fallback = (item.get("translation_bg") if lang == "bg" else item.get("translation_en") or "").strip()
+    if fallback:
+        return fallback
+    return ((item.get("meaning_bg") if lang == "bg" else item.get("meaning_en")) or "").strip()
+
+
+def is_valid_analysis_anki_item(item, term: str) -> bool:
+    term = (term or "").strip()
+    if not term or not contains_japanese(term):
+        return False
+    if contains_digit(term):
+        return False
+    if is_single_kanji_word(term):
+        return False
+    if is_all_katakana(term):
+        return False
+    if term in {"総理大臣", "大統領", "首相", "政府", "会社"}:
+        return False
+    if is_named_entity_surface(term):
+        return False
+    if is_named_entity_item(item):
+        return False
+    item_type = (item.get("item_type") or "").strip().lower()
+    if item_type in {"grammar", "particle"}:
+        return False
+    analysis = analyze_japanese_word(term)
+    pos1 = (analysis.get("pos1") or "").strip()
+    if "たり" in term or term.endswith(("ほしい", "よう")):
+        return False
+    if item_type == "verb" and term.endswith("す") and not term.endswith("する") and re.search(r"[一-龯々]す$", term):
+        return False
+    if is_probable_verb_te_surface(term) or re.search(r"(たり|て|で)$", term):
+        return False
+    if item_type == "verb":
+        if is_suspicious_verb_lemma((item.get("surface") or "").strip(), term):
+            return False
+    else:
+        if item_type not in {"adjective"} and pos1 == "" and re.search(r"(り|た|な|く|す)$", term):
+            return False
+        if item_type not in {"adjective"} and pos1 == "" and len(term) <= 3 and re.search(r"[一-龯々]+[ぁ-ん]{1,2}$", term):
+            return False
+    if term.endswith(("年前", "年後")):
+        return False
+    if term.endswith("な") and len(term) <= 4:
+        return False
+    if re.search(r"(が|を|に|で|は|へ|と|も|や|の|から|まで|より|など|ぐらい|くらい)$", term):
+        return False
+    if item_type == "verb" and re.search(r"[一-龯々ぁ-ん]+(が|を|に|で|は|へ|と|も|や|の)[一-龯々ぁ-ん]", term):
+        return False
+    if re.search(r"(が|を|に|で|は|へ|と|も|や|の|から|まで|より)", term) and item_type not in {"verb", "adjective"}:
+        return False
+    return True
+
+
 def build_analysis_anki_cards(articles, lang="bg"):
     cards = []
     seen = set()
     for article in articles or []:
+        ruby_reading_map = build_anki_ruby_reading_map(article.get("blocks") or [])
         for item in article.get("analysis_items") or []:
-            surface = (item.get("surface") or "").strip()
-            lemma = (item.get("lemma") or surface).strip()
-            reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
-            if not surface:
+            term, reading = normalize_anki_term(item)
+            if not is_valid_analysis_anki_item(item, term):
                 continue
-            back = format_analysis_anki_back(item, lang=lang)
-            if not back:
+            reading = choose_anki_term_reading(term, item_reading=reading, ruby_reading_map=ruby_reading_map)
+            back = build_anki_dictionary_translation(item, term, reading=reading, lang=lang)
+            if not back or not term:
                 continue
             key = (
-                normalize_for_compare(surface),
-                normalize_for_compare(lemma),
-                normalize_for_compare(item.get("item_type") or ""),
+                normalize_for_compare(term),
                 lang,
             )
             if key in seen:
                 continue
             seen.add(key)
-            front = f"<ruby>{surface}<rt>{reading}</rt></ruby>" if reading and reading != surface else surface
-            cards.append((front, back))
+            front = f"<ruby>{term}<rt>{reading}</rt></ruby>" if reading and reading != term else term
+            cards.append((front, html_lib.escape(back)))
     cards.sort(key=lambda pair: pair[0])
     return cards
 def load_seen_words(path):
@@ -4343,7 +4485,7 @@ def build_anki_apkg(cards, apkg_path, deck_name="NHK Easy Vocabulary"):
             "qfmt": "<div class='jp-word'>{{Front}}</div>",
             "afmt": "<div class='jp-word'>{{Front}}</div><hr id='answer'><div class='bg-meaning'>{{Back}}</div>",
         }],
-        css=".card {font-family: Arial, sans-serif; font-size: 25px; text-align: center; color: black; background-color: white;}.jp-word {font-size: 31px;}.bg-meaning {font-size: 25px;}.jp-word ruby rt {font-size: 14px;}",
+        css=".card {font-family: Arial, sans-serif; font-size: 25px; text-align: center; color: black; background-color: white;}.jp-word {font-size: 31px;}.bg-meaning {font-size: 25px;}.jp-word ruby rt {font-size: 40%;}",
     )
 
     deck = genanki.Deck(stable_int_id("nhk_easy_vocab_deck_" + deck_name), deck_name)
