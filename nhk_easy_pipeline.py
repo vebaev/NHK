@@ -5542,6 +5542,20 @@ def add_class_to_tag(tag, class_name: str):
         tag["class"] = list(existing) + [class_name]
 
 
+def is_valid_grammar_variant_match(text: str, start: int, end: int, variant: str) -> bool:
+    variant = (variant or "").strip()
+    if not variant:
+        return False
+    if len(variant) == 1 and re.fullmatch(r"[一-龯々]", variant):
+        prev_char = text[start - 1] if start > 0 else ""
+        next_char = text[end] if end < len(text) else ""
+        if not re.fullmatch(r"[ぁ-んァ-ヶー]", prev_char):
+            return False
+        if next_char and re.fullmatch(r"[一-龯々]", next_char):
+            return False
+    return True
+
+
 def find_text_matches(text: str, variants):
     text = text or ""
     matches = []
@@ -5553,7 +5567,7 @@ def find_text_matches(text: str, variants):
             if idx == -1:
                 break
             end = idx + len(variant)
-            if not any(occupied[pos] for pos in range(idx, end)):
+            if is_valid_grammar_variant_match(text, idx, end, variant) and not any(occupied[pos] for pos in range(idx, end)):
                 matches.append((idx, end))
                 for pos in range(idx, end):
                     occupied[pos] = True
@@ -5602,7 +5616,15 @@ def add_grammar_highlights_to_html(html_fragment: str, grammar_points=None) -> s
             span.get_text("", strip=True) or "",
         ]
         normalized_candidates = [normalize_grammar_highlight_text(v) for v in candidates if normalize_grammar_highlight_text(v)]
-        if any(variant in candidate for variant in variants for candidate in normalized_candidates):
+        if any(
+            any(
+                is_valid_grammar_variant_match(candidate, idx, idx + len(variant), variant)
+                for idx in range(len(candidate))
+                if candidate.startswith(variant, idx)
+            )
+            for variant in variants
+            for candidate in normalized_candidates
+        ):
             add_class_to_tag(span, "grammar-word")
 
     for text_node in list(soup.find_all(string=True)):
@@ -5750,8 +5772,9 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class='build-marker'>Generated: __GENERATED_AT__</div>
 </div>
 <script>
-const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula"}};
+const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула",popup_explanation:"Обяснение"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula",popup_explanation:"Explanation"}};
 const FILES={bg:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"},en:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"}};
+let GRAMMAR_LOOKUP=null;
 function getContentLanguage(){return localStorage.getItem('nhk_content_lang')||'bg';}
 function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;const lang=getContentLanguage();const langSel=document.getElementById('lang-select');if(langSel)langSel.value=lang;applyContentLanguage(lang);}
 function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk_theme',theme);const meta=document.querySelector('meta[name="theme-color"]');if(meta){meta.setAttribute('content',theme==='theme-light'?'#f7f7f5':theme==='theme-sepia'?'#f3eadb':'#0f1115');}}
@@ -5764,7 +5787,12 @@ function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup
 function esc(v){return (v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function popupLine(label,value){return value?'<div class="dm"><b>'+esc(label)+':</b> '+esc(value)+'</div>':'';}
 function normalizePopupValue(v){return (v||'').replace(/\\s+/g,'').trim();}
+function normalizeGrammarKey(v){return (v||'').replace(/[〜～]/g,'').replace(/／/g,'/').replace(/\\s+/g,'').trim();}
 function isGenericFormation(v){const x=(v||'').trim().toLowerCase();return !x||x==='речникова форма'||x==='dictionary form'||x==='форма в текста'||x==='form in context';}
+function grammarLabelVariants(label){const base=normalizeGrammarKey(label);if(!base)return [];const variants=new Set([base]);if(base.endsWith('だ')){const stem=base.slice(0,-1);if(stem){variants.add(stem);variants.add(stem+'です');}}if(base.endsWith('です')){const stem=base.slice(0,-2);if(stem){variants.add(stem);variants.add(stem+'だ');}}base.split(/[/・]/).forEach(function(part){part=part.trim();if(part)variants.add(part);});return Array.from(variants);}
+function buildGrammarLookup(){const lookup=new Map();document.querySelectorAll('.grammar li').forEach(function(item){const ruleEl=item.querySelector('.grammar-rule');const explEl=item.querySelector('.grammar-expl');if(!ruleEl||!explEl)return;const label=(ruleEl.textContent||'').trim();const entry={label:label,bg:(explEl.dataset.bg||'').trim(),en:(explEl.dataset.en||'').trim()};grammarLabelVariants(label).forEach(function(key){if(key&&!lookup.has(key))lookup.set(key,entry);});});return lookup;}
+function findGrammarEntryForElement(el){if(!GRAMMAR_LOOKUP)GRAMMAR_LOOKUP=buildGrammarLookup();const candidates=[el.dataset.grammarKey||'',el.dataset.surface||'',el.dataset.lemma||'',el.textContent||''];for(const raw of candidates){const normalized=normalizeGrammarKey(raw);if(!normalized)continue;if(GRAMMAR_LOOKUP.has(normalized))return GRAMMAR_LOOKUP.get(normalized);for(const [key,entry] of GRAMMAR_LOOKUP.entries()){if(normalized.includes(key)||key.includes(normalized))return entry;}}return null;}
+function showGrammarPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return false;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return true;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const entry=findGrammarEntryForElement(el);if(!entry)return false;const explanation=(lang==='en'?entry.en:entry.bg||entry.en||'').trim();if(!explanation)return false;let html='<div class="dw">'+esc(entry.label)+'</div>';html+=popupLine(ui.popup_explanation,explanation);popup.innerHTML=html;el.classList.add('is-active');popup.style.display='block';popup.setAttribute('aria-hidden','false');positionPopupNear(el,popup);return true;}
 function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const itemType=(el.dataset.itemType||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();const surfaceKey=normalizePopupValue(surface);const lemmaKey=normalizePopupValue(lemma);const showAdjectiveFormation=!!formation&&surfaceKey&&lemmaKey&&surfaceKey!==lemmaKey&&!isGenericFormation(formation);let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_translation,translation);if(itemType==='verb'){html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);}else if(itemType==='adjective'){if(showAdjectiveFormation)html+=popupLine(ui.popup_formation,formation);}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
@@ -5892,7 +5920,7 @@ function setupArticleShadowing(article){
 }
 
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
-document.addEventListener('DOMContentLoaded',function(){loadPrefs();document.querySelectorAll('article').forEach(function(article){setupArticleShadowing(article);});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || ''),{updateViaCache:'none'}).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showDictPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word'))return;trBlock.classList.toggle('is-visible');});});});
+document.addEventListener('DOMContentLoaded',function(){loadPrefs();GRAMMAR_LOOKUP=buildGrammarLookup();document.querySelectorAll('article').forEach(function(article){setupArticleShadowing(article);});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || ''),{updateViaCache:'none'}).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();if(el.classList.contains('grammar-word')&&showGrammarPopup(el))return;showDictPopup(el);});});document.querySelectorAll('.grammar-word:not(.dict-word)').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showGrammarPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word')||event.target.closest('.grammar-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
 </html>"""
