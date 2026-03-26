@@ -139,38 +139,67 @@ GRAMMAR_RULES = [
     {"id": "koto_nominalizer", "label": "〜こと", "explanation_bg": "Номинализация: превръща действие/състояние в „нещо, че...“.", "explanation_en": ""},
     {"id": "tokoro", "label": "〜ところ", "explanation_bg": "Точно преди / по време на / току-що след...", "explanation_en": ""},
     {"id": "tabakari", "label": "〜たばかり", "explanation_bg": "Току-що...", "explanation_en": ""},
+    {"id": "ta_koto_ga_aru", "label": "〜たことがある", "explanation_bg": "Имам опит да... / случвало ми се е да...", "explanation_en": ""},
+    {"id": "te_iru", "label": "〜ている / 〜でいる", "explanation_bg": "Продължаващо състояние / действие в процес.", "explanation_en": ""},
     {"id": "te_kara", "label": "〜てから", "explanation_bg": "След като...", "explanation_en": ""},
+    {"id": "te_kudasai", "label": "〜てください / 〜でください", "explanation_bg": "Моля, направете...", "explanation_en": ""},
+    {"id": "naide_kudasai", "label": "〜ないでください", "explanation_bg": "Моля, не правете...", "explanation_en": ""},
     {"id": "mae_ni", "label": "〜前に", "explanation_bg": "Преди да...", "explanation_en": ""},
     {"id": "ato_de", "label": "〜あとで / 〜後で", "explanation_bg": "След като... / по-късно...", "explanation_en": ""},
+    {"id": "masenka", "label": "〜ませんか", "explanation_bg": "Няма ли да... / искате ли да...?", "explanation_en": ""},
+    {"id": "mashou", "label": "〜ましょう / 〜ましょうか", "explanation_bg": "Хайде да... / да ... ли?", "explanation_en": ""},
     {"id": "nagara_mo", "label": "〜ながらも", "explanation_bg": "Макар че / въпреки че...", "explanation_en": ""},
     {"id": "ni_taishite", "label": "〜に対して", "explanation_bg": "Срещу / по отношение на...", "explanation_en": ""},
     {"id": "ni_tsuite", "label": "〜について", "explanation_bg": "Относно / за...", "explanation_en": ""},
+    {"id": "nado", "label": "〜など", "explanation_bg": "И така нататък / например такива като...", "explanation_en": ""},
     {"id": "ni_yoru_to", "label": "〜によると", "explanation_bg": "Според...", "explanation_en": ""},
     {"id": "ni_yotte", "label": "〜によって", "explanation_bg": "Чрез / в зависимост от / от...", "explanation_en": ""},
     {"id": "to_shite", "label": "〜として", "explanation_bg": "Като / в ролята на...", "explanation_en": ""},
     {"id": "to_tomo_ni", "label": "〜とともに", "explanation_bg": "Заедно с / едновременно с...", "explanation_en": ""},
+    {"id": "to_omou", "label": "〜と思う", "explanation_bg": "Мисля, че... / смятам, че...", "explanation_en": ""},
+    {"id": "you_to_omou", "label": "〜ようと思う", "explanation_bg": "Възнамерявам да... / мисля да...", "explanation_en": ""},
+    {"id": "to_iu", "label": "〜という", "explanation_bg": "Наречен / който се казва / че...", "explanation_en": ""},
     {"id": "ni_yori", "label": "〜により", "explanation_bg": "Поради / чрез... (формално)", "explanation_en": ""},
     {"id": "ni_oite", "label": "〜において", "explanation_bg": "В / на... (формално)", "explanation_en": ""},
     {"id": "ni_mukete", "label": "〜に向けて", "explanation_bg": "Към / с цел към...", "explanation_en": ""},
+    {"id": "ni_tsurete", "label": "〜につれて", "explanation_bg": "С напредването на... / заедно с...", "explanation_en": ""},
     {"id": "ni_naru", "label": "〜になる", "explanation_bg": "Става / превръща се в...", "explanation_en": ""},
+    {"id": "ni_chigainai", "label": "〜に違いない", "explanation_bg": "Със сигурност... / няма съмнение, че...", "explanation_en": ""},
     {"id": "to_naru", "label": "〜となる", "explanation_bg": "Става / се оказва... (по-формално)", "explanation_en": ""},
     {"id": "to_shite_iru", "label": "〜としている", "explanation_bg": "Възнамерява / опитва се да...", "explanation_en": ""},
+    {"id": "te_ageru", "label": "〜てあげる / 〜であげる", "explanation_bg": "Правя нещо за някого.", "explanation_en": ""},
+    {"id": "te_kureru", "label": "〜てくれる / 〜でくれる", "explanation_bg": "Някой прави нещо за мен/нас.", "explanation_en": ""},
+    {"id": "te_morau", "label": "〜てもらう / 〜でもらう", "explanation_bg": "Получавам услуга: някой прави нещо за мен.", "explanation_en": ""},
     {"id": "koto_ga_dekiru", "label": "〜ことができる", "explanation_bg": "Може да...", "explanation_en": ""},
+    {"id": "koto_ni_shite_iru", "label": "〜ことにしている", "explanation_bg": "Имам си правило да... / по принцип правя така.", "explanation_en": ""},
+    {"id": "koto_ni_natte_iru", "label": "〜ことになっている", "explanation_bg": "Установено е / правилото е да...", "explanation_en": ""},
+    {"id": "koto_kara", "label": "〜ことから", "explanation_bg": "От факта, че... / поради това, че...", "explanation_en": ""},
     {"id": "yasui", "label": "〜やすい", "explanation_bg": "Лесно е да...", "explanation_en": ""},
     {"id": "youda_mitaida", "label": "〜ようだ / 〜みたいだ", "explanation_bg": "Изглежда, че... / сякаш...", "explanation_en": ""},
+    {"id": "you_na", "label": "〜ような", "explanation_bg": "Като / подобен на... / такъв като...", "explanation_en": ""},
     {"id": "wake_dewa_nai", "label": "〜わけではない", "explanation_bg": "Не значи непременно, че... / не е точно че...", "explanation_en": ""},
+    {"id": "wake_da", "label": "〜わけだ", "explanation_bg": "Тоест / излиза, че / разбираемо е, че...", "explanation_en": ""},
+    {"id": "wake_niwa_ikanai", "label": "〜わけにはいかない", "explanation_bg": "Не мога просто така да... / не ми е позволено да...", "explanation_en": ""},
     {"id": "towa_kagiranai", "label": "〜とは限らない", "explanation_bg": "Не е задължително / не винаги...", "explanation_en": ""},
+    {"id": "dewa_naika", "label": "〜ではないか / 〜じゃないか", "explanation_bg": "Нима не...? / не е ли...?", "explanation_en": ""},
     {"id": "osore_ga_aru", "label": "〜おそれがある", "explanation_bg": "Има опасност да...", "explanation_en": ""},
+    {"id": "kanousei_ga_aru", "label": "〜可能性がある", "explanation_bg": "Има възможност да...", "explanation_en": ""},
     {"id": "mikomi", "label": "〜見込み", "explanation_bg": "Очаква се / има изгледи за...", "explanation_en": ""},
     {"id": "yotei", "label": "〜予定", "explanation_bg": "Планира се / по план...", "explanation_en": ""},
+    {"id": "yotei_da", "label": "〜予定だ", "explanation_bg": "Планирано е да... / предстои да...", "explanation_en": ""},
     {"id": "chu", "label": "〜中", "explanation_bg": "По време на / в процес на...", "explanation_en": ""},
     {"id": "ato_after", "label": "〜後 / 〜あと", "explanation_bg": "След / след като...", "explanation_en": ""},
     {"id": "ijo", "label": "〜以上", "explanation_bg": "Повече от / след като...", "explanation_en": ""},
+    {"id": "tabi_ni", "label": "〜たびに", "explanation_bg": "Всеки път когато...", "explanation_en": ""},
+    {"id": "ippou_de", "label": "〜一方(で)", "explanation_bg": "От една страна... / докато в същото време...", "explanation_en": ""},
     {"id": "ni_awasete", "label": "〜に合わせて", "explanation_bg": "В съответствие с / според...", "explanation_en": ""},
     {"id": "tari_tari", "label": "〜たり〜たりする", "explanation_bg": "Правя разни неща като...", "explanation_en": ""},
+    {"id": "ya", "label": "〜や〜など", "explanation_bg": "И такива неща като... / изброяване без изчерпване.", "explanation_en": ""},
+    {"id": "shi", "label": "〜し、〜し", "explanation_bg": "И... / освен това... / защото...", "explanation_en": ""},
     {"id": "dake", "label": "〜だけ", "explanation_bg": "Само / единствено.", "explanation_en": ""},
     {"id": "nomi", "label": "〜のみ", "explanation_bg": "Само / единствено (по-формално).", "explanation_en": ""},
     {"id": "bakari", "label": "〜ばかり", "explanation_bg": "Само..., все...", "explanation_en": ""},
+    {"id": "bakari_de_naku", "label": "〜ばかりでなく", "explanation_bg": "Не само..., но и...", "explanation_en": ""},
     {"id": "shika_nai", "label": "〜しか〜ない", "explanation_bg": "Нищо друго освен..., само...", "explanation_en": ""},
     {"id": "mou", "label": "もう", "explanation_bg": "Вече.", "explanation_en": ""},
     {"id": "mada", "label": "まだ", "explanation_bg": "Още / все още.", "explanation_en": ""},
@@ -191,6 +220,7 @@ GRAMMAR_RULES = [
     {"id": "datte", "label": "だって", "explanation_bg": "Защото..., дори..., дори и...", "explanation_en": ""},
     {"id": "wake", "label": "〜わけ", "explanation_bg": "Причина / смисъл / следва, че...", "explanation_en": ""},
     {"id": "hazu", "label": "〜はず", "explanation_bg": "Би трябвало / очаква се.", "explanation_en": ""},
+    {"id": "hazu_da", "label": "〜はずだ", "explanation_bg": "Би трябвало да е така / трябва да...", "explanation_en": ""},
     {"id": "beki", "label": "〜べき", "explanation_bg": "Трябва / редно е.", "explanation_en": ""},
     {"id": "beki_datta", "label": "〜べきだった", "explanation_bg": "Трябвало е да...", "explanation_en": ""},
     {"id": "beshi", "label": "〜べし", "explanation_bg": "Трябва / следва (книжовно).", "explanation_en": ""},
@@ -205,6 +235,9 @@ GRAMMAR_RULES = [
     {"id": "kara_made", "label": "〜から〜まで", "explanation_bg": "От... до...", "explanation_en": ""},
     {"id": "made_ni", "label": "〜までに", "explanation_bg": "До (краен срок).", "explanation_en": ""},
     {"id": "hodo", "label": "〜ほど", "explanation_bg": "До такава степен / колкото...", "explanation_en": ""},
+    {"id": "ba_hodo", "label": "〜ば〜ほど", "explanation_bg": "Колкото повече..., толкова повече...", "explanation_en": ""},
+    {"id": "mono_no", "label": "〜ものの", "explanation_bg": "Макар че... / въпреки че...", "explanation_en": ""},
+    {"id": "ga_aru_iru", "label": "〜がある / 〜がいる", "explanation_bg": "Има / съществува / намира се.", "explanation_en": ""},
     {"id": "sugiru", "label": "〜すぎる", "explanation_bg": "Прекалено / твърде много.", "explanation_en": ""},
 ]
 GRAMMAR_RULES_BY_ID = {r["id"]: r for r in GRAMMAR_RULES}
@@ -2843,11 +2876,43 @@ LOCAL_GRAMMAR_PATTERNS = [
     ("kamoshirenai", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}かもしれ(?:ない|ません))")),
     ("koto_ni_suru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}ことに(?:する|した|して|します|しました|したい|しよう))")),
     ("koto_ni_naru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}ことに(?:なる|なった|なって|なります|なりました))")),
+    ("koto_ni_shite_iru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}ことにして(?:いる|います|いた|いました))")),
+    ("koto_ni_natte_iru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}ことになって(?:いる|います|いた|いました))")),
+    ("ta_koto_ga_aru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}たことがある)")),
     ("you_ni_suru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}ように(?:する|した|して|します|しました|したい))")),
     ("you_ni_naru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}ように(?:なる|なった|なって|なります|なりました))")),
+    ("you_to_omou", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}ようと思(?:う|います|った|いました))")),
     ("souda", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}そう(?:だ|です))")),
     ("nikui", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}にくい(?:です|くて|かった)?)")),
     ("yasui", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,16}やすい(?:です|くて|かった)?)")),
+    ("te_iru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}(?:て|で)(?:いる|います|いた|いました|いない|いません))")),
+    ("te_kudasai", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}(?:て|で)ください)")),
+    ("naide_kudasai", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}ないでください)")),
+    ("te_ageru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}(?:て|で)(?:あげる|あげます|あげた|あげました))")),
+    ("te_kureru", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}(?:て|で)(?:くれる|くれます|くれた|くれました))")),
+    ("te_morau", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}(?:て|で)(?:もらう|もらいます|もらった|もらいました))")),
+    ("to_omou", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}と思(?:う|います|った|いました))")),
+    ("to_iu", re.compile(r"(?:^|(?<=[をがはにでともへの、。！？]))([ぁ-んァ-ン一-龯]{1,20}という)")),
+    ("yotei_da", re.compile(r"(?:予定(?:だ|です))")),
+    ("hazu_da", re.compile(r"(?:はず(?:だ|です))")),
+    ("wake_da", re.compile(r"(?:わけ(?:だ|です))")),
+    ("wake_niwa_ikanai", re.compile(r"(?:わけにはいかない)")),
+    ("dewa_naika", re.compile(r"(?:ではないか|じゃないか)")),
+    ("bakari_de_naku", re.compile(r"(?:ばかりでなく)")),
+    ("ni_chigainai", re.compile(r"(?:に違いない)")),
+    ("kanousei_ga_aru", re.compile(r"(?:可能性がある)")),
+    ("koto_kara", re.compile(r"(?:ことから)")),
+    ("ippou_de", re.compile(r"(?:一方(?:で)?)")),
+    ("ba_hodo", re.compile(r"(?:[ぁ-んァ-ン一-龯]+ば[ぁ-んァ-ン一-龯]+ほど)")),
+    ("ni_tsurete", re.compile(r"(?:につれて)")),
+    ("tabi_ni", re.compile(r"(?:たびに|度に)")),
+    ("mono_no", re.compile(r"(?:ものの)")),
+    ("you_na", re.compile(r"(?:ような)")),
+    ("masenka", re.compile(r"(?:ませんか)")),
+    ("mashou", re.compile(r"(?:ましょうか|ましょう)")),
+    ("ya", re.compile(r"(?:[ぁ-んァ-ン一-龯]{1,12}や[ぁ-んァ-ン一-龯]{1,12}など)")),
+    ("shi", re.compile(r"(?:[ぁ-んァ-ン一-龯]{1,16}し[、,][ぁ-んァ-ン一-龯]{1,16}し)")),
+    ("ga_aru_iru", re.compile(r"(?:が(?:ある|いる))")),
 ]
 
 
@@ -2855,56 +2920,144 @@ GRAMMAR_SENTENCE_FALLBACK_PATTERNS = [
     ("kamoshirenai", re.compile(r"かもしれ(?:ない|ません)")),
     ("koto_ni_suru", re.compile(r"ことに(?:する|した|して|します|しました|しよう|したい)")),
     ("koto_ni_naru", re.compile(r"ことに(?:なる|なった|なって|なります|なりました)")),
+    ("koto_ni_shite_iru", re.compile(r"ことにして(?:いる|います|いた|いました)")),
+    ("koto_ni_natte_iru", re.compile(r"ことになって(?:いる|います|いた|いました)")),
     ("koto_ga_aru", re.compile(r"ことがある")),
+    ("ta_koto_ga_aru", re.compile(r"たことがある")),
     ("koto_ga_dekiru", re.compile(r"ことができる")),
     ("koto_nominalizer", re.compile(r"こと")),
     ("you_ni_suru", re.compile(r"ように(?:する|した|して|します|しました|したい)")),
     ("you_ni_naru", re.compile(r"ように(?:なる|なった|なって|なります|なりました)")),
     ("you_ni", re.compile(r"ように")),
+    ("you_to_omou", re.compile(r"ようと思(?:う|います|った|いました)")),
+    ("you_na", re.compile(r"ような")),
     ("souda", re.compile(r"そう(?:だ|です)")),
     ("nikui", re.compile(r"にくい")),
     ("yasui", re.compile(r"やすい")),
     ("te_iru", re.compile(r"て(?:い|お)る|で(?:い|お)る|ています|ていた|ている|でいます|でいた|でいる")),
+    ("te_kudasai", re.compile(r"てください|でください")),
+    ("naide_kudasai", re.compile(r"ないでください")),
     ("te_kara", re.compile(r"てから|でから")),
     ("te_miru", re.compile(r"てみる|でみる")),
     ("te_shimau", re.compile(r"てしま(?:う|った|います|いました)|でしま(?:う|った|います|いました)")),
     ("te_oku", re.compile(r"てお(?:く|き|いた)|でお(?:く|き|いた)")),
+    ("te_ageru", re.compile(r"てあげる|であげる|てあげます|であげます")),
+    ("te_kureru", re.compile(r"てくれる|でくれる|てくれます|でくれます")),
+    ("te_morau", re.compile(r"てもらう|でもらう|てもらいます|でもらいます")),
     ("temo", re.compile(r"ても|でも")),
     ("temo_ii", re.compile(r"てもいい|でもいい")),
     ("te_ii", re.compile(r"ていい|でいい")),
     ("naide", re.compile(r"ないで")),
     ("nakute", re.compile(r"なくて")),
     ("zu", re.compile(r"ずに|ず")),
+    ("masenka", re.compile(r"ませんか")),
+    ("mashou", re.compile(r"ましょうか|ましょう")),
     ("node", re.compile(r"ので")),
     ("kara_reason", re.compile(r"から")),
     ("noni", re.compile(r"のに")),
     ("to_shite", re.compile(r"として")),
+    ("to_omou", re.compile(r"と思(?:う|います|った|いました)")),
+    ("to_iu", re.compile(r"という")),
     ("ni_tsuite", re.compile(r"について")),
+    ("nado", re.compile(r"など")),
     ("ni_taishite", re.compile(r"に対して")),
     ("ni_yoru_to", re.compile(r"によると")),
     ("ni_yotte", re.compile(r"によって")),
     ("ni_yori", re.compile(r"により")),
     ("ni_oite", re.compile(r"において")),
     ("ni_mukete", re.compile(r"に向けて")),
+    ("ni_tsurete", re.compile(r"につれて")),
+    ("ni_chigainai", re.compile(r"に違いない")),
     ("ni_awasete", re.compile(r"に合わせて")),
     ("to_tomo_ni", re.compile(r"とともに")),
     ("to_naru", re.compile(r"となる")),
     ("ni_naru", re.compile(r"になる")),
     ("towa_kagiranai", re.compile(r"とは限らない")),
+    ("wake_da", re.compile(r"わけ(?:だ|です)")),
     ("wake_dewa_nai", re.compile(r"わけではない")),
+    ("wake_niwa_ikanai", re.compile(r"わけにはいかない")),
+    ("dewa_naika", re.compile(r"ではないか|じゃないか")),
     ("youda_mitaida", re.compile(r"ようだ|みたいだ")),
+    ("bakari_de_naku", re.compile(r"ばかりでなく")),
     ("beki", re.compile(r"べき")),
     ("hazu", re.compile(r"はず")),
+    ("hazu_da", re.compile(r"はず(?:だ|です)")),
     ("rashii", re.compile(r"らしい")),
     ("ppoi", re.compile(r"っぽい")),
     ("tari_tari", re.compile(r"たり.*たり")),
+    ("tabi_ni", re.compile(r"たびに|度に")),
+    ("ippou_de", re.compile(r"一方(?:で)?")),
+    ("koto_kara", re.compile(r"ことから")),
+    ("kanousei_ga_aru", re.compile(r"可能性がある")),
+    ("yotei_da", re.compile(r"予定(?:だ|です)")),
     ("dake", re.compile(r"だけ")),
+    ("ya", re.compile(r"[ぁ-んァ-ン一-龯]{1,12}や[ぁ-んァ-ン一-龯]{1,12}など")),
+    ("shi", re.compile(r"[ぁ-んァ-ン一-龯]{1,16}し[、,][ぁ-んァ-ン一-龯]{1,16}し")),
     ("bakari", re.compile(r"ばかり")),
     ("shika_nai", re.compile(r"しか.*ない")),
     ("mada", re.compile(r"まだ")),
     ("mou", re.compile(r"もう")),
     ("mata", re.compile(r"また")),
+    ("ba_hodo", re.compile(r"ば.*ほど")),
+    ("mono_no", re.compile(r"ものの")),
+    ("ga_aru_iru", re.compile(r"が(?:ある|いる)")),
 ]
+
+LOCAL_GRAMMAR_SURFACE_PATTERNS = {
+    "koto_ni_suru": re.compile(r"ことに(?:する|した|して|します|しました|したい|しよう)$"),
+    "koto_ni_naru": re.compile(r"ことに(?:なる|なった|なって|なります|なりました)$"),
+    "koto_ni_shite_iru": re.compile(r"ことにして(?:いる|います|いた|いました)$"),
+    "koto_ni_natte_iru": re.compile(r"ことになって(?:いる|います|いた|いました)$"),
+    "ta_koto_ga_aru": re.compile(r"たことがある$"),
+    "you_ni_suru": re.compile(r"ように(?:する|した|して|します|しました|したい)$"),
+    "you_ni_naru": re.compile(r"ように(?:なる|なった|なって|なります|なりました)$"),
+    "you_ni": re.compile(r"ように$"),
+    "you_to_omou": re.compile(r"ようと思(?:う|います|った|いました)$"),
+    "souda": re.compile(r"そう(?:だ|です)$"),
+    "nikui": re.compile(r"にくい(?:です|くて|かった)?$"),
+    "yasui": re.compile(r"やすい(?:です|くて|かった)?$"),
+    "te_iru": re.compile(r"(?:て|で)(?:いる|います|いた|いました|いない|いません)$"),
+    "te_kudasai": re.compile(r"(?:て|で)ください$"),
+    "naide_kudasai": re.compile(r"ないでください$"),
+    "te_ageru": re.compile(r"(?:て|で)(?:あげる|あげます|あげた|あげました)$"),
+    "te_kureru": re.compile(r"(?:て|で)(?:くれる|くれます|くれた|くれました)$"),
+    "te_morau": re.compile(r"(?:て|で)(?:もらう|もらいます|もらった|もらいました)$"),
+    "masenka": re.compile(r"ませんか$"),
+    "mashou": re.compile(r"ましょう(?:か)?$"),
+    "to_omou": re.compile(r"と思(?:う|います|った|いました)$"),
+    "to_iu": re.compile(r"という$"),
+    "yotei_da": re.compile(r"予定(?:だ|です)$"),
+    "hazu_da": re.compile(r"はず(?:だ|です)$"),
+    "wake_da": re.compile(r"わけ(?:だ|です)$"),
+    "wake_niwa_ikanai": re.compile(r"わけにはいかない$"),
+    "dewa_naika": re.compile(r"(?:ではないか|じゃないか)$"),
+    "bakari_de_naku": re.compile(r"ばかりでなく$"),
+    "ni_chigainai": re.compile(r"に違いない$"),
+    "kanousei_ga_aru": re.compile(r"可能性がある$"),
+    "koto_kara": re.compile(r"ことから$"),
+    "ippou_de": re.compile(r"一方(?:で)?$"),
+    "ni_tsurete": re.compile(r"につれて$"),
+    "tabi_ni": re.compile(r"(?:たびに|度に)$"),
+    "mono_no": re.compile(r"ものの$"),
+    "you_na": re.compile(r"ような$"),
+    "ga_aru_iru": re.compile(r"が(?:ある|いる)$"),
+}
+
+
+def get_local_grammar_surface(pattern_id: str, matched_surface: str, rule_label: str = "") -> str:
+    matched_surface = (matched_surface or "").strip()
+    if not matched_surface:
+        return ""
+    suffix_pattern = LOCAL_GRAMMAR_SURFACE_PATTERNS.get((pattern_id or "").strip())
+    if suffix_pattern:
+        m = suffix_pattern.search(matched_surface)
+        if m:
+            return m.group(0).strip()
+    label_variants = sorted(grammar_label_variants(rule_label), key=len, reverse=True) if rule_label else []
+    for variant in label_variants:
+        if variant and matched_surface.endswith(variant):
+            return variant
+    return matched_surface
 
 
 def detect_grammar_in_sentence_fallback(sentence: str):
@@ -2974,7 +3127,7 @@ def build_local_analysis_items_from_blocks(blocks):
             if rule is None:
                 continue
             for match in pattern.finditer(text):
-                surface = match.group(0).strip()
+                surface = get_local_grammar_surface(pattern_id, match.group(0), rule.get("label") or "").strip()
                 if not contains_japanese(surface):
                     continue
                 add_item(
@@ -4647,13 +4800,19 @@ def detect_grammar_in_sentence(sentence: str):
         if s == "こと":
             found.add("koto_nominalizer")
             if _s(tokens, i + 1) == "が" and _l(tokens, i + 2) in {"有る", "ある"}: found.add("koto_ga_aru")
+            if _s(tokens, i - 1) in {"た", "だ"} and _s(tokens, i + 1) == "が" and _l(tokens, i + 2) in {"有る", "ある"}: found.add("ta_koto_ga_aru")
             if _s(tokens, i + 1) == "に" and _l(tokens, i + 2) in {"成る", "なる"}: found.add("koto_ni_naru")
             if _s(tokens, i + 1) == "に" and _l(tokens, i + 2) in {"為る", "する"}: found.add("koto_ni_suru")
+            if _s(tokens, i + 1) == "に" and _s(tokens, i + 2) == "し" and _s(tokens, i + 3) == "て" and _l(tokens, i + 4) in {"居る", "いる"}: found.add("koto_ni_shite_iru")
+            if _s(tokens, i + 1) == "に" and _s(tokens, i + 2) == "なっ" and _s(tokens, i + 3) == "て" and _l(tokens, i + 4) in {"居る", "いる"}: found.add("koto_ni_natte_iru")
             if _s(tokens, i + 1) == "が" and (_l(tokens, i + 2) in {"出来る", "できる"} or _s(tokens, i + 2) in {"できる", "出来る"}): found.add("koto_ga_dekiru")
+            if _s(tokens, i + 1) == "から": found.add("koto_kara")
         if s == "よう" and _s(tokens, i + 1) == "に":
             found.add("you_ni")
             if _l(tokens, i + 2) in {"成る", "なる"}: found.add("you_ni_naru")
             if _l(tokens, i + 2) in {"為る", "する"}: found.add("you_ni_suru")
+        if s == "よう" and _s(tokens, i + 1) == "と" and _l(tokens, i + 2) in {"思う", "おもう"}: found.add("you_to_omou")
+        if s == "よう" and _s(tokens, i + 1) == "な": found.add("you_na")
         if s == "そう" and (_s(tokens, i + 1) in {"だ", "です"} or i == len(tokens) - 1): found.add("souda")
         if s == "ため":
             found.add("tame_plain")
@@ -4671,8 +4830,13 @@ def detect_grammar_in_sentence(sentence: str):
         if (s in {"て", "で"} and _s(tokens, i + 1) in {"いい", "よい", "良い"}) or s in {"ていい", "でいい"}: found.add("te_ii")
         if s in {"ても", "でも"} and _s(tokens, i + 1) in {"いい", "よい", "良い"}: found.add("temo_ii")
         if s in {"て", "で"} and _s(tokens, i + 1) == "も" and _s(tokens, i + 2) in {"いい", "よい", "良い"}: found.add("temo_ii")
+        if s in {"て", "で"} and _l(tokens, i + 1) in {"居る", "いる"}: found.add("te_iru")
+        if s in {"て", "で"} and _s(tokens, i + 1) == "ください": found.add("te_kudasai")
         if s in {"て", "で"} and _l(tokens, i + 1) in {"見る", "みる"}: found.add("te_miru")
         if s in {"て", "で"} and _s(tokens, i + 1) == "から": found.add("te_kara")
+        if s in {"て", "で"} and _l(tokens, i + 1) in {"上げる", "あげる"}: found.add("te_ageru")
+        if s in {"て", "で"} and _l(tokens, i + 1) in {"呉れる", "くれる"}: found.add("te_kureru")
+        if s in {"て", "で"} and _l(tokens, i + 1) in {"貰う", "もらう"}: found.add("te_morau")
         if s == "っけ": found.add("kke")
         if s == "かな": found.add("kana")
         if s in {"かい", "だい"}: found.add("kai_dai")
@@ -4680,6 +4844,7 @@ def detect_grammar_in_sentence(sentence: str):
         if "させ" in s or l in {"させる", "せる"}: found.add("causative_saseru")
         if s == "なく" and _s(tokens, i + 1) == "て": found.add("nakute")
         if s == "ない" and _s(tokens, i + 1) == "で": found.add("naide")
+        if s == "ない" and _s(tokens, i + 1) == "で" and _s(tokens, i + 2) == "ください": found.add("naide_kudasai")
         if s in {"ず", "ずに"} or (s == "ず" and _s(tokens, i + 1) == "に"): found.add("zu")
         if s in {"て", "で"} and _l(tokens, i + 1) in {"仕舞う", "しまう"}: found.add("te_shimau")
         if s in {"て", "で"} and _l(tokens, i + 1) in {"置く", "おく"}: found.add("te_oku")
@@ -4700,6 +4865,7 @@ def detect_grammar_in_sentence(sentence: str):
             found.add("ato_after")
             if _s(tokens, i + 1) == "で": found.add("ato_de")
         if s == "ながら" and _s(tokens, i + 1) == "も": found.add("nagara_mo")
+        if s == "など": found.add("nado")
         if s == "に":
             if (_s(tokens, i + 1) == "対し" and _s(tokens, i + 2) == "て") or _s(tokens, i + 1) == "対して": found.add("ni_taishite")
             if (_s(tokens, i + 1) == "つい" and _s(tokens, i + 2) == "て") or _s(tokens, i + 1) == "ついて": found.add("ni_tsuite")
@@ -4718,9 +4884,13 @@ def detect_grammar_in_sentence(sentence: str):
             if (_l(tokens, i + 1) in {"為る", "する"} or _s(tokens, i + 1) == "し") and _s(tokens, i + 2) == "て" and _l(tokens, i + 3) in {"居る", "いる"}: found.add("to_shite_iru")
         if (s == "よう" and _s(tokens, i + 1) in {"だ", "です"}) or s in {"みたい", "みたいだ"}: found.add("youda_mitaida")
         if s == "わけ" and _seq(tokens, i + 1, i + 4) == ["で", "は", "ない"]: found.add("wake_dewa_nai")
+        if s == "わけ" and _s(tokens, i + 1) in {"だ", "です"}: found.add("wake_da")
+        if s == "わけ" and _seq(tokens, i + 1, i + 4) == ["に", "は", "いか"]: found.add("wake_niwa_ikanai")
         if s in {"おそれ", "恐れ"} and _s(tokens, i + 1) == "が" and _l(tokens, i + 2) in {"有る", "ある"}: found.add("osore_ga_aru")
+        if s == "可能性" and _s(tokens, i + 1) == "が" and _l(tokens, i + 2) in {"有る", "ある"}: found.add("kanousei_ga_aru")
         if s == "見込み": found.add("mikomi")
         if s == "予定": found.add("yotei")
+        if s == "予定" and _s(tokens, i + 1) in {"だ", "です"}: found.add("yotei_da")
         if s == "中": found.add("chu")
         if s == "ころ": found.add("koro")
         if s == "ごろ": found.add("goro")
@@ -4730,8 +4900,26 @@ def detect_grammar_in_sentence(sentence: str):
             if _s(tokens, i + 1) == "に": found.add("made_ni")
             if "から" in surfaces[:i]: found.add("kara_made")
         if s == "ほど": found.add("hodo")
+        if (s.endswith("ば") or s in {"ば", "れば"}) and "ほど" in surfaces[i + 1:i + 6]: found.add("ba_hodo")
         if s == "以上": found.add("ijo")
         if l == "過ぎる" or s == "すぎる": found.add("sugiru")
+        if s == "ません" and _s(tokens, i + 1) == "か": found.add("masenka")
+        if s == "ましょう" or (s == "ましょう" and _s(tokens, i + 1) == "か"): found.add("mashou")
+        if s == "思う" and _s(tokens, i - 1) == "と": found.add("to_omou")
+        if s == "いう" and _s(tokens, i - 1) == "と": found.add("to_iu")
+        if s == "はず":
+            found.add("hazu")
+            if _s(tokens, i + 1) in {"だ", "です"}: found.add("hazu_da")
+        if s == "一方": found.add("ippou_de")
+        if s in {"たび", "度"} and _s(tokens, i + 1) == "に": found.add("tabi_ni")
+        if s == "つれ" and _s(tokens, i + 1) == "て": found.add("ni_tsurete")
+        if s == "ものの": found.add("mono_no")
+        if s == "違い" and _s(tokens, i - 1) == "に" and _s(tokens, i + 1) == "ない": found.add("ni_chigainai")
+        if s == "し" and "、" in surfaces[i + 1:i + 4] and "し" in surfaces[i + 1:i + 6]: found.add("shi")
+        if s == "や" and "など" in surfaces[i + 1:i + 4]: found.add("ya")
+        if s == "が" and _l(tokens, i + 1) in {"有る", "ある", "居る", "いる"}: found.add("ga_aru_iru")
+        if s == "ばかり" and _s(tokens, i + 1) == "で" and _s(tokens, i + 2) == "なく": found.add("bakari_de_naku")
+        if s == "で" and _s(tokens, i + 1) == "は" and _s(tokens, i + 2) == "ない" and _s(tokens, i + 3) == "か": found.add("dewa_naika")
     found.update(detect_grammar_in_sentence_fallback(sentence))
     return found
 def extract_grammar_details(articles):
@@ -5616,15 +5804,7 @@ def add_grammar_highlights_to_html(html_fragment: str, grammar_points=None) -> s
             span.get_text("", strip=True) or "",
         ]
         normalized_candidates = [normalize_grammar_highlight_text(v) for v in candidates if normalize_grammar_highlight_text(v)]
-        if any(
-            any(
-                is_valid_grammar_variant_match(candidate, idx, idx + len(variant), variant)
-                for idx in range(len(candidate))
-                if candidate.startswith(variant, idx)
-            )
-            for variant in variants
-            for candidate in normalized_candidates
-        ):
+        if any(candidate == variant for variant in variants for candidate in normalized_candidates):
             add_class_to_tag(span, "grammar-word")
 
     for text_node in list(soup.find_all(string=True)):
