@@ -1546,11 +1546,62 @@ def extract_lemma_from_formula(formula: str) -> str:
     return first
 
 
+def normalize_verb_formula(surface: str, lemma: str, formula: str = "") -> str:
+    surface = (surface or "").strip()
+    lemma = (lemma or "").strip()
+    formula = html_lib.unescape((formula or "").strip())
+    if not surface or not lemma:
+        return formula
+    if surface == lemma:
+        return formula
+    if lemma.endswith("る"):
+        stem = lemma[:-1]
+        if surface in {stem + "て", stem + "た", stem + "ない", stem + "ます", stem + "ました"}:
+            return f"{lemma} -> {surface}"
+        if formula:
+            fixed = formula.replace(stem + "って", stem + "て").replace(stem + "った", stem + "た")
+            if fixed != formula:
+                return fixed
+    if lemma.endswith("する"):
+        stem = lemma[:-2] + "し"
+        if surface == stem + "て":
+            return f"{lemma} -> {stem}て"
+        if surface == stem + "た":
+            return f"{lemma} -> {stem}た"
+        if surface == stem + "ます":
+            return f"{lemma} -> {stem} -> {surface}"
+        if surface == stem + "ました":
+            return f"{lemma} -> {stem} -> {surface}"
+        if surface == stem + "ている":
+            return f"{lemma} -> {stem}て -> {surface}"
+        if surface == stem + "ています":
+            return f"{lemma} -> {stem}て -> {surface}"
+        if surface == stem + "ていた":
+            return f"{lemma} -> {stem}て -> {surface}"
+        if surface == stem + "ていました":
+            return f"{lemma} -> {stem}て -> {surface}"
+    if lemma.endswith("す"):
+        stem = lemma[:-1] + "し"
+        if surface == stem + "た":
+            return f"{lemma} -> {surface}"
+        if surface == stem + "ます":
+            return f"{lemma} -> {stem} -> {surface}"
+        if surface == stem + "ました":
+            return f"{lemma} -> {stem} -> {surface}"
+    if lemma.endswith("する"):
+        stem = lemma[:-2] + "し"
+        if surface in {stem + "て", stem + "た", stem + "ない", stem + "ます", stem + "ました"}:
+            return f"{lemma} -> {surface}"
+    if lemma in {"くる", "来る"} and surface in {"きて", "来て", "きた", "来た", "きます", "来ます", "きました", "来ました", "こない", "来ない"}:
+        return f"{lemma} -> {surface}"
+    return formula
+
+
 def resolve_verb_popup_lemma(surface: str, lemma: str, formula: str = "") -> str:
     surface = (surface or "").strip()
     lemma = (lemma or "").strip()
     formula_lemma = extract_lemma_from_formula(formula)
-    candidates = unique_keep_order([formula_lemma, lemma])
+    candidates = unique_keep_order([to_dictionary_form(surface), lemmatize_japanese(surface), formula_lemma, lemma])
     for candidate in candidates:
         if not candidate:
             continue
@@ -1566,10 +1617,26 @@ def build_plain_verb_formation_bg(surface: str, lemma: str, current: str = "", f
     formula = (formula or "").strip()
     if not surface or not lemma:
         return current
-    if current and current not in {"учтива форма", "учтива минала форма", "минала форма", "форма на 〜ている", "учтива форма на 〜ている", "учтива минала форма на 〜ている"}:
+    if current and current not in {
+        "учтива форма",
+        "учтива минала форма",
+        "минала форма",
+        "форма на 〜ている",
+        "учтива форма на 〜ている",
+        "учтива минала форма на 〜ている",
+        "て-форма",
+        "te-form",
+        "te form",
+    }:
         return current
     formula_lemma = extract_lemma_from_formula(formula)
     base_lemma = formula_lemma or lemma
+    if base_lemma.endswith("る") and surface == base_lemma[:-1] + "て":
+        stem = base_lemma[:-1]
+        return f"речникова форма {base_lemma} → махаме る и получаваме {stem} → добавяме て → {surface}"
+    if base_lemma.endswith("る") and surface == base_lemma[:-1] + "た":
+        stem = base_lemma[:-1]
+        return f"речникова форма {base_lemma} → махаме る и получаваме {stem} → добавяме た → {surface}"
     if surface.endswith("ました") and base_lemma != surface:
         stem = surface[:-3]
         return f"речникова форма {base_lemma} → основа {stem} → добавяне на ました за учтиво минало"
@@ -1764,6 +1831,14 @@ def enrich_popup_item(item):
             item.get("lemma", ""),
             item.get("formula_bg", "") or item.get("formula_en", ""),
         )
+        normalized_formula = normalize_verb_formula(
+            surface,
+            item.get("lemma", ""),
+            item.get("formula_bg", "") or item.get("formula_en", ""),
+        )
+        if normalized_formula:
+            item["formula_bg"] = normalized_formula
+            item["formula_en"] = normalized_formula
         item["formation_bg"] = build_plain_verb_formation_bg(
             surface,
             item.get("lemma", ""),
@@ -1935,6 +2010,21 @@ def to_dictionary_form(word: str) -> str:
     if not w:
         return w
 
+    def shi_stem_to_dictionary(stem: str) -> str:
+        stem = (stem or "").strip()
+        if not stem:
+            return stem
+        if not stem.endswith("し"):
+            return stem + "する"
+        root = stem[:-1]
+        if not root:
+            return "する"
+        kanji_count = len(re.findall(r"[一-龯々]", root))
+        kana_count = len(re.findall(r"[ぁ-んァ-ヶー]", root))
+        if kana_count == 0 and kanji_count <= 1:
+            return root + "す"
+        return root + "する"
+
     def ba_base_to_dictionary(form: str) -> str:
         form = (form or "").strip()
         if not form:
@@ -2011,7 +2101,10 @@ def to_dictionary_form(word: str) -> str:
     ]
     for suffix in te_iru_suffixes:
         if w.endswith(suffix) and len(w) > len(suffix):
-            return te_base_to_dictionary(w[:-len(suffix)])
+            stem = w[:-len(suffix)]
+            if stem.endswith("し"):
+                return shi_stem_to_dictionary(stem)
+            return te_base_to_dictionary(stem)
 
     te_oku_suffixes = [
         ("ておきませんでした", "ておく"),
@@ -2060,11 +2153,12 @@ def to_dictionary_form(word: str) -> str:
 
     for suffix in ["していました", "しています", "しました", "します"]:
         if w.endswith(suffix):
-            return w[:-len(suffix)] + "する"
+            stem = w[:-len(suffix)] + "し"
+            return shi_stem_to_dictionary(stem)
     if w.endswith("して") and not w.endswith("まして"):
-        return w[:-2] + "する"
+        return shi_stem_to_dictionary(w[:-2] + "し")
     if w.endswith("した") and not w.endswith("ました"):
-        return w[:-2] + "する"
+        return shi_stem_to_dictionary(w[:-2] + "し")
     for suffix in ["きました", "きます", "きて", "きた", "こない", "こなかった"]:
         if w.endswith(suffix):
             return w[:-len(suffix)] + "くる"
