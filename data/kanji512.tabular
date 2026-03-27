@@ -1,0 +1,503 @@
+百	hundred	сто	Add 1 to 99 to get a hundred.	Добави 1 към 99 за да станат сто.																				
+千	thousand	хиляда	Add one more stroke to ten to make a thousand.	Добави още една черта към десет за хиляда.																				
+万	ten thousand	десет хиляди	A ten thousand yen bill.	Банкнота от десет хиляди йени.																				
+円	yen / circle	йена / кръг	A yen coin in a box.	Монета йена в кутия.																				
+口	mouth	уста	A wide open mouth.	Широко отворена уста.																				
+目	eye	око	An eye turned on its side.	Око обърнато настрани.																				
+日	sun / day	слънце / ден	The sun with a line in the middle.	Слънцето с линия по средата.																				
+月	moon / month	луна / месец	A crescent moon.	Полумесец.																				
+火	fire	огън	A fire burning.	Горящ огън.																				
+水	water	вода	Water splashing.	Пръскаща вода.																				
+木	tree	дърво	A tree.	Дърво.																				
+金	gold / money	злато / пари	There is gold under the roof.	Има злато под покрива.																				
+土	soil / earth	почва / земя	A sprout is growing from the soil.	Кълн израства от почвата.																				
+曜	day of the week	ден от седмицата	The sun shines on a day of the week.	Слънцето свети в ден от седмицата.																				
+本	book / origin	книга / корен	A line at the bottom of a tree indicates its origin.	Линия в основата на дървото сочи корена му.																				
+人	person	човек	A person standing on two legs.	Човек стоящ на два крака.																				
+今	now	сега	Now I am under the roof.	Сега съм под покрива.																				
+寺	temple	храм	The earth at a temple is sacred.	Земята в храма е свещена.																				
+時	time / hour	време / час	The sun and the temple tell the time.	Слънцето и храмът показват времето.																				
+半	half	наполовина	Let's cut the three lines into half.	Нека срежем трите линии наполовина.																				
+刀	sword	меч	A sharp sword.	Остър меч.																				
+分	minute / divide	минута / деля	Divide it with a sword into minutes.	Раздели го с меч на минути.																				
+上	up / above	горе / над	Something is above the line.	Нещо е над линията.																				
+下	down / below	долу / под	Something is below the line.	Нещо е под линията.																				
+中	middle / inside	среда / вътре	A line goes through the middle of a box.	Линия минава през средата на кутия.																				
+外	outside	отвън	It's evening and I'm outside with my cigarette.	Вечер е и съм отвън с цигара.																				
+右	right	дясно	Use your right hand to put food into your mouth.	Използвай дясната ръка за храна в устата.																				
+工	craft	занаят	The shape of a craftsman's tool.	Формата на занаятчийски инструмент.																				
+左	left	ляво	Use your left hand to hold a craft tool.	Използвай лявата ръка за занаятчийски инструмент.																				
+前	before / front	преди / отпред	A person stands in front of a butcher's shop.	Човек стои пред месарница.																				
+後	after / behind	след / отзад	A person walking behind someone else.	Човек ходещ зад някой друг.																				
+午	noon	обед	A noon sign.	Знак за обед.																				
+門	gate	порта	A large gate.	Голяма порта.																				
+間	interval / between	интервал / между	The sun shines through the gate between the doors.	Слънцето свети през портата между вратите.																				
+東	east	изток	The sun is rising behind a tree in the east.	Слънцето изгрява зад дърво на изток.																				
+西	west	запад	A bird is returning to its nest in the west.	Птица се връща в гнездото си на запад.																				
+南	south	юг	It's warm in the south.	Топло е на юг.																				
+北	north	север	Two people sitting back to back because it's cold in the north.	Двама души гръб в гръб защото е студено на север.																				
+田	rice field	оризище	A rice field divided into four sections.	Оризище разделено на четири части.																				
+力	power	сила	A powerful arm.	Силна ръка.																				
+男	man	мъж	A man works in the rice field with his power.	Мъж работи на оризището със своята сила.																				
+女	woman	жена	A woman is kneeling.	Жена е коленичила.																				
+子	child	дете	A child with big head and spread arms.	Дете с голяма глава и разперени ръце.																				
+学	study / learn	уча	A child studies under the roof.	Дете учи под покрива.																				
+生	live / birth	живея / раждане	A sprout is born from the ground.	Кълн се ражда от земята.																				
+先	ahead / previous	напред / предишен	Feet are going ahead.	Краката отиват напред.																				
+何	what	какво	A person carrying what?	Човек носещ какво?																				
+父	father	баща	Father's mustache.	Мустаците на бащата.																				
+母	mother	майка	A mother's breasts.	Гърдите на майката.																				
+年	year	година	We harvest rice once a year.	Жънем ориз веднъж годишно.																				
+去	past / leave	минало / напускам	I left the earth in the past.	Напуснах земята в миналото.																				
+毎	every	всеки	A mother wears a hat every day.	Майка носи шапка всеки ден.																				
+王	king	крал	The king stands on the earth.	Кралят стои върху земята.																				
+国	country	държава	The king is inside the borders of his country.	Кралят е вътре в границите на държавата си.																				
+見	see / look	виждам / гледам	A big eye on legs is looking at something.	Голямо око на крака гледа към нещо.																				
+行	go	отивам	The shape of a crossroads.	Формата на кръстопът.																				
+米	rice	ориз	Grains of rice are scattered.	Зърна ориз са разпръснати.																				
+来	come	идвам	Someone is coming to a tree to pick fruit.	Някой идва при дървото да бере плод.																				
+良	good	добър	A person with a halo is a good person.	Човек с ореол е добър човек.																				
+食	eat	ям	People eat good food under a roof.	Хората ядат добра храна под покрив.																				
+飲	drink	пия	A person is drinking something from a bottle.	Човек пие нещо от бутилка.																				
+会	meet	срещам	Two people meet under a roof.	Двама души се срещат под покрив.																				
+耳	ear	ухо	The shape of an ear.	Формата на ухо.																				
+聞	hear / listen	чувам	Put your ear to the gate to hear better.	Сложи ухо до портата за да чуеш по-добре.																				
+言	say	казвам	Words coming out of a mouth to say something.	Думи излизащи от уста за да кажат нещо.																				
+話	speak / talk	говоря	Use words to speak with your tongue.	Използвай думи за да говориш с езика си.																				
+立	stand	стоя прав	A person standing on the ground.	Човек стоящ прав на земята.																				
+待	wait	чакам	A person waiting at a temple.	Човек чакащ в храм.																				
+周	circuit	обиколка	Go around the rice field.	Направи обиколка около оризището.																				
+週	week	седмица	It takes a week to go around on the road.	Отнема седмица да направиш обиколка по пътя.																				
+大	big	голям	A person spreading arms and legs to look big.	Човек разперил ръце и крака за да изглежда голям.																				
+小	small	малък	A small person with their arms down.	Малък човек със спуснати ръце.																				
+高	high / expensive	висок / скъп	A tall building with a high roof.	Висока сграда с висок покрив.																				
+安	cheap / peaceful	евтин / спокоен	A woman is peaceful under a roof.	Жена е в спокойствие под покрив.																				
+新	new	нов	Cut a tree with an axe to make new things.	Отсечи дърво с брадва за да направиш нови неща.																				
+古	old	стар	A story passed through ten mouths is old.	История минала през десет уста е стара.																				
+元	origin / former	начало / бивш	Two people are the origin of a family.	Двама души са началото на семейство.																				
+気	spirit / air	дух / въздух	Steam rising from cooking rice is like spirit.	Парата от готвещия се ориз е като дух.																				
+多	many	много	There are many moons in the sky tonight.	Има много луни в небето тази вечер.																				
+少	few / a little	малко	A small thing with one part missing is few.	Малко нещо с липсваща част е малко.																				
+広	spacious / wide	просторен / широк	A spacious area under a roof.	Просторна площ под покрив.																				
+早	early / fast	рано	The sun rises early over the field.	Слънцето изгрява рано над полето.																				
+長	long / leader	дълъг / лидер	A person with long hair.	Човек с дълга коса.																				
+明	bright / light	светъл	The sun and the moon are both bright.	Слънцето и луната са едновременно светли.																				
+好	like / favorite	харесвам	A woman loves her child because she likes him.	Жена обича детето си защото го харесва.																				
+友	friend	приятел	Two hands joined together as friends.	Две ръце събрани като приятели.																				
+入	enter	влизам	A person entering a house.	Човек влизащ в къща.																				
+出	exit / go out	излизам	A mountain on top of another looks like an exit.	Планина върху планина изглежда като изход.																				
+市	city / market	град / пазар	People gather under a roof in the city.	Хората се събират под покрив в града.																				
+町	town	градче	A town with rice fields and streets.	Градче с оризища и улици.																				
+村	village	село	A village has trees and a temple.	Село с дървета и храм.																				
+雨	rain	дъжд	Rain falling from the clouds.	Дъжд падащ от облаците.																				
+電	electricity	електричество	Electricity comes from rain and lightning.	Електричеството идва от дъжд и светкавица.																				
+車	car / wheel	кола / колело	The shape of a car seen from above.	Формата на кола гледана отгоре.																				
+馬	horse	кон	The shape of a horse with its mane and legs.	Формата на кон с грива и крака.																				
+駅	station	гара	A horse at the station.	Кон на гарата.																				
+社	company / shrine	компания / храм	People gather on the ground for a shrine.	Хора се събират на земята пред храм.																				
+校	school	училище	Children gather near a tree at school.	Деца се събират до дърво в училище.																				
+店	shop	магазин	A shop is a place under a roof where you see things.	Магазинът е място под покрив където виждаш стоки.																				
+銀	silver	сребро	Silver is a good metal.	Среброто е добър метал.																				
+病	sick / illness	болен / болест	A person lying in bed because they are sick.	Човек лежащ в леглото  защото е болен.																				
+院	institution	институция	A big building for a medical institution.	Голяма сграда за медицинска институция.																				
+休	rest	почивка	A person resting against a tree.	Човек почиващ подпрян на дърво.																				
+走	run	бягам	A person running on the ground.	Човек бягащ по земята.																				
+起	get up / wake up	ставам / събуждам се	Run and get up!	Бягай и ставай!																				
+貝	shell	мида	The shape of a shell.	Формата на мида.																				
+買	buy	купувам	Use shells to buy things at the market.	Използвай миди за да купуваш на пазара.																				
+売	sell	продавам	A person selling things on a stand.	Човек продаващ стока на сергия.																				
+読	read	чета	Use words to read a book.	Използвай думи за да четеш книга.																				
+書	write	пиша	A hand holding a brush to write.	Ръка държаща четка  за да пише.																				
+帰	return	връщам се	I return home to see my family.	Връщам се у дома за да видя семейството си.																				
+勉	endeavor / study	старание / уча	Endeavor with your power to escape a trap.	Старай се със своята сила за да излезеш от капан.																				
+弓	bow	лък	The shape of a bow.	Формата на лък.																				
+虫	insect	насекомо	An insect with a big head.	Насекомо с голяма глава.																				
+強	strong	силен	An insect with a bow is strong.	Насекомо с лък е силно.																				
+持	hold	държа	Use your hand at the temple to hold something.	Използвай ръката си в храма за да държиш нещо.																				
+名	name	име	It's evening	say your name with your mouth. Вечер е  кажи името си с уста.																				
+語	language / word	език / дума	Use words and your mouth for language.	Използвай думи и устата си за език.																				
+春	spring	пролет	The sun shines and plants grow in spring.	Слънцето свети и растенията растат през пролетта.																				
+夏	summer	лято	A person wearing a hat in the summer.	Човек с шапка през лятото.																				
+秋	autumn	есен	Grain becomes red like fire in autumn.	Зърното става червено като огън през есента.																				
+冬	winter	зима	Two drops of ice under a roof in winter.	Две капки лед под покрива през зимата.																				
+朝	morning	сутрин	The sun rises behind the grass in the morning.	Слънцето изгрява зад тревата сутринта.																				
+昼	noon / daytime	обед / ден	The sun is high in the sky during the daytime.	Слънцето е високо в небето през деня.																				
+夕	evening	вечер	A crescent moon in the evening.	Полумесец вечерта.																				
+方	direction / person	посока / човек	A flag showing the direction.	Флаг показващ посоката.																				
+晩	evening / night	вечер / нощ	The sun goes down in the evening.	Слънцето залязва вечерта.																				
+夜	night	нощ	A person under the moon at night.	Човек под луната през нощта.																				
+心	heart / mind	сърце / ум	The shape of a heart.	Формата на сърце.																				
+手	hand	ръка	The shape of a hand.	Формата на ръка.																				
+足	leg / foot	крак / стъпало	A leg and a foot.	Крак и стъпало.																				
+体	body	тяло	A person leaning against a tree is a body.	Човек подпрян на дърво  е тяло.																				
+首	neck / head	врат / глава	A neck with hair on top.	Врат с коса отгоре.																				
+道	road / way	път	Moving along the road with your head up.	Движение по пътя с вдигната глава.																				
+山	mountain	планина	Three peaks of a mountain.	Три върха на планина.																				
+川	river	река	A flowing river.	Течаща река.																				
+林	grove	горичка	Two trees make a grove.	Две дървета правят горичка.																				
+森	forest	гора	Three trees make a forest.	Три дървета правят гора.																				
+空	sky / empty	небе / празно	Empty space under the roof.	Празно пространство под покрива.																				
+海	sea / ocean	море / океан	Every drop of water goes to the sea.	Всяка капка вода отива в морето.																				
+化	change	промяна	A person changes and sits down.	Човек се променя и сяда.																				
+花	flower	цвете	Plants that change into flowers.	Растения които се превръщат в цветя.																				
+天	heaven / sky	небеса / небе	A big space above us is the sky.	Голямо пространство над нас е небето.																				
+赤	red	червено	Soil on top of a fire looks red.	Пръст върху огън изглежда червена.																				
+青	blue / green	синьо / зелено	Young plants growing by water are blue/green.	Млади растения край водата са синьо-зелени.																				
+白	white	бяло	A drop of white light.	Капка бяла светлина.																				
+黒	black	черно	Smoke from a fire makes the chimney black.	Пушекът от огъня прави комина черен.																				
+色	color	цвят	A person on top of another – what color is their skin?	Човек върху друг – какъв цвят е кожата им?																				
+魚	fish	риба	A fish with scales and a tail.	Риба с люспи и опашка.																				
+犬	dog	куче	A dog is a big animal with a mark.	Кучето е голямо животно с белег.																				
+料	material / fee	материал / такса	Measure rice with a ladle for materials.	Мери ориз с черпак за материали.																				
+理	reason / logic	разум / логика	A king polishes a jewel to see the logic.	Крал шлифова бижу за да види логиката (нишките).																				
+反	oppose / anti	противопоставям се	A hand pushing back against a cliff is to oppose.	Ръка натискаща обратно към скала  е съпротива.																				
+飯	meal / rice	ястие / ориз	Food that you don't oppose is a meal.	Храна на която не се противиш  е ястие.																				
+牛	cow	крава	The shape of a cow's head with horns.	Формата на кравешка глава с рога.																				
+豚	pig	прасе	An animal that lives in a pen is a pig.	Животно което живее в кочина  е прасе.																				
+鳥	bird	птица	A bird with a long tail and a crest.	Птица с дълга опашка и гребен.																				
+肉	meat	месо	Slices of meat inside a person's body.	Резени месо вътре в тялото на човек.																				
+茶	tea	чай	Plants from the mountain make tea.	Растения от планината правят чай.																				
+予	advance / I	предварително / аз	I make a plan in advance.	Правя план предварително.																				
+野	field	поле	A village in the field.	Село в полето.																				
+菜	vegetable	зеленчук	Pick plants from a tree to get vegetables.	Бери растения от дърво за зеленчуци.																				
+切	cut	режа	Use a knife to cut seven pieces.	Използвай нож за да отрежеш седем парчета.																				
+作	make / produce	правя	A person makes something with a tool.	Човек прави нещо с инструмент.																				
+未	not yet	още не	A tree with a small branch on top is not yet grown.	Дърво с малък клон отгоре още не е пораснало.																				
+味	taste	вкус	Use your mouth to check the taste of a fruit.	Използвай устата си за да провериш вкуса на плода.																				
+音	sound	звук	A sound coming from the mouth.	Звук излизащ от устата.																				
+楽	music / comfort	музика / лекота	A drum on a stand – playing it is music and fun.	Барабан на стойка – свиренето е музика и забавление.																				
+歌	song	песен	Two people are breathing out a song.	Двама души издишват песен.																				
+自	self	себе си	Point to your nose to mean self.	Посочи носа си за да кажеш "себе си".																				
+転	revolve / turn	въртя се / завивам	A car with wheels that revolve.	Кола с колела които се въртят.																				
+乗	ride	качвам се / яздя	A person riding on a wooden horse.	Човек яздещ дървен кон.																				
+写	copy / photograph	копирам / снимам	Copy something under a cover.	Копирай нещо под капак.																				
+真	true / reality	истина / реалност	This is the true way to see.	Това е истинският начин да виждаш.																				
+台	stand / platform	стойка / платформа	Put a box on a stand.	Сложи кутия на стойка.																				
+央	center	център	A person in the center of a frame.	Човек в центъра на рамка.																				
+映	project / reflect	прожектирам / отразявам	The sun projects light on the center.	Слънцето прожектира светлина в центъра.																				
+画	picture / stroke	картина / черта	A picture in a frame.	Картина в рамка.																				
+羊	sheep	овца	The shape of a sheep's head and horns.	Формата на овча глава и рога.																				
+洋	ocean / Western	океан / западен	Western things come across water like sheep.	Западните неща идват по водата като овце.																				
+服	clothes	дрехи	A person wearing clothes.	Човек носещ дрехи.																				
+着	wear / arrive	нося / пристигам	Put sheep wool on your body to wear it.	Сложи овча вълна на тялото си за да я носиш.																				
+家	house / family	къща / семейство	A pig lives under the roof of a house.	Прасе живее под покрива на къща.																				
+宿	inn / lodging	хан / подслон	A person stays under a roof with a hundred others.	Човек отсяда под покрив със стотици други.																				
+運	carry / luck	нося / късмет	Luck is a car moving on the road.	Късметът е кола движеща се по пътя.																				
+動	move	движа се	Use heavy power to move something.	Използвай тежка сила за да преместиш нещо.																				
+止	stop	стоп / спирам	A footprint on the ground says stop.	Отпечатък от крак на земята казва "стоп".																				
+歩	walk	вървя	Stop and then move few steps to walk.	Спри и после направи няколко стъпки за да вървиш.																				
+使	use	използвам	A person acting as an official uses a tool.	Човек действащ като служител  използва инструмент.																				
+送	send	изпращам	Use your hands to send someone off on the road.	Използвай ръцете си за да изпратиш някого по пътя.																				
+洗	wash	мия	Use water to wash before you go.	Използвай вода да се измиеш преди да тръгнеш.																				
+急	hurry	бързам	When you are in a hurry your heart beats fast.	Когато бързаш сърцето ти бие бързо.																				
+開	open	отварям	Two hands open the gate.	Две ръце отварят портата.																				
+閉	close	затварям	Use a bar to close the gate.	Използвай лост за да затвориш портата.																				
+押	push	натискам	Use your hand to push a shell.	Използвай ръката си за да натиснеш черупка.																				
+引	pull	дърпам	A hand pulling a bow.	Ръка която опъва (дърпа) лък.																				
+思	think	мисля	My heart is in the rice field while I think.	Сърцето ми е в оризището докато мисля.																				
+知	know	зная	Use an arrow to point at what your mouth knows.	Стрела сочи това което устата знае.																				
+考	consider	обмислям	An old person leaning on a cane considering life.	Стар човек подпрян на бастун обмисля живота.																				
+死	die	умирам	A person is buried in the ground when they die.	Човек е погребан в земята когато умре.																				
+医	doctor	лекар	Keeping an arrow in a box for the doctor.	Пазя стрела в кутия за лекаря.																				
+始	begin	започвам	A woman begins her day with her mouth.	Жена започва деня си със своята уста.																				
+終	end	край	A thread and winter signify the end.	Нишка и зима символизират края.																				
+石	stone	камък	A stone under a cliff.	Камък под скала.																				
+研	polish	шлифовам	Polish a stone to make it smooth for study.	Шлифовай камък за да е гладък за учене.																				
+究	investigate	изследвам	Investigating a hole in the ground.	Изследване на дупка в земята.																				
+留	stay	оставам	A rice field where you stay.	Оризище където оставаш.																				
+有	exist / have	имам	A hand has meat.	Ръка която държи (има) месо.																				
+産	produce	произвеждам	A cliff where plants grow and produce fruit.	Скала където растения растат и дават плод.																				
+業	business	бизнес	A stand for musical instruments in industry.	Стойка за музикални инструменти в индустрията.																				
+薬	medicine	лекарство	Plants that make you feel happy are medicine.	Растения които те карат да се чувстваш щастлив са лекарство.																				
+働	work	работя	A person moving is working.	Човек който се движи работи.																				
+員	member	член	A person with a shell is a member.	Човек с мида (пари) е член (на организация).																				
+士	warrior	воин	A person standing on the ground is a warrior.	Човек стоящ на земята е воин.																				
+仕	serve	служа	A person who serves a warrior.	Човек който служи на воин.																				
+事	thing	нещо	A hand holding a tool to do a thing.	Ръка държаща инструмент за да свърши нещо.																				
+図	drawing	чертеж	A drawing in a frame.	Чертеж в рамка.																				
+官	official	чиновник	A roof where an official works.	Покрив под който работи чиновник.																				
+館	public building	обществена сграда	Food in a government building makes a public building.	Храна в държавна сграда прави обществена сграда.																				
+昔	old times	древни времена	In old times the sun was above the flood.	В древни времена слънцето е било над потопа.																				
+借	borrow	заемам	A person borrows something from old times.	Човек заема нещо от старите времена.																				
+代	substitute	заменям	A person acts as a substitute.	Човек действа като заместник.																				
+貸	lend	давам назаем	Lending money to a substitute.	Даване на пари назаем на заместник.																				
+地	ground	земя	Soil on the land.	Пръст върху земята.																				
+世	world	свят	Three people represent a generation/world.	Трима души представят поколение/свят.																				
+界	boundary	граница	A rice field at the boundary of the world.	Оризище на границата на света.																				
+度	degree	степен	Measuring things under a roof with a hand.	Измерване на неща под покрив с ръка.																				
+回	times	пъти	Something revolving inside a box.	Нещо въртящо се вътре в кутия.																				
+用	use	ползвам	The shape of a tool to be used.	Формата на инструмент за ползване.																				
+民	people	народ	The people of a nation.	Хората на една нация.																				
+注	pour	наливам	Water flowing like a master pours.	Вода течаща както господарят налива.																				
+意	meaning	значение	A sound from the heart has meaning.	Звук от сърцето има значение.																				
+頭	head	глава	A bean on a page is a head.	Зърно боб върху страница е глава.																				
+顔	face	лице	A face has colorful features.	Лицето има цветни черти.																				
+声	voice	глас	A warrior uses his voice.	Воинът използва гласа си.																				
+特	special	специален	A special cow at the temple.	Специална крава в храма.																				
+別	separate	разделям	Separate with a knife from a mouth.	Разделяне с нож от уста.																				
+竹	bamboo	бамбук	Two pieces of bamboo.	Две парчета бамбук.																				
+合	fit	пасвам	Put a lid on a mouth to make it fit.	Сложи капак на уста за да пасне.																				
+答	answer	отговор	Bamboo slips used to write an answer.	Бамбукови ленти използвани за писане на отговор.																				
+正	correct	правилен	Stop at the line to be correct.	Спри на линията за да бъдеш точен.																				
+同	same	същият	People under one roof say the same thing.	Хора под един покрив казват същото.																				
+計	measure	измервам	Use words to plan for ten things.	Използвай думи за да планираш десет неща.																				
+京	capital	столица	A high building in the capital.	Висока сграда в столицата.																				
+集	gather	събирам	Birds gather on a tree.	Птици се събират на дърво.																				
+不	non-	не-	A bird flying to the sky - negative!	Птица летяща към небето - отрицание!																				
+光	light	светлина	A person carrying a torch that emits light.	Човек носещ факел който излъчва светлина.																				
+当	hit	удрям	Someone is hit on the head with a small object.	Някой е ударен по главата с малък предмет.																				
+解	untie / solve	решавам	Use a knife to untie a cow's horn.	Използвай нож за да отвържеш рога на крава.																				
+願	request	молба	A person bows their head to make a wish.	Човек свежда глава за да си пожелае нещо.																				
+助	help	помагам	Use your power to assist with a tool.	Използвай силата си за да помогнеш с инструмент.																				
+指	finger	пръст	Use your hand to point at delicious food.	Използвай ръката си за да посочиш вкусна храна.																				
+亡	deceased	починал	A person hiding under a cover is deceased.	Човек скрит под покривало е починал.																				
+吸	suck / inhale	вдишвам	Use your mouth to inhale air.	Използвай устата си за да вдишаш въздух.																				
+呼	call	викам	Use your mouth to call out.	Използвай устата си за да извикаш.																				
+波	wave	вълна	Water that looks like skin makes waves.	Вода която изглежда като кожа прави вълни.																				
+娘	daughter	дъщеря	A woman who is still good is a daughter.	Жена която все още е "добра" е дъщеря.																				
+泳	swim	плувам	A person moving in water to swim.	Човек движещ се във вода за да плува.																				
+法	law	закон	Water goes where the law dictates.	Водата отива там където законът диктува.																				
+点	point	точка	Fortune telling over fire to get a score.	Гадаене над огън за получаване на точки/резултат.																				
+汽	steam	пара	Water and spirit make steam.	Вода и дух (въздух) правят пара.																				
+灯	lamp	лампа	A fire on a stand is a lamp.	Огън на стойка е лампа.																				
+焼	bake	пека	Use fire to bake something on the ground.	Използвай огън за да изпечеш нещо на земята.																				
+照	shine	светя	The sun and fire shine on the mouth.	Слънцето и огънят светят над устата.																				
+熱	hot	горещ	Something hot like fire under a plant.	Нещо горещо като огън под растение.																				
+冷	cold	студен	Ice makes a command to be cold.	Ледът издава заповед да е студено.																				
+温	warm	топъл	Water and sun make it warm.	Вода и слънце го правят топло.																				
+院	institution	институция	A big building for an institution.	Голяма сграда за институция.																				
+物	thing	нещо (предмет)	A thing made of a cow and a tool.	Нещо съставено от крава и инструмент.																				
+産	produce	произвеждам	Birth/production on a cliff.	Раждане/производство на скала.																				
+船	ship	кораб	A ship that carries many people.	Кораб който превозва много хора.																				
+艦	warship	военен кораб	A huge ship for the government.	Огромен кораб за правителството.																				
+草	grass	трева	Early growing plants are grass.	Рано растящите растения са трева.																				
+茶	tea	чай	Plants from the mountain make tea.	Растения от планината правят чай.																				
+荷	luggage	багаж	Carrying plants on your shoulder is luggage.	Носенето на растения на рамо е багаж.																				
+菜	vegetable	зеленчук	Picking plants from a tree.	Бране на растения от дърво.																				
+華	splendid	великолепен	A splendid plant like a flower.	Великолепно растение като цвете.																				
+葉	leaf	листо	Plants with many parts on a tree.	Растения с много части на дърво.																				
+落	fall	падам	Water and grass fall down.	Вода и трева падат надолу.																				
+幕	curtain	завеса	A curtain used in the grass at a camp.	Завеса използвана сред тревата в лагер.																				
+暮	live	преживявам	Living under the sun and grass.	Живея под слънцето и тревата.																				
+夢	dream	сън	Seeing things under the grass at night.	Виждам неща под тревата през нощта (сънувам).																				
+忙	busy	зает	My heart is lost because I am busy.	Сърцето ми е изгубено защото съм зает.																				
+忘	forget	забравям	When the heart is lost you forget.	Когато сърцето е изгубено забравяш.																				
+情	emotion	емоция	A heart that is blue has emotions.	Сърце което е "синьо" има емоции.																				
+感	feel	чувствам	A heart reacting to a spear feels something.	Сърце реагиращо на копие чувства нещо.																				
+情	condition	състояние	The state of one's heart.	Състоянието на сърцето.																				
+恋	romance	романтика	A heart that is red is in love.	Червено сърце е влюбено.																				
+愛	love	любов	Putting your heart into actions is love.	Да вложиш сърцето си в действия е любов.																				
+信	trust	вярвам	A person and their words equal trust.	Човек и думите му са равни на доверие.																				
+成	become	ставам (превръщам се)	A spear that becomes complete.	Копие което става завършено.																				
+誠	sincerity	искреност	Words that become reality show sincerity.	Думи които се превръщат в реалност  показват искреност.																				
+戦	war / fight	война	Using a weapon and a spear in a war.	Използване на оръжие и копие във война.																				
+折	fold / break	чупя / сгъвам	Use your hand and an axe to break or fold.	Използвай ръка и брадва за да счупиш или сгънеш.																				
+打	hit / strike	удрям	Use your hand and a nail to hit.	Използвай ръка и пирон (инструмент) за да удариш.																				
+投	throw	хвърлям	Use your hand and a weapon to throw.	Използвай ръката си и оръжие за да хвърлиш.																				
+抜	extract	изваждам	Use your hand to extract (pull out) a friend.	Използвай ръката си за да измъкнеш приятел.																				
+抱	hug / embrace	прегръщам	Use your hand to wrap around and hug.	Използвай ръката си за да обгърнеш и прегърнеш.																				
+払	pay	плащам	Use your hand to pay or brush away.	Използвай ръка за да платиш или изчеткаш.																				
+選	choose	избирам	Someone moving on the road to choose.	Някой движещ се по пътя  за да избере.																				
+遺	leave behind	оставям след себе си	Money (shell) left behind on the road.	Пари (мида) оставени след себе си на пътя.																				
+遣	dispatch	изпращам (на мисия)	Sending someone on the road to do a task.	Изпращане на някого по пътя за задача.																				
+置	put / place	слагам / поставям	Look and go straight to place it.	Погледни и върви направо за да го поставиш.																				
+署	government office	служба / офис	A place where you look at the sun (officials).	Място където се следи за реда (слънцето/властта).																				
+諸	various	различни / многобройни	Words from various people.	Думи от най-различни хора.																				
+罪	crime / sin	престъпление / грях	A net catches the wrong doing – a crime.	Мрежа улавя грешното действие – престъпление.																				
+罰	punishment	наказание	A net	words and a knife for punishment. Мрежа  думи и нож за наказание.																				
+蔵	storehouse	склад	A place with grass and a spear to store things.	Място с трева и копие за пазене на вещи.																				
+臓	internal organ	вътрешен орган	A part of the body inside the storehouse.	Част от тялото вътре в "склада" (корема).																				
+量	quantity	количество	Measuring the sun over a village for quantity.	Измерване на слънцето над село за количество.																				
+度	degree / times	степен / пъти	Measuring things under a roof with a hand.	Измерване на неща под покрив с ръка.																				
+席	seat	място (за сядане)	There are twenty seats under the roof.	Има двадесет места под покрива.																				
+欠	lack / yawn	липса / прозявка	A person opening their mouth to yawn.	Човек отварящ уста  за да се прозее.																				
+次	next	следващ	Ice and a yawn – the next person is waiting.	Лед и прозявка – следващият човек чака.																				
+結	tie / conclude	връзвам / завършвам	Tie a thread to a lucky charm.	Връзвам конец към талисман за късмет.																				
+婚	marriage	брак	A woman enters a family at dusk for marriage.	Жена влиза в семейство по здрач за брак.																				
+辞	words / resign	думи / оставка	Use words to manage a resignation.	Използвай думи за да подадеш оставка.																				
+式	ceremony	церемония	A ceremony follows the rules of a spear.	Церемонията следва правилата на ритуала.																				
+和	peace / Japanese	мир / японски	Rice in the mouth brings peace.	Ориз в устата носи мир.																				
+活	active / life	активен / живот	Water and a tongue make you active.	Вода и език те правят активен.																				
+昨	past / yesterday	минал / вчера	The sun of the past is yesterday.	Слънцето от миналото е вчера.																				
+暑	hot (weather)	горещо (време)	The sun is above the person – it's hot.	Слънцето е над човека – горещо е.																				
+寒	cold (weather)	студено (време)	A person under a roof with ice is cold.	Човек под покрив с лед – студено е.																				
+暗	dark	тъмно	The sun is hidden by a sound – it's dark.	Слънцето е скрито от звук – тъмно е.																				
+静	quiet	тих	Blue and a struggle – it's finally quiet.	Синьо и борба – накрая е тихо.																				
+説	explain	обяснявам	Use words to make a person happy.	Използвай думи за да зарадваш (обясниш на) някого.																				
+試	test / try	пробвам / изпит	Use words in a ceremony as a test.	Използвай думи в ритуал като изпит.																				
+験	examine	изпитвам / преглеждам	Testing a horse for its strength.	Изпитване на кон за неговата сила.																				
+面	face / surface	лице / повърхност	A face with a mask.	Лице с маска.																				
+接	connect	свързвам	Use your hand to connect a lady (guest).	Използвай ръка за да се свържеш с дама (гост).																				
+受	receive	получавам	A hand receiving a boat from another hand.	Ръка получаваща лодка от друга ръка.																				
+授	instruct	преподавам	Use your hand to give/receive knowledge.	Използвай ръка за да предадеш знания.																				
+実	fruit / reality	плод / реалност	A roof with money inside is reality.	Покрив с пари вътре е реалност.																				
+経	passage / manage	преминавам / управлявам	A thread passing through the ground.	Конец преминаващ през земята.																				
+済	settle / finish	приключвам / уреждам	Water and crossing over – it's settled.	Вода и пресичане – всичко е уредено.																				
+役	duty / role	роля / служба	A person with a weapon doing their duty.	Човек с оръжие изпълняващ дълга си.																				
+争	struggle	борба	Two hands pulling a tool in a struggle.	Две ръце дърпащи инструмент в борба.																				
+対	oppose / versus	срещу / против	A person holding a candle to oppose the dark.	Човек с една свещ срещу тъмнината.																				
+確	certain	сигурен	A stone and a bird on a roof – it's certain.	Камък и птица на покрива – сигурно е.																				
+認	recognize	признавам	Words that hit the heart are recognized.	Думи които докосват сърцето  се признават.																				
+飛	fly	летя	A bird spreading its wings to fly.	Птица разперваща крила  за да лети.																				
+機	machine	машина	A wooden machine.	Дървена машина.																				
+失	lose	губя	A person dropping something from their hand.	Човек изпускащ нещо от ръката си.																				
+鉄	iron	желязо	Gold that is lost is just iron.	Злато което е изгубено  е просто желязо.																				
+速	fast	бърз	Moving on the road with a bundle is fast.	Движение по пътя с товар е бързо.																				
+遅	late / slow	бавен / късно	A sheep on the road is slow.	Овца на пътя е бавна.																				
+駐	park	паркирам	A horse staying at a master's place.	Кон стоящ при господаря (паркиран).																				
+泊	stay overnight	прещувам	Water and white – a place to stay.	Вода и бяло – място за прещуване.																				
+座	sit	седя	Two people sitting on the ground under a roof.	Двама души седящи на земята под покрив.																				
+島	island	остров	A bird on a mountain in the sea is an island.	Птица върху планина в морето е остров.																				
+陸	land / shore	суша / бряг	A hill with ground and a tent.	Хълм със земя и шатра.																				
+港	port	пристанище	Water where people gather is a port.	Вода където хората се събират  е пристанище.																				
+橋	bridge	мост	A wooden structure that is high.	Дървена структура която е висока (мост).																				
+交	intersect	пресичам се	A person crossing their legs to intersect.	Човек кръстосващ крака  за да се пресекат.																				
+通	pass / commute	минавам / пътувам	A person moving through a tunnel.	Човек преминаващ през тунел.																				
+号	number / sign	номер / сигнал	A mouth making a loud signal.	Уста издаваща силен сигнал (номер).																				
+平	flat / peace	равен / мир	A flat surface with two levels.	Равна повърхност с две нива.																				
+政	politics	политика	Correct actions lead to good politics.	Правилните действия водят до добра политика.																				
+治	govern / cure	управлявам / лекувам	Using water to manage a platform is to govern.	Използване на вода за управление на платформа е управление.																				
+律	law / rhythm	закон / ритъм	A person walking and writing the laws.	Човек ходещ и записващ законите.																				
+際	occasion / border	граничен / повод	A hill at the edge of a ceremony is a border.	Хълм на ръба на церемония е граница.																				
+関	barrier / relation	връзка / бариера	A gate with a bar is a barrier.	Порта с лост е бариера.																				
+係	person in charge	отговорник	A person connected to a task is in charge.	Човек свързан със задача  е отговорник.																				
+義	justice / honor	справедливост	A sheep and I standing for justice.	Овца и "аз" застъпващи се за справедливост.																				
+議	council / consult	съвет / обсъждам	Words spoken about justice in a council.	Думи казани за справедливост в съвет.																				
+党	party / faction	партия	People under a roof form a political party.	Хора под покрив формират политическа партия.																				
+遊	play	играя	A child moving on the road to play.	Дете движещо се по пътя  за да играе.																				
+疲	tired	уморен	Being in a hospital bed makes your skin tired.	Да си в болнично легло прави кожата (телото) уморена.																				
+暖	warm (weather)	топло (време)	The sun and a person under a cover make it warm.	Слънцето и човек под завивка правят топло.																				
+涼	cool	хладно	Water and a high building make it cool.	Вода и висока сграда правят хладно.																				
+公	public	обществен	Sharing something makes it public.	Споделянето на нещо го прави обществено.																				
+園	garden / park	градина / парк	Plants inside a fence make a garden.	Растения вътре в ограда правят градина.																				
+込	crowded / include	включвам / влизам	Moving into a place that is crowded.	Влизане в място което е претъпкано.																				
+連	lead / connect	свързвам / водя	A car moving on the road connects things.	Кола движеща се по пътя  свързва нещата.																				
+窓	window	прозорец	Looking at the heart through a hole in the window.	Гледане на сърцето през дупка в прозореца.																				
+側	side	страна / край	A person standing on the side.	Човек стоящ отстрани.																				
+景	scene / view	гледка	The sun over a high building is a scene.	Слънцето над висока сграда е гледка.																				
+記	write down / record	записвам	Use words to record oneself.	Използвай думи за да запишеш себе си.																				
+形	shape / form	форма	A frame and three lines make a shape.	Рамка и три линии правят форма.																				
+吉	good luck	късмет	A warrior speaking brings good luck.	Воин който говори  носи късмет.																				
+共	together	заедно	Two people holding something together.	Двама души държащи нещо заедно.																				
+供	companion / offer	спътник / предлагам	A person and others act as companions.	Човек и други действат като спътници.																				
+両	both	и двамата / двете	Two things hanging from a bar – both.	Две неща висящи на лост – и двете.																				
+若	young	млад	Picking plants with your right hand while young.	Бране на растения с дясна ръка докато си млад.																				
+老	old	стар	An old person leaning on a cane.	Стар човек подпрян на бастун.																				
+息	breath / son	дъх / син	My heart and my nose working together – breath.	Сърцето и носът ми работят заедно – дъх.																				
+奥	wife / inner	съпруга / вътрешност	Someone inside a house is the wife.	Някой вътре в къщата е съпругата.																				
+将	commander / future	командир / бъдеще	A leader with meat on a table.	Лидер с месо на масата.																				
+祖	ancestor	предок	A spiritual person who started the family.	Духовен човек поставил началото на семейството.																				
+育	raise / grow	отглеждам	A child growing up.	Дете което пораства.																				
+性	nature / gender	природа / пол	The heart you are born with is your nature.	Сърцето с което си роден  е твоята природа.																				
+招	invite	каня	Use your hand and mouth to invite someone.	Използвай ръка и уста за да поканиш някого.																				
+取	take	вземам	Use your hand to grab an ear – take it.	Използвай ръката си за да хванеш ухо – вземи го.																				
+最	most / best	най-много / най-	Taking the sun – this is the most or best.	Да вземеш слънцето – това е най-доброто/най-многото.																				
+初	first	първи	Using a knife on clothes for the first time.	Използване на нож върху дрехи за първи път.																				
+番	number / turn	номер / ред	Rice in a field is counted by number.	Оризът в полето се брои по номер.																				
+歳	age / years	възраст / години	A person with a spear – years of age.	Човек с копие – годините на възрастта му.																				
+枚	sheet / counter	лист / брояч	A tree used to make sheets of paper.	Дърво използвано за правене на листове хартия.																				
+冊	book / counter	книга / брояч	The shape of books on a shelf.	Формата на книги върху рафт.																				
+億	hundred million	сто милиона	A person with an idea of a huge number.	Човек с идея за огромно число.																				
+点	point / score	точка / резултат	Fortune telling over fire to get a score.	Гадаене над огън за получаване на резултат.																				
+階	floor / stairs	етаж / стълби	A hill with many steps for people.	Хълм с много стъпала за хората.																				
+段	step / grade	стъпало / степен	Using a tool to break a cliff into steps.	Използване на инструмент за разбиване на скала на стъпала.																				
+号	number / sign	номер / знак	A mouth making a loud signal.	Уста издаваща силен сигнал.																				
+倍	times / double	пъти / двойно	A person standing and opening their mouth.	Човек който стои и отваря уста – двойно повече.																				
+次	next	следващ	Ice and a yawn – next!	Лед и прозявка – следващият!																				
+々	repetition mark	знак за повторение	This sign means to repeat the previous kanji.	Този знак означава повторение на предходното канджи.																				
+他	other	друг	A person who is different is other.	Човек който е различен  е "друг".																				
+信	trust / message	доверие / съобщение	A person and their words mean trust.	Човек и думите му означават доверие.																				
+頼	request / rely	моля / разчитам	A person with a head who needs to rely on someone.	Човек с глава който трябва да разчита на някого.																				
+神	god / spirit	бог / дух	A spiritual power from the field.	Духовна сила от полето.																				
+社	shrine / company	храм / фирма	Ground and spirit together for a shrine.	Земя и дух заедно за храм.																				
+付	attach	прикрепям	A person attaching a memo to a hand.	Човек прикрепящ бележка към ръка.																				
+格	status / rank	статус / ранг	A tree with a certain height has status.	Дърво с определена височина има статус.																				
+記	record	запис	Words and self make a record.	Думи и "себе си" правят запис.																				
+登	climb	изкачвам се	Moving feet up a stand to climb.	Движение на краката нагоре по стойка за катерене.																				
+録	record / register	регистър / запис	Metal and a brush used to record.	Метал и четка използвани за записване.																				
+役	duty / role	дълг / роля	A person with a weapon doing their duty.	Човек с оръжие изпълняващ дълга си.																				
+術	art / technique	изкуство / техника	A road where one shows a technique.	Път на който някой показва техника.																				
+多	many	много	Many moons in the sky.	Много луни в небето.																				
+少	few	малко	A small thing with a part missing.	Малко нещо с липсваща част.																				
+量	quantity	количество	Measuring the sun over a village.	Измерване на слънцето над село.																				
+質	quality	качество	Two axes and a shell determine quality.	Две брадви и мида определят качеството.																				
+太	fat / thick	дебел	A big person with an extra mark.	Голям човек с допълнителен белег.																				
+細	thin / narrow	тънък	A thread made of rice grains is thin.	Конец направен от оризови зърна  е тънък.																				
+重	heavy	тежък	Thousands of villages are heavy.	Хиляди села тежат много.																				
+軽	light (weight)	лек (тегло)	A car that is fast is light.	Кола която е бърза  е лека.																				
+深	deep	дълбок	Water reaching deep into a hole.	Вода достигаща дълбоко в дупка.																				
+浅	shallow	плитък	Water and two spears – it is shallow.	Вода и две копиета – плитко е.																				
+寒	cold	студен	Person under a roof with ice.	Човек под покрив с лед.																				
+暖	warm	топъл	Sun and a person under a cover.	Слънце и човек под завивка.																				
+暑	hot	горещ	Sun above a person.	Слънце над човек.																				
+涼	cool	хладен	Water and a high building.	Вода и висока сграда.																				
+難	difficult	труден	A bird on dry land is in a difficult spot.	Птица на суха земя е в трудно положение.																				
+易	easy / change	лесен / промяна	The sun and a lizard – it's easy for him.	Слънцето и гущерът – лесно му е (да се смени).																				
+似	resemble	приличам на	A person who looks like someone else.	Човек който изглежда като някой друг.																				
+昨	past	минал	The sun of the past.	Слънцето на миналото.																				
+今	now	сега	Now under the roof.	Сега под покрива.																				
+明	bright	светъл	Sun and moon are bright.	Слънцето и луната са светли.																				
+暗	dark	тъмен	Sun hidden by a sound.	Слънце скрито от звук.																				
+静	quiet	тих	Blue and struggle – quiet.	Синьо и борба – тихо.																				
+忙	busy	зает	Heart is lost – busy.	Сърцето е изгубено – зает.																				
+非	non- / wrong	не- / грешен	Two opposite wings mean wrong.	Две противоположни крила означават "грешно".																				
+常	normal / usual	нормален / обичаен	A roof	towel and mouth – usual things. Покрив  кърпа и уста – обичайни неща.																				
+忘	forget	забравям	Heart is lost – forget.	Сърцето е изгубено – забравяш.																				
+置	put	слагам	Look and go straight to place it.	Погледни и върви направо за да го сложиш.																				
+法	law	закон	Water goes by rule.	Водата тече по правило.																				
+律	law	закон	A person walking and writing laws.	Човек който ходи и пише закони.																				
+警	police / caution	полиция / внимание	Words that warn about a task.	Думи които предупреждават за задача.																				
+察	inspect	инспектирам	A roof with a hand and spirit sign.	Покрив с ръка и духовен знак.																				
+故	accident / reason	инцидент / причина	A person and an old story about an accident.	Човек и стара история за инцидент.																				
+障	obstacle	препятствие	A hill and a sound – an obstacle.	Хълм и звук – препятствие.																				
+害	harm / damage	вреда / щета	A house with words that cause harm.	Къща с думи които причиняват вреда.																				
+伝	transmit	предавам	A person giving a message.	Човек предаващ съобщение.																				
+細	detailed / thin	подробен / тънък	A thin thread shows details.	Тънка нишка показва детайли.																				
+苦	bitter / painful	горчив / болезнен	Plants that are old taste bitter.	Растения които са стари  горчат.																				
+困	troubled	затруднен	A tree inside a box is troubled.	Дърво вътре в кутия е затруднено.																				
+難	difficult	труден	Difficult situation for a bird.	Трудна ситуация за птица.																				
+死	die	умирам	Bone and a person in the ground.	Кост и човек в земята.																				
+亡	deceased	починал	Person under a cover.	Човек под покривало.																				
+急	hurry	бързам	Heart beating fast.	Сърце което бие бързо.																				
+険	steep / risky	стръмен / рискован	A hill where people gather – risky.	Хълм на който хората се събират – рисковано.																				
+降	descend / rain	слизам / валя	Feet going down a hill.	Крака слизащи по хълм.																				
+飛	fly	летя	Bird spreading wings.	Птица разперваща крила.																				
+機	machine	машина	A wooden machine.	Дървена машина.																				
+断	cut off / refuse	отказвам / отрязвам	An axe and rice – cut off the supply.	Брадва и ориз – прекъсване на снабдяването.																				
+予	advance	предварително	Advance planning.	Предварително планиране.																				
+約	promise / shorten	обещание / съкращавам	A thread and a spoon make a promise.	Конец и лъжица правят обещание.																				
+束	bundle	сноп	A tree tied with a rope into a bundle.	Дърво вързано с въже на сноп.																				
+約	approximately	приблизително	Promise/approximate with thread.	Обещание/приблизителност с конец.																				
+類	kind / type	вид / тип	Rice and a head – different types of grain.	Ориз и глава – различни видове зърно.																				
+洗	wash	мия	Water and feet – wash before go.	Вода и крака – измий се преди тръгване.																				
+練	practice / drill	упражнявам се	Refining thread through practice.	Усъвършенстване на нишка чрез практика.																				
+習	learn	уча се	Birds practicing flying with wings.	Птици упражняващи се да летят с криле.																				
+勉	endeavor	старая се	Power to escape a trap.	Сила да избягаш от капан.																				
+強	strong	силен	Insect with a bow is strong.	Насекомо с лък е силно.																				
+研	polish / study	шлифовам / изследвам	Polish a stone to study.	Шлифовам камък за да уча.																				
+究	investigate	проучвам	Researching a hole.	Проучване на дупка.																				
+留	stay / keep	оставам	Staying in the rice field.	Оставане в оризището.																				
+質	quality / question	качество / въпрос	Axes and money – checking quality.	Брадва и пари – проверка на качеството.																				
+問	question	въпрос	A mouth at the gate asking a question.	Уста на портата задаваща въпрос.																				
+題	topic / subject	тема / предмет	Correct words on a page make a topic.	Правилните думи на страницата правят тема.																				
+答	answer	отговор	Bamboo slips with an answer.	Бамбукови ленти с отговор.																				
+宿	inn / lodging	подслон / хан	Stay under a roof with many.	Оставане под покрив с мнозина.																				
+題	problem / topic	проблем / тема	A subject to be solved.	Тема за решаване.																				
+政	politics	политика	Correct management.	Правилно управление.																				
+治	govern	управлявам	Manage water and land.	Управление на вода и земя.																				
+経	manage / passage	управлявам / преминаване	Thread passing through.	Нишка преминаваща през.																				
+済	finish / settle	приключвам	Crossing water – settled.	Пресичане на вода – уредено.																				
+師	teacher / master	учител / майстор	A leader of a group of people.	Лидер на група хора.																				
+教	teach	преподавам	A child learning from a master.	Дете учещо се от майстор.																				
+文	culture / sentence	култура / изречение	A person with a tattoo representing culture.	Човек с татуировка представяща култура.																				
+英	brave / English	смел / английски	Splendid plants like a hero.	Великолепни растения като герой.																				
+点	point / score	точка	Marking with fire.	Маркиране с огън.																				
+書	write	пиша	Hand holding a brush.	Ръка държаща четка.																				
+留	fasten / stay	задържам / оставам	Fasten in the field.	Задържане в полето.																				
+守	protect	пазя	Protecting a hand under a roof.	Пазене на ръка под покрив.																				
+簡	simple / brief	прост / кратък	Bamboo and a gate – keeping it simple.	Бамбук и порта – простота.																				
+単	simple / unit	единичен / прост	A single unit of a weapon.	Единична част от оръжие.																				
+記	record	записвам	Words of oneself.	Думи за себе си.																				
+説	explain	обяснявам	Words to make one happy.	Думи които радват някого.																				
+終	end	край	Winter and thread – the end.	Зима и нишка – краят.																				
+																			

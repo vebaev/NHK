@@ -60,6 +60,7 @@ DEFAULT_ANKI_FILENAME = "anki_cards_bg.tsv"
 DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_elements_bg.apkg"
 DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
 EXTERNAL_GRAMMAR_FILE = os.path.join(os.path.expanduser("~/Downloads"), "gram.txt")
+KANJI_MNEMONICS_FILE = os.path.join(os.path.dirname(__file__), "data", "kanji512.tabular")
 
 translator = Translator() if Translator is not None else None
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "").strip()
@@ -74,6 +75,7 @@ _MECAB_TAGGER = None
 _SUDACHI_TOKENIZER = None
 _JINF = None
 _EXTERNAL_GRAMMAR_PATTERNS = None
+_KANJI_MNEMONICS = None
 _THREAD_LOCAL = threading.local()
 _TRANSLATION_CACHE_DIRTY = False
 _GEMINI_CACHE_DIRTY = False
@@ -391,6 +393,68 @@ def save_feed_state(path: str, state: dict):
         os.makedirs(directory, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(state or {}, f, ensure_ascii=False, indent=2, sort_keys=True)
+
+
+def load_kanji_mnemonics(path: str = KANJI_MNEMONICS_FILE):
+    global _KANJI_MNEMONICS
+    if _KANJI_MNEMONICS is not None:
+        return _KANJI_MNEMONICS
+    mapping = {}
+    if not os.path.exists(path):
+        _KANJI_MNEMONICS = mapping
+        return _KANJI_MNEMONICS
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.rstrip("\n")
+                if not line.strip():
+                    continue
+                cols = line.split("\t")
+                kanji = (cols[0] if len(cols) > 0 else "").strip()
+                meaning_en = (cols[1] if len(cols) > 1 else "").strip()
+                meaning_bg = (cols[2] if len(cols) > 2 else "").strip()
+                mnemonic_en = (cols[3] if len(cols) > 3 else "").strip()
+                mnemonic_bg = (cols[4] if len(cols) > 4 else "").strip()
+                if not kanji or not re.fullmatch(r"[一-龯々]", kanji):
+                    continue
+                mapping[kanji] = {
+                    "meaning_en": meaning_en,
+                    "meaning_bg": meaning_bg,
+                    "mnemonic_en": mnemonic_en,
+                    "mnemonic_bg": mnemonic_bg,
+                }
+    except Exception:
+        mapping = {}
+    _KANJI_MNEMONICS = mapping
+    return _KANJI_MNEMONICS
+
+
+def build_kanji_mnemonic_lines(surface: str = "", lemma: str = ""):
+    source = (surface or "").strip() or (lemma or "").strip()
+    if not source:
+        return {"bg": [], "en": []}
+    mapping = load_kanji_mnemonics()
+    if not mapping:
+        return {"bg": [], "en": []}
+    bg_lines = []
+    en_lines = []
+    seen = set()
+    for ch in source:
+        if not re.fullmatch(r"[一-龯々]", ch):
+            continue
+        if ch in seen:
+            continue
+        seen.add(ch)
+        info = mapping.get(ch) or {}
+        meaning_bg = (info.get("meaning_bg") or "").strip()
+        meaning_en = (info.get("meaning_en") or "").strip()
+        mnemonic_bg = (info.get("mnemonic_bg") or "").strip()
+        mnemonic_en = (info.get("mnemonic_en") or "").strip()
+        if meaning_bg or mnemonic_bg:
+            bg_lines.append(f"{ch} - {meaning_bg} - {mnemonic_bg}".strip(" -"))
+        if meaning_en or mnemonic_en:
+            en_lines.append(f"{ch} - {meaning_en} - {mnemonic_en}".strip(" -"))
+    return {"bg": bg_lines, "en": en_lines}
 
 
 def build_feed_fingerprint(items, count: int = 4):
@@ -2569,6 +2633,7 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     surface = (item.get("surface") or item.get("word") or "").strip()
     lemma = (item.get("lemma") or item.get("word") or surface).strip()
     reading = normalize_katakana_to_hiragana((item.get("reading") or "").strip())
+    kanji_mnemonics = build_kanji_mnemonic_lines(surface=surface, lemma=lemma)
     span["data-surface"] = surface
     span["data-lemma"] = lemma
     span["data-reading"] = reading
@@ -2585,6 +2650,8 @@ def make_dict_span(soup, item, inner_html: str, analysis=None):
     span["data-formula-en"] = (item.get("formula_en") or "").strip()
     span["data-usage-bg"] = (item.get("usage_bg") or "").strip()
     span["data-usage-en"] = (item.get("usage_en") or "").strip()
+    span["data-kanji-mnemonics-bg"] = json.dumps(kanji_mnemonics.get("bg") or [], ensure_ascii=False)
+    span["data-kanji-mnemonics-en"] = json.dumps(kanji_mnemonics.get("en") or [], ensure_ascii=False)
     if is_named_entity_item(item):
         span["class"] = "dict-word named-entity"
 
@@ -5890,6 +5957,7 @@ h2{margin:0 0 10px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font);l
 .dict-popup .dw{font-weight:700;font-size:1.08rem;font-family:var(--jp-font);line-height:1.6;white-space:normal;word-break:break-word}
 .dict-popup .dr{color:var(--accent);font-size:.95rem;margin-top:2px}
 .dict-popup .dm{color:var(--text);margin-top:6px;line-height:1.65;white-space:normal;word-break:break-word}
+.dict-popup .dm.kanji-mnemonic{font-size:calc(1rem - 3pt)}
 ruby rt{font-size:.68em;color:var(--muted)}
 </style>
 </head>
@@ -5952,7 +6020,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class='build-marker'>Generated: __GENERATED_AT__</div>
 </div>
 <script>
-const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула",popup_explanation:"Обяснение"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula",popup_explanation:"Explanation"}};
+const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула",popup_explanation:"Обяснение",popup_mnemonic:"Канджи мнемоника"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula",popup_explanation:"Explanation",popup_mnemonic:"Kanji mnemonic"}};
 const FILES={bg:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"},en:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"}};
 let GRAMMAR_LOOKUP=null;
 function getContentLanguage(){return localStorage.getItem('nhk_content_lang')||'bg';}
@@ -5966,6 +6034,7 @@ function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
 function esc(v){return (v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function popupLine(label,value){return value?'<div class="dm"><b>'+esc(label)+':</b> '+esc(value)+'</div>':'';}
+function popupListBlock(label,values){if(!values||!values.length)return '';return '<div class="dm kanji-mnemonic"><b>'+esc(label)+':</b><br>'+values.map(function(v){return esc(v);}).join('<br>')+'</div>';}
 function normalizePopupValue(v){return (v||'').replace(/\\s+/g,'').trim();}
 function normalizeGrammarKey(v){return (v||'').replace(/[〜～]/g,'').replace(/／/g,'/').replace(/\\s+/g,'').trim();}
 function isGenericFormation(v){const x=(v||'').trim().toLowerCase();return !x||x==='речникова форма'||x==='dictionary form'||x==='форма в текста'||x==='form in context';}
@@ -5973,7 +6042,8 @@ function grammarLabelVariants(label){const base=normalizeGrammarKey(label);if(!b
 function buildGrammarLookup(){const lookup=new Map();document.querySelectorAll('.grammar li').forEach(function(item){const ruleEl=item.querySelector('.grammar-rule');const explEl=item.querySelector('.grammar-expl');if(!ruleEl||!explEl)return;const label=(ruleEl.textContent||'').trim();const entry={label:label,bg:(explEl.dataset.bg||'').trim(),en:(explEl.dataset.en||'').trim()};grammarLabelVariants(label).forEach(function(key){if(key&&!lookup.has(key))lookup.set(key,entry);});});return lookup;}
 function findGrammarEntryForElement(el){if(!GRAMMAR_LOOKUP)GRAMMAR_LOOKUP=buildGrammarLookup();const candidates=[el.dataset.grammarKey||'',el.dataset.surface||'',el.dataset.lemma||'',el.textContent||''];for(const raw of candidates){const normalized=normalizeGrammarKey(raw);if(!normalized)continue;if(GRAMMAR_LOOKUP.has(normalized))return GRAMMAR_LOOKUP.get(normalized);for(const [key,entry] of GRAMMAR_LOOKUP.entries()){if(normalized.includes(key)||key.includes(normalized))return entry;}}return null;}
 function showGrammarPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return false;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return true;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const entry=findGrammarEntryForElement(el);if(!entry)return false;const explanation=(lang==='en'?entry.en:entry.bg||entry.en||'').trim();if(!explanation)return false;let html='<div class="dw">'+esc(entry.label)+'</div>';html+=popupLine(ui.popup_explanation,explanation);popup.innerHTML=html;el.classList.add('is-active');popup.style.display='block';popup.setAttribute('aria-hidden','false');positionPopupNear(el,popup);return true;}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const itemType=(el.dataset.itemType||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();const surfaceKey=normalizePopupValue(surface);const lemmaKey=normalizePopupValue(lemma);const showAdjectiveFormation=!!formation&&surfaceKey&&lemmaKey&&surfaceKey!==lemmaKey&&!isGenericFormation(formation);let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_translation,translation);if(itemType==='verb'){html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);}else if(itemType==='adjective'){if(showAdjectiveFormation)html+=popupLine(ui.popup_formation,formation);}popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function parsePopupList(raw){if(!raw)return [];try{const parsed=JSON.parse(raw);return Array.isArray(parsed)?parsed.filter(Boolean):[];}catch(_){return [];}}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const itemType=(el.dataset.itemType||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();const kanjiMnemonics=parsePopupList(lang==='en'?el.dataset.kanjiMnemonicsEn:el.dataset.kanjiMnemonicsBg);const surfaceKey=normalizePopupValue(surface);const lemmaKey=normalizePopupValue(lemma);const showAdjectiveFormation=!!formation&&surfaceKey&&lemmaKey&&surfaceKey!==lemmaKey&&!isGenericFormation(formation);let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_translation,translation);if(itemType==='verb'){html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);}else if(itemType==='adjective'){if(showAdjectiveFormation)html+=popupLine(ui.popup_formation,formation);}html+=popupListBlock(ui.popup_mnemonic,kanjiMnemonics);popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
