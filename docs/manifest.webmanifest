@@ -1,8 +1,8 @@
 {
   "name": "NHK Easy News",
-  "id": "./?v=1774597805",
+  "id": "./?v=1774599486",
   "short_name": "NHK Easy",
-  "start_url": "./index.html?v=1774597805",
+  "start_url": "./index.html?v=1774599486",
   "display": "standalone",
   "background_color": "#0f1115",
   "theme_color": "#0f1115",
