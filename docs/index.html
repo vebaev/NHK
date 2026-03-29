@@ -265,23 +265,5 @@ function setupArticleShadowing(article){
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name="app-version" content="([^"]+)"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
 document.addEventListener('DOMContentLoaded',function(){loadPrefs();GRAMMAR_LOOKUP=buildGrammarLookup();document.querySelectorAll('article').forEach(function(article){setupArticleShadowing(article);});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || ''),{updateViaCache:'none'}).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();if(el.classList.contains('grammar-word')&&showGrammarPopup(el))return;showDictPopup(el);});});document.querySelectorAll('.grammar-word:not(.dict-word)').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showGrammarPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word')||event.target.closest('.grammar-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
-<!-- Default Statcounter code for NHK
-https://vebaev.github.io/NHK/ -->
-<script type="text/javascript">
-var sc_project=13213288; 
-var sc_invisible=0; 
-var sc_security="35a0bc28"; 
-var scJsHost = "https://";
-document.write("<sc"+"ript type='text/javascript' src='" +
-scJsHost+
-"statcounter.com/counter/counter.js'></"+"script>");
-</script>
-<noscript><div class="statcounter"><a title="Web Analytics
-Made Easy - Statcounter" href="https://statcounter.com/"
-target="_blank"><img class="statcounter"
-src="https://c.statcounter.com/13213288/0/35a0bc28/0/"
-alt="Web Analytics Made Easy - Statcounter"
-referrerPolicy="no-referrer-when-downgrade"></a></div></noscript>
-<!-- End of Statcounter Code -->
 </body>
 </html>
