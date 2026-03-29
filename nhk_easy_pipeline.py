@@ -6226,6 +6226,7 @@ def send_onesignal_notification(article_count: int):
     if not app_id or not api_key:
         print("OneSignal not configured; skipping push notification.")
         return
+    print(f"OneSignal config detected. App ID suffix: {app_id[-6:]}")
 
     count = max(1, int(article_count or 1))
     payload = {
@@ -6255,6 +6256,8 @@ def send_onesignal_notification(article_count: int):
             json=payload,
             timeout=20,
         )
+        print(f"OneSignal response status: {response.status_code}")
+        print(f"OneSignal response body: {response.text}")
         response.raise_for_status()
         print("OneSignal push sent.")
     except Exception as exc:
