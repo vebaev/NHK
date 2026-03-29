@@ -5913,7 +5913,6 @@ window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
   await OneSignal.init({
     appId: \"ccf9bb96-aa93-4c5d-94a1-c61b369539a5\",
-    safari_web_id: \"web.onesignal.auto.3a850f03-75f9-40a0-acb5-2bc8b318c823\",
     notifyButton: {
       enable: true,
     },
