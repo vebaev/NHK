@@ -1,7 +1,7 @@
 {
-  "name": "NHK Easy News",
+  "name": "🦊 最新ニュース",
   "id": "./",
-  "short_name": "NHK Easy",
+  "short_name": "🦊 最新ニュース",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

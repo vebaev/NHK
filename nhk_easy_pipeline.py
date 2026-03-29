@@ -6200,9 +6200,9 @@ def write_pwa_files(output_dir, build_version=""):
     if not output_dir:
         return
     manifest = {
-        "name": "NHK Easy News",
+        "name": "🦊 最新ニュース",
         "id": "./",
-        "short_name": "NHK Easy",
+        "short_name": "🦊 最新ニュース",
         "start_url": "./index.html",
         "scope": "./",
         "display": "standalone",
