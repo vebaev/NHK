@@ -6231,7 +6231,7 @@ def send_onesignal_notification(article_count: int):
     count = max(1, int(article_count or 1))
     payload = {
         "app_id": app_id,
-        "included_segments": ["Subscribed Users"],
+        "included_segments": ["Total Subscriptions"],
         "headings": {
             "en": "🦊 最新ニュース",
             "bg": "🦊 最新ニュース",
