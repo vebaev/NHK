@@ -5916,7 +5916,7 @@ OneSignalDeferred.push(async function(OneSignal) {
     notifyButton: {
       enable: true,
     },
-    serviceWorkerPath: \"/NHK/push/onesignal/OneSignalSDKWorker.js\",
+    serviceWorkerPath: \"NHK/push/onesignal/OneSignalSDKWorker.js\",
     serviceWorkerParam: {
       scope: \"/NHK/push/onesignal/\"
     }
