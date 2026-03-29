@@ -6233,12 +6233,12 @@ def send_onesignal_notification(article_count: int):
         "app_id": app_id,
         "included_segments": ["Total Subscriptions"],
         "headings": {
-            "en": "🦊 最新ニュース",
-            "bg": "🦊 最新ニュース",
+            "en": "Time for japanese news ⏰",
+            "bg": "Време за новини на японски ⏰",
         },
         "contents": {
-            "en": f"{count} new articles are here ⏰",
-            "bg": f"{count} нови статии кацнаха ⏰",
+            "en": f"{count} new articles are here!",
+            "bg": f"{count} нови статии кацнаха!",
         },
         "url": "https://vebaev.github.io/NHK/",
     }
