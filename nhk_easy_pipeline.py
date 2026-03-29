@@ -5924,11 +5924,11 @@ OneSignalDeferred.push(async function(OneSignal) {
 });
 </script>
 <style>
-:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--verb-accent:#f2b38a;--entity-accent:#9ecfa6;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+:root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--verb-accent:#f2b38a;--entity-accent:#9ecfa6;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--page-font-scale:1}
 body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--verb-accent:#d9905f;--entity-accent:#6ea97a;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
 body.theme-sepia{--bg:#f3eadb;--card:#fbf4e7;--card2:#f4ead9;--text:#3c2f22;--muted:#6e5d4b;--accent:#8a5a22;--verb-accent:#c98754;--entity-accent:#71956d;--border:#d8c7b0;--jp-panel:#fffaf0;--trans-text:#4e3f31;--popup:#fffaf0}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui-font);line-height:1.8}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui-font);line-height:1.8;font-size:calc(16px * var(--page-font-scale))}
 .wrap{max-width:980px;margin:0 auto;padding:26px 16px 40px}
 h1{margin:0 0 18px;color:var(--accent);font-size:2rem;text-align:center;font-family:var(--jp-font)}
 .site-logo{display:block;width:100px;height:100px;object-fit:contain;margin:0 auto 14px auto}
@@ -5958,9 +5958,13 @@ h2{margin:0 0 10px;font-size:1.38rem;cursor:pointer;font-family:var(--jp-font);l
 .download-btn{display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card2);color:var(--text);text-decoration:none}
 .contacts{text-align:center;color:var(--muted);margin-top:10px}
 .bottom-controls{margin-top:22px;padding:14px;border:1px solid var(--border);border-radius:16px;background:var(--card)}
-.control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.control-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .control-grid select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font:inherit}
 .control-label{font-size:.92rem;color:var(--muted);margin-bottom:6px}
+.font-size-controls{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:4px 10px;height:42px}
+.font-size-btn{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font:inherit;font-size:1.05rem;cursor:pointer}
+.font-size-btn:hover{border-color:var(--accent)}
+.font-size-sample{min-width:2.4em;text-align:center;color:var(--text);font-weight:600;line-height:1}
 .grammar-word{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px}
 .dict-word{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:pointer;border-radius:4px}
 .dict-word.named-entity{text-decoration-color:var(--entity-accent);text-decoration-thickness:2px}
@@ -6032,17 +6036,21 @@ ruby rt{font-size:.68em;color:var(--muted)}
   <div class='control-grid'>
     <div><div class='control-label' data-ui='theme'></div><select id='theme-select' onchange='setTheme(this.value)'><option value='theme-dark'>Dark</option><option value='theme-sepia'>Sepia</option><option value='theme-light'>Light</option></select></div>
     <div><div class='control-label' data-ui='japanese_font'></div><select id='font-select' onchange='setJapaneseFont(this.value)'><option value='mincho'>Mincho</option><option value='gothic'>Gothic</option></select></div>
+    <div><div class='control-label' data-ui='font_size'></div><div class='font-size-controls'><button type='button' class='font-size-btn' id='font-decrease' aria-label='Decrease font size'>-</button><span class='font-size-sample'>Аа</span><button type='button' class='font-size-btn' id='font-increase' aria-label='Increase font size'>+</button></div></div>
   </div>
 </div>
 <div class='contacts'>vebaev.github.io</div>
 <div class='build-marker'>Generated: __GENERATED_AT__</div>
 </div>
 <script>
-const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула",popup_explanation:"Обяснение",popup_mnemonic:"Канджи мнемоника"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula",popup_explanation:"Explanation",popup_mnemonic:"Kanji mnemonic"}};
+const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",font_size:"Размер",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула",popup_explanation:"Обяснение",popup_mnemonic:"Канджи мнемоника"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",font_size:"Text size",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula",popup_explanation:"Explanation",popup_mnemonic:"Kanji mnemonic"}};
 const FILES={bg:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"},en:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"}};
 let GRAMMAR_LOOKUP=null;
 function getContentLanguage(){return localStorage.getItem('nhk_content_lang')||'bg';}
-function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;const lang=getContentLanguage();const langSel=document.getElementById('lang-select');if(langSel)langSel.value=lang;applyContentLanguage(lang);}
+function getPageFontScale(){const raw=parseFloat(localStorage.getItem('nhk_font_scale')||'1');if(!isFinite(raw))return 1;return Math.min(1.3,Math.max(.85,raw));}
+function applyPageFontScale(scale){document.documentElement.style.setProperty('--page-font-scale',String(scale));}
+function changePageFontScale(delta){const next=Math.round((getPageFontScale()+delta)*100)/100;const clamped=Math.min(1.3,Math.max(.85,next));localStorage.setItem('nhk_font_scale',String(clamped));applyPageFontScale(clamped);}
+function loadPrefs(){const theme=localStorage.getItem('nhk_theme')||'theme-dark';document.body.className=theme;const themeSel=document.getElementById('theme-select');if(themeSel)themeSel.value=theme;const jpFont=localStorage.getItem('nhk_jp_font')||'mincho';applyJapaneseFont(jpFont);const fontSel=document.getElementById('font-select');if(fontSel)fontSel.value=jpFont;applyPageFontScale(getPageFontScale());const lang=getContentLanguage();const langSel=document.getElementById('lang-select');if(langSel)langSel.value=lang;applyContentLanguage(lang);}
 function setTheme(theme){document.body.className=theme;localStorage.setItem('nhk_theme',theme);const meta=document.querySelector('meta[name="theme-color"]');if(meta){meta.setAttribute('content',theme==='theme-light'?'#f7f7f5':theme==='theme-sepia'?'#f3eadb':'#0f1115');}}
 function applyJapaneseFont(kind){const font=kind==='gothic'?'"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif':'"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif';document.documentElement.style.setProperty('--jp-font',font);}
 function setJapaneseFont(kind){localStorage.setItem('nhk_jp_font',kind);applyJapaneseFont(kind);}
@@ -6051,6 +6059,49 @@ function applyContentLanguage(lang){document.querySelectorAll('[data-ui]').forEa
 function closeDictPopup(){const popup=document.getElementById('dict-popup');if(!popup)return;popup.style.display='none';popup.setAttribute('aria-hidden','true');document.querySelectorAll('.dict-word.is-active').forEach(el=>el.classList.remove('is-active'));}
 function positionPopupNear(el,popup){const rect=el.getBoundingClientRect();popup.style.display='block';popup.setAttribute('aria-hidden','false');const popupRect=popup.getBoundingClientRect();let top=rect.bottom+8;let left=rect.left;if(left+popupRect.width>window.innerWidth-8)left=window.innerWidth-popupRect.width-8;if(left<8)left=8;if(top+popupRect.height>window.innerHeight-8)top=rect.top-popupRect.height-8;if(top<8)top=8;popup.style.left=left+'px';popup.style.top=top+'px';}
 function esc(v){return (v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function toHiragana(v){return (v||'').replace(/[ァ-ヶ]/g,function(ch){return String.fromCharCode(ch.charCodeAt(0)-0x60);});}
+function isKanaChar(ch){return /[ぁ-んァ-ヶー]/.test(ch||'');}
+function buildPopupRuby(surface,reading){
+  surface=(surface||'').trim();
+  reading=toHiragana((reading||'').trim());
+  if(!surface)return '';
+  if(!reading||!/[\u4E00-\u9FFF々〆ヵヶ]/.test(surface))return esc(surface)+(reading?' ['+esc(reading)+']':'');
+  let out='';
+  let i=0;
+  let j=0;
+  while(i<surface.length){
+    const ch=surface[i];
+    if(isKanaChar(ch)){
+      let kanaChunk=ch;
+      i+=1;
+      while(i<surface.length&&isKanaChar(surface[i])){kanaChunk+=surface[i];i+=1;}
+      out+=esc(kanaChunk);
+      const kanaH=toHiragana(kanaChunk);
+      if(reading.slice(j,j+kanaH.length)===kanaH)j+=kanaH.length;
+      continue;
+    }
+    let kanjiChunk=ch;
+    i+=1;
+    while(i<surface.length&&!isKanaChar(surface[i])){kanjiChunk+=surface[i];i+=1;}
+    let nextKanaChunk='';
+    let t=i;
+    while(t<surface.length&&isKanaChar(surface[t])){nextKanaChunk+=surface[t];t+=1;}
+    const nextKanaH=toHiragana(nextKanaChunk);
+    let rubyReading='';
+    if(nextKanaH){
+      const nextIdx=reading.indexOf(nextKanaH,j);
+      if(nextIdx>=j){
+        rubyReading=reading.slice(j,nextIdx);
+        j=nextIdx;
+      }
+    }else{
+      rubyReading=reading.slice(j);
+      j=reading.length;
+    }
+    out+=rubyReading?'<ruby>'+esc(kanjiChunk)+'<rt>'+esc(rubyReading)+'</rt></ruby>':esc(kanjiChunk);
+  }
+  return out;
+}
 function popupLine(label,value){return value?'<div class="dm"><b>'+esc(label)+':</b> '+esc(value)+'</div>':'';}
 function popupListBlock(label,values){if(!values||!values.length)return '';return '<div class="dm kanji-mnemonic"><b>'+esc(label)+':</b><br>'+values.map(function(v){return esc(v);}).join('<br>')+'</div>';}
 function normalizePopupValue(v){return (v||'').replace(/\\s+/g,'').trim();}
@@ -6061,7 +6112,7 @@ function buildGrammarLookup(){const lookup=new Map();document.querySelectorAll('
 function findGrammarEntryForElement(el){if(!GRAMMAR_LOOKUP)GRAMMAR_LOOKUP=buildGrammarLookup();const candidates=[el.dataset.grammarKey||'',el.dataset.surface||'',el.dataset.lemma||'',el.textContent||''];for(const raw of candidates){const normalized=normalizeGrammarKey(raw);if(!normalized)continue;if(GRAMMAR_LOOKUP.has(normalized))return GRAMMAR_LOOKUP.get(normalized);for(const [key,entry] of GRAMMAR_LOOKUP.entries()){if(normalized.includes(key)||key.includes(normalized))return entry;}}return null;}
 function showGrammarPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return false;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return true;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const entry=findGrammarEntryForElement(el);if(!entry)return false;const explanation=(lang==='en'?entry.en:entry.bg||entry.en||'').trim();if(!explanation)return false;let html='<div class="dw">'+esc(entry.label)+'</div>';html+=popupLine(ui.popup_explanation,explanation);popup.innerHTML=html;el.classList.add('is-active');popup.style.display='block';popup.setAttribute('aria-hidden','false');positionPopupNear(el,popup);return true;}
 function parsePopupList(raw){if(!raw)return [];try{const parsed=JSON.parse(raw);return Array.isArray(parsed)?parsed.filter(Boolean):[];}catch(_){return [];}}
-function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const itemType=(el.dataset.itemType||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();const kanjiMnemonics=parsePopupList(lang==='en'?el.dataset.kanjiMnemonicsEn:el.dataset.kanjiMnemonicsBg);const surfaceKey=normalizePopupValue(surface);const lemmaKey=normalizePopupValue(lemma);const showAdjectiveFormation=!!formation&&surfaceKey&&lemmaKey&&surfaceKey!==lemmaKey&&!isGenericFormation(formation);let html='<div class="dw">'+esc(surface)+(reading?' ['+esc(reading)+']':'')+'</div>';html+=popupLine(ui.popup_translation,translation);if(itemType==='verb'){html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);}else if(itemType==='adjective'){if(showAdjectiveFormation)html+=popupLine(ui.popup_formation,formation);}html+=popupListBlock(ui.popup_mnemonic,kanjiMnemonics);popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
+function showDictPopup(el){const popup=document.getElementById('dict-popup');if(!popup)return;const alreadyActive=el.classList.contains('is-active');closeDictPopup();if(alreadyActive)return;const lang=getContentLanguage();const ui=UI_TEXT[lang]||UI_TEXT.bg;const surface=(el.dataset.surface||'').trim();const lemma=(el.dataset.lemma||surface).trim();const reading=(el.dataset.reading||'').trim();const itemType=(el.dataset.itemType||'').trim();const translation=(lang==='en'?el.dataset.translationEn:el.dataset.translationBg||el.dataset.translationEn||'').trim();const formation=(lang==='en'?el.dataset.formationEn:el.dataset.formationBg||el.dataset.formationEn||'').trim();const formula=(lang==='en'?el.dataset.formulaEn:el.dataset.formulaBg||el.dataset.formulaEn||'').trim();const kanjiMnemonics=parsePopupList(lang==='en'?el.dataset.kanjiMnemonicsEn:el.dataset.kanjiMnemonicsBg);const surfaceKey=normalizePopupValue(surface);const lemmaKey=normalizePopupValue(lemma);const showAdjectiveFormation=!!formation&&surfaceKey&&lemmaKey&&surfaceKey!==lemmaKey&&!isGenericFormation(formation);let html='<div class="dw">'+buildPopupRuby(surface,reading)+'</div>';html+=popupLine(ui.popup_translation,translation);if(itemType==='verb'){html+=popupLine(ui.popup_dictionary_form,lemma);html+=popupLine(ui.popup_formation,formation);html+=popupLine(ui.popup_formula,formula);}else if(itemType==='adjective'){if(showAdjectiveFormation)html+=popupLine(ui.popup_formation,formation);}html+=popupListBlock(ui.popup_mnemonic,kanjiMnemonics);popup.innerHTML=html;el.classList.add('is-active');positionPopupNear(el,popup);}
 
 
 function splitSentenceParts(text){
@@ -6188,7 +6239,7 @@ function setupArticleShadowing(article){
 }
 
 function forceFreshReloadCheck(){fetch(window.location.pathname + '?v=' + encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || Date.now()), {cache:'no-store'}).then(r=>r.text()).then(html=>{const m=html.match(/<meta name=\"app-version\" content=\"([^\"]+)\"/);const current=document.querySelector('meta[name="app-version"]')?.content||'';if(m&&m[1]&&m[1]!==current){window.location.reload();}}).catch(function(){});}
-document.addEventListener('DOMContentLoaded',function(){loadPrefs();GRAMMAR_LOOKUP=buildGrammarLookup();document.querySelectorAll('article').forEach(function(article){setupArticleShadowing(article);});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || ''),{updateViaCache:'none'}).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();if(el.classList.contains('grammar-word')&&showGrammarPopup(el))return;showDictPopup(el);});});document.querySelectorAll('.grammar-word:not(.dict-word)').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showGrammarPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word')||event.target.closest('.grammar-word'))return;trBlock.classList.toggle('is-visible');});});});
+document.addEventListener('DOMContentLoaded',function(){loadPrefs();GRAMMAR_LOOKUP=buildGrammarLookup();document.querySelectorAll('article').forEach(function(article){setupArticleShadowing(article);});if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(document.querySelector('meta[name="app-version"]')?.content || ''),{updateViaCache:'none'}).then(function(reg){if(reg&&reg.update){reg.update();}}).catch(function(){});}forceFreshReloadCheck();setInterval(forceFreshReloadCheck,120000);const fontDec=document.getElementById('font-decrease');if(fontDec)fontDec.addEventListener('click',function(){changePageFontScale(-.06);});const fontInc=document.getElementById('font-increase');if(fontInc)fontInc.addEventListener('click',function(){changePageFontScale(.06);});document.querySelectorAll('.title-toggle').forEach(function(title){title.addEventListener('click',function(){const tr=title.nextElementSibling;if(!tr||!tr.classList.contains('title-translation'))return;tr.style.display=tr.style.display==='block'?'none':'block';});});document.querySelectorAll('.dict-word').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();if(el.classList.contains('grammar-word')&&showGrammarPopup(el))return;showDictPopup(el);});});document.querySelectorAll('.grammar-word:not(.dict-word)').forEach(function(el){el.addEventListener('click',function(event){event.stopPropagation();showGrammarPopup(el);});});document.addEventListener('click',function(){closeDictPopup();});document.querySelectorAll('.jp-block + .trans-block').forEach(function(trBlock){const jpBlock=trBlock.previousElementSibling;if(!jpBlock)return;jpBlock.style.cursor='pointer';jpBlock.addEventListener('click',function(event){if(event.target.closest('.dict-word')||event.target.closest('.grammar-word'))return;trBlock.classList.toggle('is-visible');});});});
 </script>
 </body>
 </html>"""
