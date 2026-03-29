@@ -6201,9 +6201,10 @@ def write_pwa_files(output_dir, build_version=""):
         return
     manifest = {
         "name": "NHK Easy News",
-        "id": f"./?v={build_version}",
+        "id": "./",
         "short_name": "NHK Easy",
-        "start_url": f"./index.html?v={build_version}",
+        "start_url": "./index.html",
+        "scope": "./",
         "display": "standalone",
         "background_color": "#0f1115",
         "theme_color": "#0f1115",
