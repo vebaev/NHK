@@ -6220,6 +6220,46 @@ def write_pwa_files(output_dir, build_version=""):
     with open(os.path.join(output_dir, "sw.js"), "w", encoding="utf-8") as f:
         f.write(sw_js)
 
+def send_onesignal_notification(article_count: int):
+    app_id = os.environ.get("ONESIGNAL_APP_ID", "").strip()
+    api_key = os.environ.get("ONESIGNAL_API_KEY", "").strip()
+    if not app_id or not api_key:
+        print("OneSignal not configured; skipping push notification.")
+        return
+
+    count = max(1, int(article_count or 1))
+    payload = {
+        "app_id": app_id,
+        "included_segments": ["Subscribed Users"],
+        "target_channel": "push",
+        "headings": {
+            "en": "最新ニュース",
+            "bg": "最新ニュース",
+        },
+        "contents": {
+            "en": f"Нови {count} новини от NHK Easy",
+            "bg": f"Нови {count} новини от NHK Easy",
+        },
+        "url": "https://vebaev.github.io/NHK/",
+        "web_url": "https://vebaev.github.io/NHK/",
+        "web_push_topic": "nhk-easy-latest-news",
+    }
+
+    try:
+        response = requests.post(
+            "https://api.onesignal.com/notifications?c=push",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Key {api_key}",
+            },
+            json=payload,
+            timeout=20,
+        )
+        response.raise_for_status()
+        print("OneSignal push sent.")
+    except Exception as exc:
+        print(f"OneSignal push failed: {exc}")
+
 def main():
     global DEEPL_API_KEY, GEMINI_API_KEY, GEMINI_MODEL
     parser = argparse.ArgumentParser()
@@ -6310,6 +6350,7 @@ def main():
         f.write(html)
     save_translation_cache(translation_cache_path)
     save_gemini_cache(gemini_cache_path)
+    send_onesignal_notification(len(articles))
 
 if __name__ == "__main__":
     main()
