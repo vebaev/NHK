@@ -15,6 +15,23 @@
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=1774609124">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1774609124">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1774609124">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+  await OneSignal.init({
+    appId: "ccf9bb96-aa93-4c5d-94a1-c61b369539a5",
+    safari_web_id: "web.onesignal.auto.3a850f03-75f9-40a0-acb5-2bc8b318c823",
+    notifyButton: {
+      enable: true,
+    },
+    serviceWorkerPath: "push/onesignal/OneSignalSDKWorker.js",
+    serviceWorkerParam: {
+      scope: "/NHK/push/onesignal/"
+    }
+  });
+});
+</script>
 <style>
 :root{--bg:#0f1115;--card:#171a21;--card2:#1d212b;--text:#e8ecf1;--muted:#aeb7c2;--accent:#8ab4ff;--verb-accent:#f2b38a;--entity-accent:#9ecfa6;--border:#2a3040;--jp-panel:#12151c;--trans-text:#d2dae3;--popup:#202532;--jp-font:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho","MS PMincho",serif;--ui-font:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 body.theme-light{--bg:#f7f7f5;--card:#ffffff;--card2:#f2f2ee;--text:#1d232a;--muted:#596572;--accent:#275cc7;--verb-accent:#d9905f;--entity-accent:#6ea97a;--border:#d3d9e1;--jp-panel:#fcfcfb;--trans-text:#3c4652;--popup:#ffffff}
