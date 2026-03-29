@@ -6237,8 +6237,8 @@ def send_onesignal_notification(article_count: int):
             "bg": "🦊 最新ニュース",
         },
         "contents": {
-            "en": f"{count} new articles from NHK are here ⏰",
-            "bg": f"{count} нови статии от NHK кацнаха ⏰",
+            "en": f"{count} new articles are here ⏰",
+            "bg": f"{count} нови статии кацнаха ⏰",
         },
         "url": "https://vebaev.github.io/NHK/",
     }
