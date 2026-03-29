@@ -6233,12 +6233,12 @@ def send_onesignal_notification(article_count: int):
         "included_segments": ["Subscribed Users"],
         "target_channel": "push",
         "headings": {
-            "en": "最新ニュース",
-            "bg": "最新ニュース",
+            "en": "🦊 最新ニュース",
+            "bg": "🦊 最新ニュース",
         },
         "contents": {
-            "en": f"Нови {count} новини от NHK Easy",
-            "bg": f"Нови {count} новини от NHK Easy",
+            "en": f"{count} нови статии за четене",
+            "bg": f"{count} нови статии за четене",
         },
         "url": "https://vebaev.github.io/NHK/",
         "web_url": "https://vebaev.github.io/NHK/",
