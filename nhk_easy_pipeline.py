@@ -6232,18 +6232,15 @@ def send_onesignal_notification(article_count: int):
     payload = {
         "app_id": app_id,
         "included_segments": ["Subscribed Users"],
-        "target_channel": "push",
         "headings": {
             "en": "🦊 最新ニュース",
             "bg": "🦊 最新ニュース",
         },
         "contents": {
-            "en": f"{count} нови статии за четене",
-            "bg": f"{count} нови статии за четене",
+            "en": f"{count} new articles from NHK are here ⏰",
+            "bg": f"{count} нови статии от NHK кацнаха ⏰",
         },
         "url": "https://vebaev.github.io/NHK/",
-        "web_url": "https://vebaev.github.io/NHK/",
-        "web_push_topic": "nhk-easy-latest-news",
     }
 
     try:
