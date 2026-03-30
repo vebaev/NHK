@@ -8,6 +8,8 @@ import json
 import subprocess
 import time
 import uuid
+import zipfile
+import base64
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -37,6 +39,13 @@ except Exception:
     genanki = None
 
 try:
+    from PIL import Image, ImageDraw, ImageFont
+except Exception:
+    Image = None
+    ImageDraw = None
+    ImageFont = None
+
+try:
     from sudachipy import dictionary as sudachi_dictionary
     from sudachipy import tokenizer as sudachi_tokenizer
 except Exception:
@@ -59,6 +68,7 @@ DEFAULT_OUTPUT = "docs/index.html"
 DEFAULT_ANKI_FILENAME = "anki_cards_bg.tsv"
 DEFAULT_ANKI_APKG_FILENAME = "nhk_easy_elements_bg.apkg"
 DEFAULT_ANKI_SEEN_WORDS_FILENAME = "anki_seen_words.json"
+DEFAULT_EPUB_FILENAME = "nhk_easy_test.epub"
 EXTERNAL_GRAMMAR_FILE = os.path.join(os.path.expanduser("~/Downloads"), "gram.txt")
 KANJI_MNEMONICS_FILE = os.path.join(os.path.dirname(__file__), "data", "kanji512.tabular")
 
@@ -6023,6 +6033,7 @@ ruby rt{font-size:.68em;color:var(--muted)}
                 html += f"<div class='trans-block' data-bg='{block_bg}' data-en='{block_en}'></div>"
         html += "</article>"
     html += "<div class='downloads'>"
+    html += f"<a class='download-btn download-link' data-kind='epub' href='{DEFAULT_EPUB_FILENAME}' download></a>"
     html += f"<a class='download-btn download-link' data-kind='anki_apkg' href='{DEFAULT_ANKI_APKG_FILENAME}' download></a>"
     html += f"<a class='download-btn download-link' data-kind='anki_tsv' href='{DEFAULT_ANKI_FILENAME}' download></a>"
     html += "</div>"
@@ -6043,8 +6054,8 @@ ruby rt{font-size:.68em;color:var(--muted)}
 <div class='build-marker'>Generated: __GENERATED_AT__</div>
 </div>
 <script>
-const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",font_size:"Размер",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула",popup_explanation:"Обяснение",popup_mnemonic:"Канджи мнемоника"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",font_size:"Text size",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula",popup_explanation:"Explanation",popup_mnemonic:"Kanji mnemonic"}};
-const FILES={bg:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"},en:{anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"}};
+const UI_TEXT={bg:{text:"Текст",grammar_in_texts:"Граматика в текстовете",theme:"Тема",japanese_font:"Японски шрифт",font_size:"Размер",translation_language:"Език",help_hint:"ℹ️ Кликни върху абзац за превод или върху елемент в текста за обяснение.",update_hint:"⏱️ Новините се обновяват веднъж дневно около 14:00 ч. българско време (12:00 UTC).",epub:"Свали EPUB",anki_apkg:"Свали Anki deck (.apkg)",anki_tsv:"Свали Anki TSV",popup_translation:"Превод",popup_dictionary_form:"Речникова форма",popup_formation:"Образуване",popup_formula:"Формула",popup_explanation:"Обяснение",popup_mnemonic:"Канджи мнемоника"},en:{text:"Text",grammar_in_texts:"Grammar in the texts",theme:"Theme",japanese_font:"Japanese font",font_size:"Text size",translation_language:"Language",help_hint:"ℹ️ Click a paragraph for translation or a text element for explanation.",update_hint:"⏱️ News updates once daily around 14:00 Bulgarian time (12:00 UTC).",epub:"Download EPUB",anki_apkg:"Download Anki deck (.apkg)",anki_tsv:"Download Anki TSV",popup_translation:"Translation",popup_dictionary_form:"Dictionary form",popup_formation:"Formation",popup_formula:"Formula",popup_explanation:"Explanation",popup_mnemonic:"Kanji mnemonic"}};
+const FILES={bg:{epub:"nhk_easy_test.epub",anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"},en:{epub:"nhk_easy_test.epub",anki_apkg:"nhk_easy_elements_bg.apkg",anki_tsv:"anki_cards_bg.tsv"}};
 let GRAMMAR_LOOKUP=null;
 function getContentLanguage(){return localStorage.getItem('nhk_content_lang')||'bg';}
 function getPageFontScale(){const raw=parseFloat(localStorage.getItem('nhk_font_scale')||'1');if(!isFinite(raw))return 1;return Math.min(1.3,Math.max(.85,raw));}
@@ -6247,6 +6258,451 @@ document.addEventListener('DOMContentLoaded',function(){loadPrefs();GRAMMAR_LOOK
     html = html.replace("__GENERATED_AT__", html_lib.escape(generated_at, quote=True))
     return html
 
+
+def strip_article_number_prefix(title: str) -> str:
+    value = (title or "").strip()
+    value = re.sub(r"^\s*\d+[.)]?\s*", "", value)
+    value = re.sub(r"^\s*[0-9#\u20e3\ufe0f]+\s*", "", value)
+    return value.strip()
+
+
+def normalize_epub_rel_path(path: str) -> str:
+    value = (path or "").strip().lstrip("./")
+    return re.sub(r"[^A-Za-z0-9._/\-]+", "_", value)
+
+
+def epub_media_type(path: str) -> str:
+    lower = (path or "").lower()
+    if lower.endswith(".xhtml"):
+        return "application/xhtml+xml"
+    if lower.endswith(".css"):
+        return "text/css"
+    if lower.endswith(".jpg") or lower.endswith(".jpeg"):
+        return "image/jpeg"
+    if lower.endswith(".png"):
+        return "image/png"
+    if lower.endswith(".gif"):
+        return "image/gif"
+    if lower.endswith(".svg"):
+        return "image/svg+xml"
+    return "application/octet-stream"
+
+
+def make_epub_xhtml(title: str, body_html: str) -> str:
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="bg" xml:lang="bg">
+<head>
+  <meta charset="UTF-8"/>
+  <title>{html_lib.escape(title)}</title>
+  <link rel="stylesheet" type="text/css" href="../styles/book.css"/>
+</head>
+<body>
+{body_html}
+</body>
+</html>
+"""
+
+
+def make_epub_cover_xhtml(book_title: str, generated_label: str) -> str:
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="bg" xml:lang="bg">
+<head>
+  <meta charset="UTF-8"/>
+  <title>{html_lib.escape(book_title)}</title>
+  <link rel="stylesheet" type="text/css" href="styles/book.css"/>
+</head>
+<body>
+  <section class="cover-page">
+    <img class="cover-full" src="assets/cover.png" alt="{html_lib.escape(book_title)}"/>
+  </section>
+</body>
+</html>
+"""
+
+
+def make_epub_frontmatter_xhtml(book_title: str) -> str:
+    body_html = """
+<section class="frontmatter">
+  <h1 class="frontmatter-title">About This Book</h1>
+  <p>Created by Veselin Baev</p>
+  <p>GitHub: vebaev</p>
+  <p>Email: vebaev@gmail.com</p>
+  <p>Web: http://vebaev.github.io/NHK/</p>
+</section>
+"""
+    return make_epub_xhtml(book_title, body_html)
+
+
+def build_epub_cover_svg(book_title: str, generated_label: str, logo_path: str) -> str:
+    logo_data_uri = ""
+    if logo_path and os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("ascii")
+        logo_data_uri = f"data:image/png;base64,{encoded}"
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="2560" viewBox="0 0 1600 2560">
+  <rect width="1600" height="2560" fill="#f6c8a2"/>
+  <rect x="120" y="120" width="1360" height="2320" rx="64" ry="64" fill="#f8d4b7" stroke="#e6ad80" stroke-width="8"/>
+  <image href="{logo_data_uri}" x="560" y="420" width="480" height="480" preserveAspectRatio="xMidYMid meet"/>
+  <text x="800" y="1220" text-anchor="middle" font-size="160" font-family="Hiragino Mincho ProN, Yu Mincho, serif" fill="#275cc7">最新ニュース</text>
+  <text x="800" y="1450" text-anchor="middle" font-size="84" font-family="Georgia, serif" letter-spacing="8" fill="#5d4636">NHK</text>
+  <text x="800" y="1580" text-anchor="middle" font-size="56" font-family="Georgia, serif" fill="#6d5645">{html_lib.escape(generated_label)}</text>
+  <text x="800" y="2130" text-anchor="middle" font-size="42" font-family="Georgia, serif" fill="#9a6f4c">Japanese Easy News Reader</text>
+</svg>
+"""
+
+
+def load_cover_font(size: int, japanese: bool = False):
+    candidates = []
+    if japanese:
+        candidates.extend(
+            [
+                "/System/Library/Fonts/ヒラギノ明朝 ProN.ttc",
+                "/System/Library/Fonts/Hiragino Sans GB.ttc",
+                "/System/Library/Fonts/STHeiti Medium.ttc",
+                "/Library/Fonts/Arial Unicode.ttf",
+            ]
+        )
+    else:
+        candidates.extend(
+            [
+                "/System/Library/Fonts/NewYork.ttf",
+                "/System/Library/Fonts/Times.ttc",
+                "/System/Library/Fonts/Helvetica.ttc",
+                "/Library/Fonts/Arial Unicode.ttf",
+            ]
+        )
+    for path in candidates:
+        if not os.path.exists(path):
+            continue
+        try:
+            return ImageFont.truetype(path, size=size)
+        except Exception:
+            continue
+    return ImageFont.load_default() if ImageFont is not None else None
+
+
+def build_epub_cover_png(book_title: str, generated_label: str, logo_path: str) -> bytes:
+    if Image is None or ImageDraw is None:
+        return b""
+    width, height = 1600, 2560
+    img = Image.new("RGB", (width, height), "#f6c8a2")
+    draw = ImageDraw.Draw(img)
+
+    panel = (120, 120, width - 120, height - 120)
+    draw.rounded_rectangle(panel, radius=68, fill="#f8d4b7", outline="#e6ad80", width=10)
+
+    title_font = load_cover_font(176, japanese=True)
+    brand_font = load_cover_font(102, japanese=False)
+    date_font = load_cover_font(68, japanese=False)
+    strap_font = load_cover_font(50, japanese=False)
+
+    if logo_path and os.path.exists(logo_path):
+        try:
+            logo = Image.open(logo_path).convert("RGBA")
+            logo.thumbnail((620, 620))
+            lx = (width - logo.width) // 2
+            ly = 340
+            img.paste(logo, (lx, ly), logo)
+        except Exception:
+            pass
+
+    draw.text((width // 2, 1290), book_title, fill="#275cc7", font=title_font, anchor="ma")
+    draw.text((width // 2, 1510), "NHK", fill="#5d4636", font=brand_font, anchor="ma")
+    draw.text((width // 2, 1645), generated_label, fill="#6d5645", font=date_font, anchor="ma")
+    draw.text((width // 2, 2185), "Japanese Easy News Reader", fill="#9a6f4c", font=strap_font, anchor="ma")
+
+    import io
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def build_article_grammar_points_for_epub(texts):
+    points = []
+    seen = set()
+    for text in texts or []:
+        for sentence in split_japanese_sentences(text):
+            for rule_id in detect_grammar_in_sentence(sentence):
+                rule = GRAMMAR_RULES_BY_ID.get(rule_id)
+                if not rule:
+                    continue
+                label = (rule.get("label") or "").strip()
+                key = normalize_for_compare(label)
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                points.append(
+                    {
+                        "label": label,
+                        "explanation_bg": (rule.get("explanation_bg") or "").strip(),
+                    }
+                )
+    return points
+
+
+def parse_articles_from_rendered_html(html_path: str):
+    with open(html_path, "r", encoding="utf-8") as f:
+        soup = BeautifulSoup(f.read(), "lxml")
+
+    articles = []
+    for idx, article_el in enumerate(soup.select("article"), start=1):
+        title_el = article_el.select_one("h2")
+        title = strip_article_number_prefix(title_el.get_text(" ", strip=True) if title_el else f"Статия {idx}")
+        title_translation_el = article_el.select_one(".title-translation")
+        title_translation = (title_translation_el.get("data-bg") or "").strip() if title_translation_el else ""
+
+        image_el = article_el.select_one("img.article-image")
+        image_src = (image_el.get("src") or "").strip() if image_el else ""
+
+        blocks = []
+        jp_blocks = article_el.select(".jp-block")
+        trans_blocks = article_el.select(".trans-block")
+        for block_index, jp_el in enumerate(jp_blocks):
+            jp_html = "".join(str(child) for child in jp_el.contents).strip()
+            jp_text = jp_el.get_text(" ", strip=True)
+            trans_text = ""
+            if block_index < len(trans_blocks):
+                trans_text = (trans_blocks[block_index].get("data-bg") or trans_blocks[block_index].get_text(" ", strip=True) or "").strip()
+            if jp_text:
+                blocks.append(
+                    {
+                        "jp_html": jp_html,
+                        "jp_text": jp_text,
+                        "translation_bg": trans_text,
+                    }
+                )
+
+        seen_keywords = set()
+        keywords = []
+        for word_el in article_el.select(".dict-word"):
+            surface = word_el.get_text("", strip=True)
+            display_html = "".join(str(child) for child in word_el.contents).strip() or html_lib.escape(surface)
+            translation_bg = (word_el.get("data-translation-bg") or word_el.get("data-meaning-bg") or "").strip()
+            reading = normalize_katakana_to_hiragana((word_el.get("data-reading") or "").strip())
+            lemma = (word_el.get("data-lemma") or "").strip()
+            item_type = (word_el.get("data-item-type") or "").strip()
+            formation_bg = simplify_bg_formation_text((word_el.get("data-formation-bg") or "").strip())
+            key = (surface, reading, translation_bg, lemma, item_type, formation_bg)
+            if not surface or not translation_bg or key in seen_keywords:
+                continue
+            seen_keywords.add(key)
+            keywords.append(
+                {
+                    "surface": surface,
+                    "display_html": display_html,
+                    "reading": reading,
+                    "translation_bg": translation_bg,
+                    "lemma": lemma,
+                    "item_type": item_type,
+                    "formation_bg": formation_bg,
+                }
+            )
+            if len(keywords) >= 18:
+                break
+
+        grammar_points = build_article_grammar_points_for_epub([block["jp_text"] for block in blocks])
+        articles.append(
+            {
+                "title": title,
+                "title_translation_bg": title_translation,
+                "image_src": image_src,
+                "blocks": blocks,
+                "keywords": keywords,
+                "grammar_points": grammar_points,
+            }
+        )
+    return articles
+
+
+def write_epub_from_rendered_html(html_path: str, epub_path: str, book_title: str = "NHK Easy Test EPUB"):
+    articles = parse_articles_from_rendered_html(html_path)
+    if not articles:
+        raise RuntimeError("No articles found in rendered HTML for EPUB export.")
+
+    source_root = os.path.dirname(os.path.abspath(html_path))
+    os.makedirs(os.path.dirname(os.path.abspath(epub_path)) or ".", exist_ok=True)
+
+    book_id = str(uuid.uuid4())
+    now_local = datetime.now().astimezone()
+    generated_at = now_local.strftime("%Y-%m-%dT%H:%M:%S%z")
+    generated_label = now_local.strftime("%Y-%m-%d")
+    css = """
+body{font-family:serif;line-height:1.65;margin:0;padding:0 1em;color:#111}
+h1,h2,h3{line-height:1.3}
+.title-ja{font-size:1.5em;margin-bottom:.25em;color:#275cc7}
+.title-bg{color:#555;margin-top:0;margin-bottom:1em;font-size:.88em}
+.article-image{display:block;max-width:100%;height:auto;margin:1em auto;border-radius:.3em}
+.jp-block{padding:.7em .85em;background:#f6f3ee;border:1px solid #ddd7cf;border-radius:.4em;margin:1em 0 .35em 0}
+.tr-block{margin:0 0 1em 0;color:#333;font-size:.88em}
+.section-title{margin-top:1.5em;font-size:1.1em;color:#275cc7}
+.keyword-list,.grammar-list{margin:0;padding-left:1.2em;font-size:.92em}
+.keyword-list li,.grammar-list li{margin:.45em 0}
+.keyword-reading{color:#666}
+.keyword-meaning{color:#222}
+ruby rt{font-size:.62em !important;line-height:1;color:#777}
+.cover-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f6c8a2;margin:0 -1em;padding:2em 1em;text-align:center}
+.cover-full{display:block;width:100%;max-width:32em;height:auto}
+.cover-inner{max-width:22em}
+.cover-logo{width:9em;height:9em;display:block;margin:0 auto 1.5em auto}
+.cover-title{font-size:2.2em;color:#275cc7;margin:0 0 .5em 0}
+.cover-brand{font-size:1.1em;letter-spacing:.08em;margin:.4em 0;color:#5d4636}
+.cover-date{font-size:.95em;color:#6d5645;margin:0}
+.frontmatter{padding:2.5em 0 1em 0;text-align:center}
+.frontmatter-title{color:#275cc7;margin-bottom:1em}
+.frontmatter p{margin:.45em 0}
+"""
+
+    nav_items = []
+    manifest_items = [
+        '<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>',
+        '<item id="frontmatter" href="frontmatter.xhtml" media-type="application/xhtml+xml"/>',
+        '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
+        '<item id="css" href="styles/book.css" media-type="text/css"/>',
+    ]
+    spine_items = ['<itemref idref="frontmatter"/>']
+    asset_entries = []
+    used_asset_paths = set()
+
+    article_docs = []
+    for idx, article in enumerate(articles, start=1):
+        doc_name = f"text/article-{idx:02d}.xhtml"
+        doc_id = f"article_{idx:02d}"
+        nav_items.append((doc_name, article["title"]))
+        manifest_items.append(f'<item id="{doc_id}" href="{doc_name}" media-type="application/xhtml+xml"/>')
+        spine_items.append(f'<itemref idref="{doc_id}"/>')
+
+        body_parts = [
+            f"<section><h1 class='title-ja'>{html_lib.escape(article['title'])}</h1>"
+        ]
+        if article.get("title_translation_bg"):
+            body_parts.append(f"<p class='title-bg'>{html_lib.escape(article['title_translation_bg'])}</p>")
+
+        image_src = normalize_epub_rel_path(article.get("image_src", ""))
+        if image_src:
+            abs_image_path = os.path.join(source_root, image_src)
+            if os.path.exists(abs_image_path):
+                asset_name = f"assets/{image_src}"
+                asset_entries.append((asset_name, abs_image_path))
+                used_asset_paths.add(asset_name)
+                body_parts.append(
+                    f"<img class='article-image' src='../{html_lib.escape(asset_name)}' alt='{html_lib.escape(article['title'])}'/>"
+                )
+
+        for block in article.get("blocks") or []:
+            body_parts.append(f"<div class='jp-block'>{block.get('jp_html') or html_lib.escape(block.get('jp_text') or '')}</div>")
+            if block.get("translation_bg"):
+                body_parts.append(f"<div class='tr-block'>{html_lib.escape(block['translation_bg'])}</div>")
+
+        body_parts.append("<h2 class='section-title'>Ключови думи</h2>")
+        if article.get("keywords"):
+            body_parts.append("<ol class='keyword-list'>")
+            for item in article["keywords"]:
+                surface = html_lib.escape(item.get("surface") or "")
+                display_html = item.get("display_html") or surface
+                translation = html_lib.escape(item.get("translation_bg") or "")
+                lemma = html_lib.escape(item.get("lemma") or "")
+                formation = html_lib.escape(item.get("formation_bg") or "")
+                front = display_html
+                tail_parts = []
+                if lemma and lemma != (item.get("surface") or ""):
+                    tail_parts.append(lemma)
+                if (item.get("item_type") or "").strip().lower() == "verb" and formation:
+                    tail_parts.append(formation)
+                tail = f" <span class='keyword-reading'>({'; '.join(tail_parts)})</span>" if tail_parts else ""
+                body_parts.append(f"<li>{front}{tail} <span class='keyword-meaning'>- {translation}</span></li>")
+            body_parts.append("</ol>")
+        else:
+            body_parts.append("<p>Няма извлечени ключови думи.</p>")
+
+        body_parts.append("<h2 class='section-title'>Граматика</h2>")
+        if article.get("grammar_points"):
+            body_parts.append("<ul class='grammar-list'>")
+            for point in article["grammar_points"]:
+                label = html_lib.escape(point.get("label") or "")
+                explanation = html_lib.escape(point.get("explanation_bg") or "")
+                body_parts.append(f"<li><strong>{label}</strong> - {explanation}</li>")
+            body_parts.append("</ul>")
+        else:
+            body_parts.append("<p>Няма открити граматични точки за тази статия.</p>")
+        body_parts.append("</section>")
+
+        article_docs.append((doc_name, make_epub_xhtml(article["title"], "\n".join(body_parts))))
+
+    for asset_name in sorted(used_asset_paths):
+        manifest_items.append(
+            f'<item id="{asset_name.replace("/", "_").replace(".", "_")}" href="{html_lib.escape(asset_name)}" media-type="{epub_media_type(asset_name)}"/>'
+        )
+
+    cover_image_name = "assets/cover.png"
+    cover_logo_path = os.path.join(source_root, "android-chrome-192x192.png")
+    cover_png = b""
+    if os.path.exists(cover_logo_path):
+        cover_png = build_epub_cover_png(book_title, generated_label, cover_logo_path)
+        if cover_png:
+            manifest_items.append(f'<item id="cover_image" href="{cover_image_name}" media-type="{epub_media_type(cover_image_name)}" properties="cover-image"/>')
+
+    nav_html = make_epub_xhtml(
+        book_title,
+        "<nav epub:type='toc' id='toc'><h1>Съдържание</h1><ol>"
+        + "".join(
+            f"<li><a href='{html_lib.escape(path)}'>{html_lib.escape(title)}</a></li>" for path, title in nav_items
+        )
+        + "</ol></nav>",
+    )
+    cover_html = make_epub_cover_xhtml(book_title, generated_label)
+    frontmatter_html = make_epub_frontmatter_xhtml(book_title)
+
+    opf = f"""<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">{html_lib.escape(book_id)}</dc:identifier>
+    <dc:title>{html_lib.escape(book_title)}</dc:title>
+    <dc:language>bg</dc:language>
+    <dc:creator>NHK</dc:creator>
+    <dc:publisher>vebaev.github.io/NHK</dc:publisher>
+    <dc:description>Japanese Easy News Reader. Created by Veselin Baev. Web: http://vebaev.github.io/NHK/</dc:description>
+    <dc:date>{html_lib.escape(generated_at)}</dc:date>
+  </metadata>
+  <manifest>
+    {"".join(manifest_items)}
+  </manifest>
+  <spine>
+    {"".join(spine_items)}
+  </spine>
+</package>
+"""
+
+    container_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>
+"""
+
+    with zipfile.ZipFile(epub_path, "w") as zf:
+        zf.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+        zf.writestr("META-INF/container.xml", container_xml)
+        zf.writestr("OEBPS/content.opf", opf)
+        zf.writestr("OEBPS/cover.xhtml", cover_html)
+        zf.writestr("OEBPS/frontmatter.xhtml", frontmatter_html)
+        zf.writestr("OEBPS/nav.xhtml", nav_html)
+        zf.writestr("OEBPS/styles/book.css", css)
+        if cover_png:
+            zf.writestr(f"OEBPS/{cover_image_name}", cover_png)
+        for path, content in article_docs:
+            zf.writestr(f"OEBPS/{path}", content)
+        for asset_name, abs_path in asset_entries:
+            if not os.path.exists(abs_path):
+                continue
+            zf.write(abs_path, arcname=f"OEBPS/{asset_name}")
+
+    return epub_path
+
 def write_pwa_files(output_dir, build_version=""):
     if not output_dir:
         return
@@ -6315,6 +6771,9 @@ def main():
     global DEEPL_API_KEY, GEMINI_API_KEY, GEMINI_MODEL
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
+    parser.add_argument("--epub-output", default="")
+    parser.add_argument("--epub-from-html", default="")
+    parser.add_argument("--epub-title", default="最新ニュース")
     parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--deepl-key", default=os.environ.get("DEEPL_API_KEY", ""))
     parser.add_argument("--gemini-key", default=os.environ.get("GEMINI_API_KEY", os.environ.get("GEMINI_API", "")))
@@ -6327,6 +6786,14 @@ def main():
     DEEPL_API_KEY = (args.deepl_key or "").strip()
     GEMINI_API_KEY = (args.gemini_key or args.groq_key or "").strip()
     GEMINI_MODEL = (args.gemini_model or args.groq_model or DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
+
+    if (args.epub_from_html or "").strip():
+        source_html = (args.epub_from_html or "").strip()
+        epub_output = (args.epub_output or os.path.join(os.path.dirname(source_html), DEFAULT_EPUB_FILENAME)).strip()
+        write_epub_from_rendered_html(source_html, epub_output, book_title=(args.epub_title or "最新ニュース").strip() or "最新ニュース")
+        print(f"EPUB written to {epub_output}")
+        return
+
     build_version = str(int(time.time()))
     build_code = build_version[-4:] if len(build_version) >= 4 else build_version
     generated_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -6380,10 +6847,12 @@ def main():
         vocab_tsv_path = os.path.join(output_dir, vocab_tsv_filename)
         vocab_apkg_path = os.path.join(output_dir, vocab_apkg_filename)
         anki_seen_words_path = os.path.join(output_dir, anki_seen_words_filename)
+        default_epub_path = os.path.join(output_dir, DEFAULT_EPUB_FILENAME)
     else:
         vocab_tsv_path = vocab_tsv_filename
         vocab_apkg_path = vocab_apkg_filename
         anki_seen_words_path = anki_seen_words_filename
+        default_epub_path = DEFAULT_EPUB_FILENAME
 
     seen_words = load_seen_words(anki_seen_words_path)
     add_known_progress_to_articles(articles, seen_words)
@@ -6399,6 +6868,9 @@ def main():
     html = build_html(articles, grammar_points=grammar_points, build_version=build_version, build_code=build_code, generated_at=generated_at)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
+    epub_target = (args.epub_output or "").strip() or default_epub_path
+    if epub_target:
+        write_epub_from_rendered_html(args.output, epub_target, book_title=(args.epub_title or "最新ニュース").strip() or "最新ニュース")
     save_translation_cache(translation_cache_path)
     save_gemini_cache(gemini_cache_path)
     send_onesignal_notification(len(articles))
