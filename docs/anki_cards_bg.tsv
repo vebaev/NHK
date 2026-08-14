@@ -1,16 +1,21 @@
 <ruby>お祭り<rt>おまつり</rt></ruby>	фестивал
 <ruby>と思る<rt>とおもえる</rt></ruby>	аз мисля
 <ruby>下げる<rt>さげる</rt></ruby>	по-ниско
+<ruby>低い<rt>ひくい</rt></ruby>	ниско
 <ruby>作る<rt>つくる</rt></ruby>	направи
-<ruby>出る<rt>でる</rt></ruby>	излезте
+<ruby>倒れる<rt>たおれる</rt></ruby>	падам надолу
+<ruby>入っする<rt>はいっする</rt></ruby>	влизам
+<ruby>入る<rt>はいる</rt></ruby>	влизам
 <ruby>危険なる<rt>きけんなる</rt></ruby>	опасно
 <ruby>叱る<rt>しかる</rt></ruby>	не се карай
 <ruby>同じ<rt>おなじ</rt></ruby>	същото
 <ruby>吹く<rt>ふく</rt></ruby>	удар
 <ruby>地震ある<rt>じしんある</rt></ruby>	Има земетресение
 <ruby>大きい<rt>おおきい</rt></ruby>	голям
+<ruby>大東<rt>おおひがし</rt></ruby>	Дайто
 <ruby>始まる<rt>はじまる</rt></ruby>	започва
 <ruby>子ど<rt>こど</rt></ruby>	дете
+<ruby>崩れる<rt>くずれる</rt></ruby>	колапс
 <ruby>強い<rt>つよい</rt></ruby>	силен
 <ruby>強くなる<rt>つよくなる</rt></ruby>	станете по-силни
 <ruby>心配する<rt>しんぱいする</rt></ruby>	тревожи се
@@ -20,17 +25,13 @@
 <ruby>抱いあげる<rt>いだいあげる</rt></ruby>	Ще те задържа
 <ruby>抱く<rt>いだく</rt></ruby>	прегръщам
 <ruby>新しい<rt>あたらしい</rt></ruby>	нов
-<ruby>暑い<rt>あつい</rt></ruby>	горещ
-<ruby>暑さ<rt>あつさ</rt></ruby>	топлина
 <ruby>書く<rt>かく</rt></ruby>	пишете
 <ruby>書くる<rt>かくる</rt></ruby>	пишете
 <ruby>有名<rt>ゆうめい</rt></ruby>	известен
 <ruby>有名なお<rt>ゆうめいなお</rt></ruby>	известен
 <ruby>来る<rt>くる</rt></ruby>	ела
 <ruby>楽しむ<rt>たのしむ</rt></ruby>	наслаждавайте се
-<ruby>止まる<rt>とまる</rt></ruby>	спрете
 <ruby>気つけくださる<rt>きつけくださる</rt></ruby>	Моля, забележете
-<ruby>片づける<rt>かたづける</rt></ruby>	почиствам
 <ruby>答える<rt>こたえる</rt></ruby>	отговор
 <ruby>経験する<rt>けいけんする</rt></ruby>	опит
 <ruby>続く<rt>つづく</rt></ruby>	Продължи
@@ -38,15 +39,19 @@
 <ruby>聞く<rt>きく</rt></ruby>	слушайте
 <ruby>見る<rt>みる</rt></ruby>	погледнете
 <ruby>言う<rt>ゆう</rt></ruby>	кажи
+<ruby>近い<rt>ちかい</rt></ruby>	близо
 <ruby>進む<rt>すすむ</rt></ruby>	продължете напред
 <ruby>長い<rt>ながい</rt></ruby>	дълго
 <ruby>降る<rt>ふる</rt></ruby>	падане
 <ruby>飾る<rt>かざる</rt></ruby>	украсявам
+<ruby>高い<rt>たかい</rt></ruby>	скъпо
+<ruby>高くなる<rt>たかくなる</rt></ruby>	скъпи се
 ある	бъди
 いる	Има
 いろいろ	различни
 くださる	дай ми
 しれる	знам
+つける	облечете се
 てう	Teu
 てくださる	Моля, дай ми
 でう	Deu
